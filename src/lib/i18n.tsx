@@ -1,0 +1,185 @@
+import React, { createContext, useContext, useState } from 'react';
+
+type Language = 'uz' | 'en' | 'ru';
+
+const dictionary = {
+  uz: {
+    discover: 'Kashf qilish',
+    my_pass: 'Mening ruxsatnomam',
+    my_profile: 'Mening profilim',
+    saved_offers: 'Saqlanganlar',
+    history: 'Tarix',
+    my_id: 'Mening ID kartam',
+    verified: 'Tasdiqlangan',
+    student_id: 'Talaba ID',
+    saved_count: 'saqlangan',
+    redemptions: 'ishlatilgan',
+    upload_photo: 'Rasm yuklash',
+    flip_card: 'Aylantirish',
+    valid_until: 'Amal qilish muddati',
+    issued: 'Berilgan sana',
+    scan_barcode: 'Chegirma uchun shtrix kodni ko\'rsating',
+    hero_title_1: 'Talabalik hayotingiz,',
+    hero_title_2: 'biroz arzonroq.',
+    hero_subtitle: 'Shahar bo\'ylab tasdiqlangan chegirmalar — talaba ID kartangiz bilan tayyor.',
+    search_placeholder: 'Qahva, kurs yoki kerakli narsa qidiring...',
+    category: 'Kategoriya',
+    area: 'Hudud',
+    all_categories: 'Barchasi',
+    everywhere: 'Har joyda',
+    offers_nearby: 'Yaqindagi chegirmalar',
+    popular_now: 'Ommabop',
+    just_arrived: 'Yangi qo\'shilganlar',
+    close_to_you: 'Sizga yaqin',
+    verified_students_only: 'Faqat tasdiqlangan talabalar uchun',
+    every_redemption: 'Har bir chegirma talaba tekshiruvi orqali olinadi.',
+    view_your_pass: 'Ruxsatnomani ko\'rish →',
+    matching_offers: 'Mos keluvchi chegirmalar',
+    your_search: 'Sizning qidiruvingiz',
+    popular_with_students: 'Talabalar tanlovi',
+    fresh_this_week: 'Bu haftadagi yangiliklar',
+    short_walk_away: 'Bir qadam masofada',
+    clear: 'Tozalash',
+    back_to_discover: 'Kashf qilishga qaytish',
+    find_us: 'Manzilimiz',
+    open_hours: 'Ish vaqti',
+    check_before_you_go: 'Borishdan oldin tekshiring',
+    verification_notice: 'Talaba maqomi chegirma vaqtida xavfsiz tekshiriladi.',
+    redeem_offer: 'Chegirmani olish',
+    students_say: 'Talabalar fikri',
+    no_reviews: 'Hozircha sharhlar yo\'q. Birinchi bo\'lib o\'z fikringizni qoldiring.',
+    good_to_know: 'Bilib qo\'ygan yaxshi',
+    see_all: 'Barchasini ko\'rish',
+    view_offer: 'Ko\'rish',
+    off: 'CHEGIRMA',
+    // Tepadagi tugmalar uchun:
+    login_btn: 'Kirish',
+    register_btn: "Ro'yxatdan o'tish"
+  },
+  en: {
+    discover: 'Discover',
+    my_pass: 'My pass',
+    my_profile: 'My profile',
+    saved_offers: 'Saved offers',
+    history: 'History',
+    my_id: 'My ID',
+    verified: 'Verified',
+    student_id: 'Student ID',
+    saved_count: 'saved',
+    redemptions: 'redemptions',
+    upload_photo: 'Upload Photo',
+    flip_card: 'Flip Card',
+    valid_until: 'Valid until',
+    issued: 'Issued date',
+    scan_barcode: 'Scan barcode for discount',
+    hero_title_1: 'Your student life,',
+    hero_title_2: 'a little less expensive.',
+    hero_subtitle: 'Verified offers from places that know the city — ready when your student ID is.',
+    search_placeholder: 'Find a coffee, course, or useful thing...',
+    category: 'Category',
+    area: 'Area',
+    all_categories: 'All',
+    everywhere: 'Everywhere',
+    offers_nearby: 'Offers nearby',
+    popular_now: 'Popular now',
+    just_arrived: 'Just arrived',
+    close_to_you: 'Close to you',
+    verified_students_only: 'Verified students only',
+    every_redemption: 'Every redemption starts with a student check.',
+    view_your_pass: 'View your pass →',
+    matching_offers: 'Matching offers',
+    your_search: 'Your search',
+    popular_with_students: 'Popular with students',
+    fresh_this_week: 'Fresh this week',
+    short_walk_away: 'A short walk away',
+    clear: 'Clear',
+    back_to_discover: 'Back to discover',
+    find_us: 'FIND US',
+    open_hours: 'OPEN HOURS',
+    check_before_you_go: 'Check before you go',
+    verification_notice: 'Student verification happens securely at redemption.',
+    redeem_offer: 'Redeem this offer',
+    students_say: 'Students say',
+    no_reviews: 'No reviews yet. Be the first student to leave a note.',
+    good_to_know: 'Good to know',
+    see_all: 'See all',
+    view_offer: 'View offer',
+    off: 'OFF',
+    // Tepadagi tugmalar uchun:
+    login_btn: 'Log in',
+    register_btn: 'Sign up'
+  },
+  ru: {
+    discover: 'Изучать',
+    my_pass: 'Мой пропуск',
+    my_profile: 'Мой профиль',
+    saved_offers: 'Сохраненные',
+    history: 'История',
+    my_id: 'Мой ID',
+    verified: 'Подтвержден',
+    student_id: 'ID Студента',
+    saved_count: 'сохранено',
+    redemptions: 'использовано',
+    upload_photo: 'Загрузить фото',
+    flip_card: 'Перевернуть',
+    valid_until: 'Действителен до',
+    issued: 'Дата выдачи',
+    scan_barcode: 'Покажите штрих-код для скидки',
+    hero_title_1: 'Ваша студенческая жизнь,',
+    hero_title_2: 'немного дешевле.',
+    hero_subtitle: 'Проверенные скидки от заведений города — доступны по вашему студенческому.',
+    search_placeholder: 'Кофе, курсы или что-то полезное...',
+    category: 'Категория',
+    area: 'Район',
+    all_categories: 'Все',
+    everywhere: 'Везде',
+    offers_nearby: 'Скидки рядом',
+    popular_now: 'Популярное',
+    just_arrived: 'Новинки',
+    close_to_you: 'Близко к вам',
+    verified_students_only: 'Только для студентов',
+    every_redemption: 'Скидка предоставляется после проверки статуса.',
+    view_your_pass: 'Посмотреть пропуск →',
+    matching_offers: 'Подходящие скидки',
+    your_search: 'Ваш поиск',
+    popular_with_students: 'Выбор студентов',
+    fresh_this_week: 'Новинки недели',
+    short_walk_away: 'В двух шагах',
+    clear: 'Очистить',
+    back_to_discover: 'Назад к списку',
+    find_us: 'НАШ АДРЕС',
+    open_hours: 'ЧАСЫ РАБОТЫ',
+    check_before_you_go: 'Уточняйте перед визитом',
+    verification_notice: 'Проверка студенческого статуса происходит при получении.',
+    redeem_offer: 'Получить скидку',
+    students_say: 'Отзывы студентов',
+    no_reviews: 'Пока нет отзывов. Оставьте первый комментарий.',
+    good_to_know: 'Полезно знать',
+    see_all: 'Смотреть все',
+    view_offer: 'Смотреть',
+    off: 'СКИДКА',
+    // Tepadagi tugmalar uchun:
+    login_btn: 'Войти',
+    register_btn: 'Регистрация'
+  }
+};
+
+type ContextType = {
+  lang: Language;
+  setLang: (lang: Language) => void;
+  t: (key: keyof typeof dictionary.uz) => string;
+};
+
+const LanguageContext = createContext<ContextType | undefined>(undefined);
+
+export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  const [lang, setLang] = useState<Language>('uz');
+  const t = (key: keyof typeof dictionary.uz) => dictionary[lang][key] || dictionary.uz[key];
+  return <LanguageContext.Provider value={{ lang, setLang, t }}>{children}</LanguageContext.Provider>;
+}
+
+export function useLanguage() {
+  const context = useContext(LanguageContext);
+  if (!context) throw new Error("useLanguage must be used within LanguageProvider");
+  return context;
+}
