@@ -16,7 +16,7 @@ export default function SignupPage() {
     setError(null);
     
     try {
-      await axios.post('http://localhost:8000/signup', {
+      await axios.post('[https://talabapass.onrender.com](https://talabapass.onrender.com)/signup', {
         full_name: fullName,
         student_id: studentId,
         password: password

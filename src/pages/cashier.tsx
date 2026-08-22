@@ -15,7 +15,7 @@ export default function CashierPage() {
     setStatus(null);
     
     try {
-      const response = await axios.post('http://localhost:8000/verify-qr', { code });
+      const response = await axios.post('[https://talabapass.onrender.com](https://talabapass.onrender.com)/verify-qr', { code });
       setStatus('success');
       setMessage(response.data.message);
       setCode(''); 
