@@ -16,11 +16,11 @@ export default function SignupPage() {
     setError(null);
     
     try {
-      await axios.post('[https://talabapass.onrender.com](https://talabapass.onrender.com)/signup', {
-        full_name: fullName,
-        student_id: studentId,
-        password: password
-      });
+      await axios.post('https://talabapass.onrender.com/signup', {
+  full_name: fullName,
+  student_id: studentId,
+  password: password
+});
       
       alert("Muvaffaqiyatli ro'yxatdan o'tdingiz! Endi tizimga kiring.");
       setLocation('/login'); 

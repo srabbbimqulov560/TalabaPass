@@ -19,11 +19,11 @@ export default function LoginPage() {
       formData.append('username', studentId); 
       formData.append('password', password);
 
-      const response = await axios.post('[https://talabapass.onrender.com](https://talabapass.onrender.com)/login', formData, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      });
+      const response = await axios.post('https://talabapass.onrender.com/login', formData, {
+  headers: {
+    'Content-Type': 'application/x-www-form-urlencoded'
+  }
+});
       
       localStorage.setItem('token', response.data.access_token);
       setLocation('/profile'); 
