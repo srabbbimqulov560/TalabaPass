@@ -3,3 +3,4 @@ dist/
 .env
 backend/__pycache__/
 backend/student_discount.db
+node_modules
