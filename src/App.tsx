@@ -8,6 +8,7 @@ import { LanguageProvider } from '@/lib/i18n';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
 // Sahifalar
+import MerchantSignup from './pages/MerchantSignup';
 import HomePage from '@/pages/home';
 import DiscountDetailPage from '@/pages/discount-detail';
 import ProfilePage from '@/pages/profile';
@@ -23,6 +24,7 @@ function Router() {
     <RoutedErrorBoundary>
       <Switch>
         {/* Avtorizatsiya sahifalari menyusiz (to'liq ekran) ko'rinadi */}
+        <Route path="/merchant-signup" component={MerchantSignup} />
         <Route path="/login" component={LoginPage} />
         <Route path="/signup" component={SignupPage} />
         <Route path="/cashier" component={CashierPage} />
