@@ -1,12 +1,11 @@
-import { Bookmark, Home, UserRound, Globe, LogIn, LogOut, QrCode } from 'lucide-react';
+import { Bookmark, Home, UserRound, LogIn, LogOut, QrCode } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { useState, useEffect, type ReactNode } from 'react';
 import { useLanguage } from '@/lib/i18n';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
-  const { t, lang, setLang } = useLanguage();
-  const [langOpen, setLangOpen] = useState(false);
+  const { t } = useLanguage();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
@@ -21,17 +20,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const desktopNavItems = isLoggedIn
     ? [
-        { href: '/', label: t('discover'), icon: Home },
+        { href: '/', label: 'Asosiy', icon: Home },
         { href: '/saved', label: t('saved_offers'), icon: Bookmark },
       ]
     : [
-        { href: '/', label: t('discover'), icon: Home },
+        { href: '/', label: 'Asosiy', icon: Home },
       ];
-
-  const handleLangSelect = (selectedLang: 'uz' | 'en' | 'ru') => {
-    setLang(selectedLang);
-    setLangOpen(false);
-  };
 
   return (
     <div className="app-shell min-h-[100dvh]">
@@ -54,22 +48,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-5">
-            <div className="relative mr-2 flex items-center gap-1 text-[hsl(var(--muted-foreground))] cursor-pointer" onClick={() => setLangOpen(!langOpen)}>
-              <Globe size={18} className="hover:text-[hsl(var(--foreground))] transition-colors" />
-              <span className="text-xs font-bold uppercase hover:text-[hsl(var(--foreground))] transition-colors">{lang}</span>
-              
-              {langOpen && (
-                <div className="absolute right-0 top-8 flex flex-col rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-1 shadow-float z-50 min-w-[120px]">
-                  <button onClick={(e) => { e.stopPropagation(); handleLangSelect('uz'); }} className="rounded-lg px-4 py-2 text-left text-sm font-semibold hover:bg-[hsl(var(--secondary))]">O'zbek</button>
-                  <button onClick={(e) => { e.stopPropagation(); handleLangSelect('en'); }} className="rounded-lg px-4 py-2 text-left text-sm font-semibold hover:bg-[hsl(var(--secondary))]">English</button>
-                  <button onClick={(e) => { e.stopPropagation(); handleLangSelect('ru'); }} className="rounded-lg px-4 py-2 text-left text-sm font-semibold hover:bg-[hsl(var(--secondary))]">Русский</button>
-                </div>
-              )}
-            </div>
-
             {isLoggedIn ? (
               <div className="flex items-center gap-3">
-                {/* SP profili olib tashlanib, orniga Saqlanganlar (Bookmark) qo'yildi */}
                 <Link href="/saved" className="flex items-center justify-center h-10 w-10 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm transition-transform hover:-translate-y-0.5 text-[hsl(var(--foreground))] hover:text-[hsl(var(--accent))]">
                   <Bookmark size={20} strokeWidth={2.5} />
                 </Link>
@@ -94,24 +74,42 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="mx-auto max-w-7xl px-5 pb-28 pt-7 md:px-8 md:pb-12">{children}</main>
       
       {isLoggedIn ? (
-        <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[hsl(var(--card))] rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.06)] z-50 h-[84px] border-t border-[hsl(var(--border)/.5)]">
-          <div className="flex justify-between items-center h-full px-10 relative">
+        <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[hsl(var(--card))] rounded-t-[28px] shadow-[0_-10px_40px_rgba(0,0,0,0.06)] border-t border-[hsl(var(--border)/.5)] z-50 h-[76px]">
+          <div className="flex justify-between items-center h-full px-8 relative">
             
-            {/* 1. Home ikonkasi (Faqat chiziq rangi o'zgaradi, fill olib tashlandi) */}
-            <Link href="/" className="flex flex-col items-center justify-center z-20 w-16 h-full">
-              <Home size={28} className={location === '/' ? "text-[hsl(var(--accent))]" : "text-[hsl(var(--muted-foreground))]"} strokeWidth={location === '/' ? 2.5 : 2} />
+            {/* 1. Asosiy ikonkasi (Aktiv bo'lganda drop-shadow bilan yonadi) */}
+            <Link href="/" className="flex flex-col items-center justify-center gap-1 z-20 w-16 h-full mt-1 transition-all">
+              <Home 
+                size={24} 
+                className={`transition-all duration-300 ${location === '/' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_8px_rgba(28,170,136,0.6)] dark:drop-shadow-[0_0_12px_rgba(28,170,136,0.9)]" : "text-[hsl(var(--muted-foreground))]"}`} 
+                strokeWidth={location === '/' ? 2.5 : 2} 
+              />
+              <span className={`text-[10px] font-bold transition-all duration-300 ${location === '/' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_5px_rgba(28,170,136,0.4)] dark:drop-shadow-[0_0_8px_rgba(28,170,136,0.8)]" : "text-[hsl(var(--muted-foreground))]"}`}>
+                Asosiy
+              </span>
             </Link>
 
-            {/* 2. O'rtadagi QR Scanner (QrCode ikonkasi qo'yildi va xato "ort" yozuvi o'chirildi) */}
-            <div className="absolute left-1/2 -translate-x-1/2 -top-8 w-[92px] h-[92px] bg-[hsl(var(--background))] rounded-full flex items-center justify-center z-10">
-              <Link href="/qr" className="w-[68px] h-[68px] bg-[hsl(var(--card))] rounded-full flex items-center justify-center shadow-[0_8px_25px_rgba(28,170,136,0.3)] transition-transform active:scale-90 border-[3px] border-[hsl(var(--accent))]">
-                <QrCode size={30} className="text-[hsl(var(--accent))]" strokeWidth={2.5} />
+            {/* 2. QR Scanner (Doimiy Neon effektga ega) */}
+            <div className="absolute left-1/2 -translate-x-1/2 -top-8 w-[88px] h-[88px] bg-[hsl(var(--background))] rounded-full flex items-center justify-center z-10 transition-colors duration-300">
+              <Link href="/qr" className="w-[64px] h-[64px] bg-[hsl(var(--card))] rounded-full flex items-center justify-center shadow-[0_8px_20px_rgba(0,0,0,0.12)] transition-transform active:scale-90">
+                <QrCode 
+                  size={30} 
+                  className="text-[hsl(var(--accent))] drop-shadow-[0_0_8px_rgba(28,170,136,0.5)] dark:drop-shadow-[0_0_12px_rgba(28,170,136,0.9)]" 
+                  strokeWidth={2.5} 
+                />
               </Link>
             </div>
 
-            {/* 3. Profil ikonkasi (Faqat chiziq rangi o'zgaradi, fill olib tashlandi) */}
-            <Link href="/profile" className="flex flex-col items-center justify-center z-20 w-16 h-full">
-              <UserRound size={28} className={location === '/profile' ? "text-[hsl(var(--accent))]" : "text-[hsl(var(--muted-foreground))]"} strokeWidth={location === '/profile' ? 2.5 : 2} />
+            {/* 3. Profil ikonkasi (Aktiv bo'lganda drop-shadow bilan yonadi) */}
+            <Link href="/profile" className="flex flex-col items-center justify-center gap-1 z-20 w-16 h-full mt-1 transition-all">
+              <UserRound 
+                size={24} 
+                className={`transition-all duration-300 ${location === '/profile' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_8px_rgba(28,170,136,0.6)] dark:drop-shadow-[0_0_12px_rgba(28,170,136,0.9)]" : "text-[hsl(var(--muted-foreground))]"}`} 
+                strokeWidth={location === '/profile' ? 2.5 : 2} 
+              />
+              <span className={`text-[10px] font-bold transition-all duration-300 ${location === '/profile' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_5px_rgba(28,170,136,0.4)] dark:drop-shadow-[0_0_8px_rgba(28,170,136,0.8)]" : "text-[hsl(var(--muted-foreground))]"}`}>
+                Profil
+              </span>
             </Link>
 
           </div>

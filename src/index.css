@@ -34,6 +34,7 @@
 }
 
 :root {
+  /* KUNDUZGI MAVZU */
   --background: 38 50% 96%;
   --foreground: 222 35% 17%;
   --border: 35 24% 87%;
@@ -49,20 +50,48 @@
   --secondary-foreground: 222 35% 20%;
   --muted: 37 32% 92%;
   --muted-foreground: 220 14% 47%;
-  --accent: 164 63% 42%;
+  --accent: 164 63% 42%; /* #1caa88 */
   --accent-foreground: 222 43% 14%;
   --destructive: 0 67% 52%;
   --destructive-foreground: 40 60% 99%;
   --ring: 164 63% 42%;
+
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.05);
+  --shadow-float: 0 10px 40px rgba(0, 0, 0, 0.08);
+}
+
+.dark {
+  /* TUNGI MAVZU (Premium va Silliq) */
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+  --border: 217 33% 23%;
+  --input: 217 33% 23%;
+  --card: 222 47% 13%;
+  --card-foreground: 210 40% 98%;
+  --card-border: 217 33% 23%;
+  --popover: 222 47% 13%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 210 40% 98%;
+  --primary-foreground: 222 47% 11%;
+  --secondary: 217 33% 20%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217 33% 20%;
+  --muted-foreground: 215 20% 65%;
+  --accent: 164 63% 42%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 210 40% 98%;
+  --ring: 164 63% 42%;
+
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.25);
+  --shadow-float: 0 10px 40px rgba(0, 0, 0, 0.4);
 }
 
 @layer base {
   * { @apply border-border; }
-  html {
-    scroll-behavior: smooth;
-  }
+  html { scroll-behavior: smooth; }
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply font-sans antialiased bg-background text-foreground transition-colors duration-300;
     min-width: 320px;
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
@@ -74,15 +103,15 @@
 @layer utilities {
   .font-display { font-family: var(--app-font-display); }
   .font-mono { font-family: var(--app-font-mono); }
-  .shadow-soft { box-shadow: var(--shadow-soft); }
-  .shadow-float { box-shadow: var(--shadow-float); }
+  .shadow-soft { box-shadow: var(--shadow-soft); transition: box-shadow 0.3s ease; }
+  .shadow-float { box-shadow: var(--shadow-float); transition: box-shadow 0.3s ease; }
   .text-balance { text-wrap: balance; }
 }
 
-.app-shell { background: radial-gradient(circle at 80% 0%, rgba(28, 170, 136, .08), transparent 30rem), hsl(var(--background)); }
-
-/* Qotishlarni yo'qotish uchun Grain effekti o'chirildi */
-/* .grain::after { ... } */
+.app-shell { 
+  background: radial-gradient(circle at 80% 0%, rgba(28, 170, 136, .05), transparent 30rem), hsl(var(--background)); 
+  transition: background 0.5s ease;
+}
 
 .page-enter { 
   animation: page-enter .5s cubic-bezier(.16, 1, .3, 1) both; 
@@ -113,8 +142,4 @@
 @keyframes skeleton { 
   from { background-position: 200% 0; } 
   to { background-position: -200% 0; } 
-}
-
-@media (prefers-reduced-motion: reduce) { 
-  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } 
 }

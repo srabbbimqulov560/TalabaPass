@@ -1,5 +1,8 @@
-import { useState, useRef } from 'react';
-import { ShieldCheck, UserRound, ScanBarcode, Rotate3d, LogOut, Camera, LockKeyhole } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { 
+  ShieldCheck, UserRound, ScanBarcode, Rotate3d, LogOut, Camera, 
+  LockKeyhole, ChevronRight, Globe, Moon, Shield, CircleHelp, CheckCircle2, Circle
+} from 'lucide-react';
 import { useGetProfile } from '@workspace/api-client-react';
 import { useLanguage } from '@/lib/i18n';
 
@@ -8,12 +11,32 @@ function initials(name?: string) {
 }
 
 export default function ProfilePage() {
-  const { t } = useLanguage();
+  const { t, lang, setLang } = useLanguage();
   const profile = useGetProfile();
   const user = profile.data;
   
+  const [activeTab, setActiveTab] = useState<'id' | 'settings'>('id');
   const [avatar, setAvatar] = useState<string | null>(null);
+  
+  // Dark mode holatini saqlangan xotiradan olish
+  const [isDarkTheme, setIsDarkTheme] = useState(() => {
+    return localStorage.getItem('theme') === 'dark' || document.documentElement.classList.contains('dark');
+  });
+  const [isPrivateAccount, setIsPrivateAccount] = useState(false);
+  const [isLangModalOpen, setIsLangModalOpen] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Tema o'zgarishini xotiraga saqlash
+  useEffect(() => {
+    if (isDarkTheme) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkTheme]);
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -28,70 +51,200 @@ export default function ProfilePage() {
     window.location.href = '/login';
   };
 
+  const handleLangSelect = (selectedLang: 'uz' | 'en' | 'ru') => {
+    setLang(selectedLang);
+    setIsLangModalOpen(false);
+  };
+
   return (
-    <div className="page-enter flex flex-col items-center pb-10">
-      
-      {/* Foydalanuvchi ma'lumotlari (Yarmi boxdan chiqib turgan rasm bilan) */}
-      <div className="relative mt-16 mb-12 w-full max-w-[380px] rounded-[30px] bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-6 shadow-soft pt-14 flex flex-col items-center">
+    <>
+      <div className="page-enter flex flex-col items-center pb-10 min-h-screen">
         
-        {/* Rasm qismi (Absolutely positioned qilinib tepadagi chegaradan chiqarildi) */}
-        <div className="absolute -top-12">
-          <div className="relative group">
-            <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
-            <div 
-              onClick={() => fileInputRef.current?.click()} 
-              className="grid h-24 w-24 cursor-pointer place-items-center overflow-hidden rounded-[28px] bg-[#f1c46b] border-4 border-[hsl(var(--background))] font-display text-3xl font-bold text-[#694718] shadow-md transition-all group-hover:opacity-80"
-            >
-              {avatar ? <img src={avatar} alt="Profile" className="h-full w-full object-cover" /> : initials(user?.name)}
+        <div className="relative mt-10 w-full max-w-[380px] rounded-[30px] bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-6 shadow-soft pt-14 flex flex-col items-center">
+          
+          <div className="absolute -top-14">
+            <div className="relative group">
+              <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
+              <div 
+                onClick={() => fileInputRef.current?.click()} 
+                className="grid h-28 w-28 cursor-pointer place-items-center overflow-hidden rounded-full bg-[#f1c46b] border-4 border-[hsl(var(--background))] font-display text-4xl font-bold text-[#694718] shadow-md transition-all group-hover:opacity-80"
+              >
+                {avatar ? <img src={avatar} alt="Profile" className="h-full w-full object-cover" /> : initials(user?.name)}
+              </div>
+              <button 
+                onClick={() => fileInputRef.current?.click()} 
+                className="absolute bottom-0 right-0 grid h-8 w-8 place-items-center rounded-full border-[3px] border-[hsl(var(--background))] bg-[hsl(var(--accent))] text-white shadow-sm"
+              >
+                <Camera size={14} />
+              </button>
             </div>
+          </div>
+          
+          <div className="flex flex-col items-center mt-2 text-center">
+            <div className="flex items-center gap-2">
+              <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))]">{user?.name || 'Student profile'}</h2>
+              {user?.verified !== false && (
+                <span className="flex items-center gap-1 rounded-full bg-[hsl(var(--accent)/.15)] px-2 py-1 text-[10px] font-bold text-[hsl(var(--accent))]">
+                  <ShieldCheck size={12} /> {t('verified')}
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
+              {user?.university || 'University'} {user?.course ? `· ${user.course}` : ''}
+            </p>
+            <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))] bg-[hsl(var(--secondary))] px-4 py-2 rounded-full">
+              <LockKeyhole size={14} /> {t('student_id')} 
+              <span className="font-mono font-bold text-[hsl(var(--foreground))] ml-1">{user?.studentId || '•••• ••••'}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="w-full max-w-[380px]">
+          <hr className="border-t border-[hsl(var(--border))] my-6" />
+          
+          <div className="flex bg-[hsl(var(--secondary))] rounded-full p-1.5 mb-6">
             <button 
-              onClick={() => fileInputRef.current?.click()} 
-              className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full border-[3px] border-[hsl(var(--background))] bg-[hsl(var(--accent))] text-white shadow-sm"
+              onClick={() => setActiveTab('id')} 
+              className={`flex-1 py-3 text-sm font-bold rounded-full transition-all ${activeTab === 'id' ? 'bg-[hsl(var(--card))] text-[hsl(var(--foreground))] shadow-md' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}
             >
-              <Camera size={14} />
+              Student ID
+            </button>
+            <button 
+              onClick={() => setActiveTab('settings')} 
+              className={`flex-1 py-3 text-sm font-bold rounded-full transition-all ${activeTab === 'settings' ? 'bg-[hsl(var(--card))] text-[hsl(var(--foreground))] shadow-md' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}
+            >
+              {t('settings')}
             </button>
           </div>
         </div>
-        
-        {/* Ism va Universitet ma'lumotlari */}
-        <div className="flex flex-col items-center mt-2 text-center">
-          <div className="flex items-center gap-2">
-            <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))]">{user?.name || 'Student profile'}</h2>
-            {user?.verified !== false && (
-              <span className="flex items-center gap-1 rounded-full bg-[hsl(var(--accent)/.15)] px-2 py-1 text-[10px] font-bold text-[hsl(var(--accent))]">
-                <ShieldCheck size={12} /> {t('verified')}
-              </span>
-            )}
+
+        {activeTab === 'id' ? (
+          <StudentCard user={user} avatar={avatar} t={t} />
+        ) : (
+          <div className="w-full max-w-[380px] flex flex-col page-enter pb-10">
+            
+            <div className="bg-[hsl(var(--card))] rounded-[24px] border border-[hsl(var(--border))] overflow-hidden flex flex-col">
+              
+              <div 
+                onClick={() => setIsLangModalOpen(true)}
+                className="flex items-center justify-between p-4 cursor-pointer hover:bg-[hsl(var(--secondary)/.5)] transition-colors border-b border-[hsl(var(--border))]"
+              >
+                <div className="flex items-center gap-3">
+                  <Globe size={22} className="text-[hsl(var(--foreground))]" />
+                  <span className="text-[15px] font-semibold text-[hsl(var(--foreground))]">{t('change_language')}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-[hsl(var(--muted-foreground))]">
+                    {lang === 'uz' ? "GB O'zbek" : lang === 'ru' ? "RU Русский" : "GB English"}
+                  </span>
+                  <ChevronRight size={20} className="text-[hsl(var(--muted-foreground))]" />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-4 border-b border-[hsl(var(--border))]">
+                <div className="flex items-center gap-3">
+                  <Moon size={22} className="text-[hsl(var(--foreground))]" />
+                  <span className="text-[15px] font-semibold text-[hsl(var(--foreground))]">{t('dark_mode')}</span>
+                </div>
+                <div 
+                  onClick={() => setIsDarkTheme(!isDarkTheme)}
+                  className={`w-12 h-6.5 rounded-full p-1 cursor-pointer transition-colors ${isDarkTheme ? 'bg-[hsl(var(--accent))]' : 'bg-gray-300'}`}
+                >
+                  <div className={`w-4.5 h-4.5 bg-white rounded-full shadow-sm transition-transform ${isDarkTheme ? 'translate-x-5.5' : 'translate-x-0'}`} />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-4 border-b border-[hsl(var(--border))]">
+                <div className="flex items-center gap-3">
+                  <Shield size={22} className="text-[hsl(var(--foreground))]" />
+                  <div>
+                    <div className="text-[15px] font-semibold text-[hsl(var(--foreground))]">{t('private_account')}</div>
+                    <div className="text-[11px] text-[hsl(var(--muted-foreground))] leading-tight mt-0.5">
+                      {isPrivateAccount ? t('on') : t('off_status')}
+                    </div>
+                  </div>
+                </div>
+                <div 
+                  onClick={() => setIsPrivateAccount(!isPrivateAccount)}
+                  className={`w-12 h-6.5 rounded-full p-1 cursor-pointer transition-colors ${isPrivateAccount ? 'bg-[hsl(var(--accent))]' : 'bg-gray-300'}`}
+                >
+                  <div className={`w-4.5 h-4.5 bg-white rounded-full shadow-sm transition-transform ${isPrivateAccount ? 'translate-x-5.5' : 'translate-x-0'}`} />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-[hsl(var(--secondary)/.5)] transition-colors border-b border-[hsl(var(--border))]">
+                <div className="flex items-center gap-3">
+                  <CircleHelp size={22} className="text-[hsl(var(--foreground))]" />
+                  <span className="text-[15px] font-semibold text-[hsl(var(--foreground))]">{t('help_support')}</span>
+                </div>
+                <ChevronRight size={20} className="text-[hsl(var(--muted-foreground))]" />
+              </div>
+
+              <div 
+                onClick={handleLogout}
+                className="flex items-center justify-between p-4 cursor-pointer hover:bg-red-50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <LogOut size={22} className="text-red-500" />
+                  <span className="text-[15px] font-semibold text-red-500">{t('logout')}</span>
+                </div>
+              </div>
+
+            </div>
           </div>
-          <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
-            {user?.university || 'University'} {user?.course ? `· ${user.course}` : ''}
-          </p>
-          <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))] bg-[hsl(var(--secondary))] px-4 py-2 rounded-full">
-            <LockKeyhole size={14} /> {t('student_id')} 
-            <span className="font-mono font-bold text-[hsl(var(--foreground))] ml-1">{user?.studentId || '•••• ••••'}</span>
+        )}
+      </div>
+
+      {isLangModalOpen && (
+        <div className="fixed inset-0 z-[45] flex flex-col justify-end" style={{ height: '100dvh' }}>
+          <div 
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm" 
+            onClick={() => setIsLangModalOpen(false)} 
+          />
+          
+          <div className="relative bg-[hsl(var(--card))] rounded-t-[32px] p-6 pb-[100px] animate-in slide-in-from-bottom-full duration-300 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
+            <div className="w-10 h-1.5 bg-gray-300 rounded-full mx-auto mb-6" />
+            
+            <h3 className="font-display text-xl font-bold mb-5 px-2">{t('select_language')}</h3>
+            
+            <div className="flex flex-col gap-3">
+              <div 
+                onClick={() => handleLangSelect('uz')}
+                className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer border transition-colors ${lang === 'uz' ? 'border-[hsl(var(--accent))] bg-[hsl(var(--accent)/.08)]' : 'border-transparent bg-[hsl(var(--secondary)/.6)]'}`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🇺🇿</span>
+                  <span className="text-base font-semibold text-[hsl(var(--foreground))]">O'zbek</span>
+                </div>
+                {lang === 'uz' ? <CheckCircle2 size={24} className="text-[hsl(var(--accent))]" /> : <Circle size={24} className="text-[hsl(var(--muted-foreground))]" />}
+              </div>
+
+              <div 
+                onClick={() => handleLangSelect('ru')}
+                className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer border transition-colors ${lang === 'ru' ? 'border-[hsl(var(--accent))] bg-[hsl(var(--accent)/.08)]' : 'border-transparent bg-[hsl(var(--secondary)/.6)]'}`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🇷🇺</span>
+                  <span className="text-base font-semibold text-[hsl(var(--foreground))]">Русский</span>
+                </div>
+                {lang === 'ru' ? <CheckCircle2 size={24} className="text-[hsl(var(--accent))]" /> : <Circle size={24} className="text-[hsl(var(--muted-foreground))]" />}
+              </div>
+
+              <div 
+                onClick={() => handleLangSelect('en')}
+                className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer border transition-colors ${lang === 'en' ? 'border-[hsl(var(--accent))] bg-[hsl(var(--accent)/.08)]' : 'border-transparent bg-[hsl(var(--secondary)/.6)]'}`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🇬🇧</span>
+                  <span className="text-base font-semibold text-[hsl(var(--foreground))]">English</span>
+                </div>
+                {lang === 'en' ? <CheckCircle2 size={24} className="text-[hsl(var(--accent))]" /> : <Circle size={24} className="text-[hsl(var(--muted-foreground))]" />}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-
-      <div className="mb-6 text-center">
-         <h1 className="font-display text-3xl font-bold tracking-[-.04em]">{t('my_id')}</h1>
-         <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">Sizning raqamli talaba guvohnomangiz</p>
-      </div>
-
-      {/* ID Karta */}
-      <StudentCard user={user} avatar={avatar} t={t} />
-
-      {/* Tizimdan chiqish tugmasi */}
-      <div className="mt-14 w-full max-w-[360px]">
-        <button 
-          onClick={handleLogout} 
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-50 px-5 py-4 font-display text-sm font-bold text-red-600 transition-colors hover:bg-red-100 active:scale-95"
-        >
-          <LogOut size={18} />
-          Tizimdan chiqish
-        </button>
-      </div>
-    </div>
+      )}
+    </>
   );
 }
 
@@ -99,8 +252,11 @@ function StudentCard({ user, avatar, t }: any) {
   const [flipped, setFlipped] = useState(false);
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="group h-[220px] w-[360px] max-w-full [perspective:1000px]">
+    <div className="flex flex-col items-center pb-10 page-enter w-full">
+      <div 
+        className="group h-[220px] w-full max-w-[360px] [perspective:1000px] cursor-pointer"
+        onClick={() => setFlipped(!flipped)}
+      >
         <div className={`relative h-full w-full transition-transform duration-700 [transform-style:preserve-3d] ${flipped ? '[transform:rotateY(180deg)]' : ''}`}>
           
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#1a2b4c] to-[#121c32] p-5 text-white shadow-float [backface-visibility:hidden]">
@@ -141,8 +297,14 @@ function StudentCard({ user, avatar, t }: any) {
           </div>
         </div>
       </div>
-
-      <button onClick={() => setFlipped(!flipped)} className="mt-8 flex items-center gap-2 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-6 py-2.5 text-sm font-bold shadow-soft transition-transform hover:-translate-y-0.5 active:scale-95">
+      
+      <button 
+        onClick={(e) => { 
+          e.stopPropagation(); 
+          setFlipped(!flipped); 
+        }} 
+        className="mt-8 flex items-center gap-2 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-6 py-2.5 text-sm font-bold shadow-soft transition-transform hover:-translate-y-0.5 active:scale-95"
+      >
         <Rotate3d size={18} className="text-[hsl(var(--accent))]" />
         {t('flip_card')}
       </button>
