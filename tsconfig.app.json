@@ -26,5 +26,5 @@
       "@workspace/api-client-react": ["./src/lib/api-client.ts"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "../merchant talabapass/merchant-talabapass/src/pages/MerchantSignup.tsx", "../merchant talabapass/merchant-talabapass/src/pages/MerchantLogin.tsx"]
 }
