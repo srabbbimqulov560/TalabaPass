@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from './components/MainLayout';
-import Profile from './pages/Profile';
+import Profile from './pages/profile';
 
 // Diqqat: Bu yerda o'zingizning haqiqiy sahifalaringizni import qiling!
 // Masalan: import Dashboard from './pages/Dashboard';
