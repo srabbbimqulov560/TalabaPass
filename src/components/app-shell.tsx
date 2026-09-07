@@ -1,4 +1,4 @@
-import { Bookmark, Compass, UserRound, Globe, LogIn, LogOut } from 'lucide-react';
+import { Bookmark, Home, UserRound, Globe, LogIn, LogOut, QrCode } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { useState, useEffect, type ReactNode } from 'react';
 import { useLanguage } from '@/lib/i18n';
@@ -21,21 +21,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const desktopNavItems = isLoggedIn
     ? [
-        { href: '/', label: t('discover'), icon: Compass },
-        { href: '/profile', label: t('my_pass'), icon: UserRound },
+        { href: '/', label: t('discover'), icon: Home },
+        { href: '/saved', label: t('saved_offers'), icon: Bookmark },
       ]
     : [
-        { href: '/', label: t('discover'), icon: Compass },
-      ];
-
-  const mobileNavItems = isLoggedIn
-    ? [
-        { href: '/', label: t('discover'), icon: Compass },
-        { href: '/profile', label: t('my_pass'), icon: UserRound },
-      ]
-    : [
-        { href: '/', label: t('discover'), icon: Compass },
-        { href: '/login', label: t('login_btn'), icon: LogIn },
+        { href: '/', label: t('discover'), icon: Home },
       ];
 
   const handleLangSelect = (selectedLang: 'uz' | 'en' | 'ru') => {
@@ -79,11 +69,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             {isLoggedIn ? (
               <div className="flex items-center gap-3">
-                <Link href="/profile" className="flex items-center gap-2.5 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-2 py-1.5 shadow-sm transition-transform hover:-translate-y-0.5">
-                  <span className="hidden pl-2 text-xs font-semibold text-[hsl(var(--foreground))] sm:block">{t('my_profile')}</span>
-                  <span className="grid h-8 w-8 place-items-center rounded-full bg-[#f1c46b] font-display text-xs font-bold text-[#6c4214]">SP</span>
+                {/* SP profili olib tashlanib, orniga Saqlanganlar (Bookmark) qo'yildi */}
+                <Link href="/saved" className="flex items-center justify-center h-10 w-10 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm transition-transform hover:-translate-y-0.5 text-[hsl(var(--foreground))] hover:text-[hsl(var(--accent))]">
+                  <Bookmark size={20} strokeWidth={2.5} />
                 </Link>
-                <button onClick={handleLogout} className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors" title="Tizimdan chiqish">
+                <button onClick={handleLogout} className="hidden md:block p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors" title="Tizimdan chiqish">
                   <LogOut size={20} />
                 </button>
               </div>
@@ -101,21 +91,37 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
       
-      <main className="mx-auto max-w-7xl px-5 pb-24 pt-7 md:px-8 md:pb-12">{children}</main>
+      <main className="mx-auto max-w-7xl px-5 pb-28 pt-7 md:px-8 md:pb-12">{children}</main>
       
-      <nav className="fixed inset-x-4 bottom-4 z-40 flex items-center justify-around rounded-[22px] border border-[hsl(var(--border))] bg-[hsl(var(--card)/.94)] p-2 shadow-float backdrop-blur-xl md:hidden">
-        {mobileNavItems.map(({ href, label, icon: Icon }) => (
-          <Link key={href} href={href} className={`flex min-w-[112px] flex-col items-center gap-1 rounded-2xl px-5 py-2 text-[11px] font-semibold ${location === href ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'text-[hsl(var(--muted-foreground))]'}`}>
-            <Icon size={18} />{label}
-          </Link>
-        ))}
-        {/* Mobil menyu uchun chiqish tugmasi */}
-        {isLoggedIn && (
-          <button onClick={handleLogout} className="flex min-w-[112px] flex-col items-center gap-1 rounded-2xl px-5 py-2 text-[11px] font-semibold text-red-500">
-            <LogOut size={18} /> Chiqish
-          </button>
-        )}
-      </nav>
+      {isLoggedIn ? (
+        <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[hsl(var(--card))] rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.06)] z-50 h-[84px] border-t border-[hsl(var(--border)/.5)]">
+          <div className="flex justify-between items-center h-full px-10 relative">
+            
+            {/* 1. Home ikonkasi (Faqat chiziq rangi o'zgaradi, fill olib tashlandi) */}
+            <Link href="/" className="flex flex-col items-center justify-center z-20 w-16 h-full">
+              <Home size={28} className={location === '/' ? "text-[hsl(var(--accent))]" : "text-[hsl(var(--muted-foreground))]"} strokeWidth={location === '/' ? 2.5 : 2} />
+            </Link>
+
+            {/* 2. O'rtadagi QR Scanner (QrCode ikonkasi qo'yildi va xato "ort" yozuvi o'chirildi) */}
+            <div className="absolute left-1/2 -translate-x-1/2 -top-8 w-[92px] h-[92px] bg-[hsl(var(--background))] rounded-full flex items-center justify-center z-10">
+              <Link href="/qr" className="w-[68px] h-[68px] bg-[hsl(var(--card))] rounded-full flex items-center justify-center shadow-[0_8px_25px_rgba(28,170,136,0.3)] transition-transform active:scale-90 border-[3px] border-[hsl(var(--accent))]">
+                <QrCode size={30} className="text-[hsl(var(--accent))]" strokeWidth={2.5} />
+              </Link>
+            </div>
+
+            {/* 3. Profil ikonkasi (Faqat chiziq rangi o'zgaradi, fill olib tashlandi) */}
+            <Link href="/profile" className="flex flex-col items-center justify-center z-20 w-16 h-full">
+              <UserRound size={28} className={location === '/profile' ? "text-[hsl(var(--accent))]" : "text-[hsl(var(--muted-foreground))]"} strokeWidth={location === '/profile' ? 2.5 : 2} />
+            </Link>
+
+          </div>
+        </nav>
+      ) : (
+        <nav className="md:hidden fixed inset-x-4 bottom-4 z-40 flex items-center justify-center gap-4 rounded-[22px] border border-[hsl(var(--border))] bg-[hsl(var(--card)/.94)] p-3 shadow-float backdrop-blur-xl">
+           <Link href="/login" className="flex-1 text-center text-xs font-bold text-[hsl(var(--foreground))] border-2 border-[hsl(var(--border))] py-2.5 rounded-xl">{t('login_btn')}</Link>
+           <Link href="/signup" className="flex-1 text-center text-xs font-bold bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] py-3 rounded-xl">{t('register_btn')}</Link>
+        </nav>
+      )}
     </div>
   );
 }

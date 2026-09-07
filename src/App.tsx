@@ -16,6 +16,7 @@ import NotFound from '@/pages/not-found';
 import LoginPage from '@/pages/login';    // Yangi qo'shildi
 import SignupPage from '@/pages/signup';  // Yangi qo'shildi
 import CashierPage from '@/pages/cashier';// Yangi qo'shildi
+import SavedPage from '@/pages/saved';
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ function Router() {
         <Route>
           <AppShell>
             <Switch>
+              <Route path="/saved" component={SavedPage} />
               <Route path="/" component={HomePage} />
               <Route path="/discount/:id" component={DiscountDetailPage} />
               <Route path="/profile" component={ProfilePage} />

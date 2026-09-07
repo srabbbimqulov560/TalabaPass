@@ -1,22 +1,17 @@
-import { useMemo, useState, useRef } from 'react';
-import { Bookmark, History, LockKeyhole, ShieldCheck, UserRound, Camera, ScanBarcode, Rotate3d } from 'lucide-react';
-import { useGetProfile, useListFavorites, useListRedemptions, useToggleFavorite, getListFavoritesQueryKey, getGetProfileQueryKey } from '@workspace/api-client-react';
-import { DiscountCard, OfferCardSkeleton } from '@/components/discount-card';
-import type { Discount } from '@workspace/api-client-react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useState, useRef } from 'react';
+import { ShieldCheck, UserRound, ScanBarcode, Rotate3d, LogOut, Camera, LockKeyhole } from 'lucide-react';
+import { useGetProfile } from '@workspace/api-client-react';
 import { useLanguage } from '@/lib/i18n';
 
-function initials(name?: string) { return name?.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'SP'; }
+function initials(name?: string) { 
+  return name?.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'SP'; 
+}
 
 export default function ProfilePage() {
   const { t } = useLanguage();
   const profile = useGetProfile();
-  const favorites = useListFavorites();
-  const redemptions = useListRedemptions();
-  const favorite = useToggleFavorite();
-  const queryClient = useQueryClient();
+  const user = profile.data;
   
-  const [tab, setTab] = useState<'saved' | 'history' | 'my-id'>('saved');
   const [avatar, setAvatar] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -28,67 +23,84 @@ export default function ProfilePage() {
     }
   };
 
-  const toggleFavorite = (offer: Discount) => favorite.mutate({ id: offer.id }, { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListFavoritesQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetProfileQueryKey() }); } });
-  
-  const loading = profile.isLoading || favorites.isLoading || redemptions.isLoading;
-  const user = profile.data;
-  const saved = useMemo(() => favorites.data || [], [favorites.data]);
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+  };
 
-  return <div className="page-enter">
-    <div className="mb-8">
-      <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--accent))]"><UserRound size={13} /> {t('my_pass')}</div>
-      <h1 className="font-display text-[clamp(2.2rem,6vw,3.8rem)] font-bold leading-none tracking-[-.06em]">{t('discover')},<br /><span className="text-[hsl(var(--accent))]">{t('my_profile')}.</span></h1>
-    </div>
-    
-    <section className="relative overflow-hidden rounded-[30px] bg-[hsl(var(--primary))] p-6 text-[hsl(var(--primary-foreground))] shadow-float md:p-8">
-      <div className="absolute -right-8 -top-14 h-52 w-52 rounded-full border-[28px] border-[hsl(var(--accent)/.2)]" />
-      <div className="relative flex flex-col gap-7 sm:flex-row sm:items-center">
+  return (
+    <div className="page-enter flex flex-col items-center pb-10">
+      
+      {/* Foydalanuvchi ma'lumotlari (Yarmi boxdan chiqib turgan rasm bilan) */}
+      <div className="relative mt-16 mb-12 w-full max-w-[380px] rounded-[30px] bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-6 shadow-soft pt-14 flex flex-col items-center">
         
-        <div className="relative group">
-          <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
-          <div onClick={() => fileInputRef.current?.click()} className="grid h-20 w-20 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-[24px] bg-[#f1c46b] font-display text-2xl font-bold text-[#694718] transition-all group-hover:opacity-80">
-            {avatar ? <img src={avatar} alt="Profile" className="h-full w-full object-cover" /> : initials(user?.name)}
+        {/* Rasm qismi (Absolutely positioned qilinib tepadagi chegaradan chiqarildi) */}
+        <div className="absolute -top-12">
+          <div className="relative group">
+            <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
+            <div 
+              onClick={() => fileInputRef.current?.click()} 
+              className="grid h-24 w-24 cursor-pointer place-items-center overflow-hidden rounded-[28px] bg-[#f1c46b] border-4 border-[hsl(var(--background))] font-display text-3xl font-bold text-[#694718] shadow-md transition-all group-hover:opacity-80"
+            >
+              {avatar ? <img src={avatar} alt="Profile" className="h-full w-full object-cover" /> : initials(user?.name)}
+            </div>
+            <button 
+              onClick={() => fileInputRef.current?.click()} 
+              className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full border-[3px] border-[hsl(var(--background))] bg-[hsl(var(--accent))] text-white shadow-sm"
+            >
+              <Camera size={14} />
+            </button>
           </div>
-          <button onClick={() => fileInputRef.current?.click()} className="absolute -bottom-2 -right-2 grid h-8 w-8 place-items-center rounded-full border-[3px] border-[hsl(var(--primary))] bg-[hsl(var(--accent))] text-white">
-            <Camera size={14} />
-          </button>
-        </div>
-
-        <div className="flex-1">
-          <div className="flex flex-wrap items-center gap-2"><h2 className="font-display text-2xl font-bold">{user?.name || 'Student profile'}</h2>{user?.verified !== false ? <span className="flex items-center gap-1 rounded-full bg-[hsl(var(--accent)/.17)] px-2.5 py-1 text-[10px] font-bold text-[#9ee4c9]"><ShieldCheck size={12} /> {t('verified')}</span> : null}</div>
-          <p className="mt-1 text-sm text-white/65">{user?.university || 'University'} {user?.course ? `· ${user.course}` : ''}</p>
-          <div className="mt-4 flex items-center gap-2 text-[11px] text-white/55"><LockKeyhole size={13} /> {t('student_id')} <span className="font-mono text-white/80">{user?.studentId || '•••• ••••'}</span></div>
         </div>
         
-        <div className="grid grid-cols-2 gap-2 sm:w-44">
-          <div className="rounded-2xl bg-white/10 p-3"><div className="font-display text-2xl font-bold">{user?.savedCount ?? saved.length}</div><div className="mt-1 text-[10px] text-white/60">{t('saved_count')}</div></div>
-          <div className="rounded-2xl bg-white/10 p-3"><div className="font-display text-2xl font-bold">{user?.redemptionCount ?? redemptions.data?.length ?? 0}</div><div className="mt-1 text-[10px] text-white/60">{t('redemptions')}</div></div>
+        {/* Ism va Universitet ma'lumotlari */}
+        <div className="flex flex-col items-center mt-2 text-center">
+          <div className="flex items-center gap-2">
+            <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))]">{user?.name || 'Student profile'}</h2>
+            {user?.verified !== false && (
+              <span className="flex items-center gap-1 rounded-full bg-[hsl(var(--accent)/.15)] px-2 py-1 text-[10px] font-bold text-[hsl(var(--accent))]">
+                <ShieldCheck size={12} /> {t('verified')}
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
+            {user?.university || 'University'} {user?.course ? `· ${user.course}` : ''}
+          </p>
+          <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))] bg-[hsl(var(--secondary))] px-4 py-2 rounded-full">
+            <LockKeyhole size={14} /> {t('student_id')} 
+            <span className="font-mono font-bold text-[hsl(var(--foreground))] ml-1">{user?.studentId || '•••• ••••'}</span>
+          </div>
         </div>
       </div>
-    </section>
-    
-    <div className="mt-8 flex items-center gap-6 border-b border-[hsl(var(--border))] overflow-x-auto whitespace-nowrap">
-      <button onClick={() => setTab('saved')} className={`relative pb-3 text-sm font-bold flex items-center gap-2 ${tab === 'saved' ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))]'}`}><Bookmark size={15} />{t('saved_offers')}{tab === 'saved' ? <span className="absolute inset-x-0 bottom-[-1px] h-0.5 bg-[hsl(var(--accent))]" /> : null}</button>
-      <button onClick={() => setTab('history')} className={`relative pb-3 text-sm font-bold flex items-center gap-2 ${tab === 'history' ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))]'}`}><History size={15} />{t('history')}{tab === 'history' ? <span className="absolute inset-x-0 bottom-[-1px] h-0.5 bg-[hsl(var(--accent))]" /> : null}</button>
-      <button onClick={() => setTab('my-id')} className={`relative pb-3 text-sm font-bold flex items-center gap-2 ${tab === 'my-id' ? 'text-[hsl(var(--accent))]' : 'text-[hsl(var(--muted-foreground))]'}`}><UserRound size={15} />{t('my_id')}{tab === 'my-id' ? <span className="absolute inset-x-0 bottom-[-1px] h-0.5 bg-[hsl(var(--accent))]" /> : null}</button>
-    </div>
-    
-    <div className="mt-6">
-      {tab === 'saved' && (loading ? <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{[1,2,3].map((item) => <OfferCardSkeleton key={item} />)}</div> : saved.length ? <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{saved.map((offer) => <DiscountCard key={offer.id} offer={offer} onFavorite={toggleFavorite} />)}</div> : <div>No offers saved</div>)}
-      
-      {tab === 'history' && <div>Tarix qismi</div>}
 
-      {tab === 'my-id' && <StudentCard user={user} avatar={avatar} t={t} />}
+      <div className="mb-6 text-center">
+         <h1 className="font-display text-3xl font-bold tracking-[-.04em]">{t('my_id')}</h1>
+         <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">Sizning raqamli talaba guvohnomangiz</p>
+      </div>
+
+      {/* ID Karta */}
+      <StudentCard user={user} avatar={avatar} t={t} />
+
+      {/* Tizimdan chiqish tugmasi */}
+      <div className="mt-14 w-full max-w-[360px]">
+        <button 
+          onClick={handleLogout} 
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-50 px-5 py-4 font-display text-sm font-bold text-red-600 transition-colors hover:bg-red-100 active:scale-95"
+        >
+          <LogOut size={18} />
+          Tizimdan chiqish
+        </button>
+      </div>
     </div>
-  </div>;
+  );
 }
 
 function StudentCard({ user, avatar, t }: any) {
   const [flipped, setFlipped] = useState(false);
 
   return (
-    <div className="flex flex-col items-center py-10">
-      <div className="group h-[220px] w-full max-w-[360px] [perspective:1000px]">
+    <div className="flex flex-col items-center">
+      <div className="group h-[220px] w-[360px] max-w-full [perspective:1000px]">
         <div className={`relative h-full w-full transition-transform duration-700 [transform-style:preserve-3d] ${flipped ? '[transform:rotateY(180deg)]' : ''}`}>
           
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#1a2b4c] to-[#121c32] p-5 text-white shadow-float [backface-visibility:hidden]">
