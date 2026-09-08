@@ -1,32 +1,29 @@
 import { useState } from 'react';
-import { ArrowLeft, Bookmark, Clock3, MapPin, Star, Ticket, X } from 'lucide-react';
+import { ArrowLeft, Bookmark, Check, Clock3, Copy, MapPin, Star, Ticket, X } from 'lucide-react';
 import { Link, useLocation, useParams } from 'wouter';
-import { useGetDiscount, getGetDiscountQueryKey, useToggleFavorite } from '@workspace/api-client-react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useGetDiscount, getGetDiscountQueryKey } from '@workspace/api-client-react';
 import { useLanguage } from '@/lib/i18n';
+import { useFavorites } from '@/lib/useFavorites';
 
 export default function DiscountDetailPage() {
   const { t } = useLanguage();
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
   const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
   const detail = useGetDiscount(id, { query: { queryKey: getGetDiscountQueryKey(id) } });
-  const favorite = useToggleFavorite();
+  
+  const { savedIds, toggleFavorite } = useFavorites();
+  const isSaved = savedIds.includes(String(id));
+
   const [notice, setNotice] = useState('');
   const offer = detail.data;
 
-  const handleFavorite = () => { 
-    favorite.mutate({ id }, { 
-      onSuccess: () => { 
-        queryClient.invalidateQueries({ queryKey: getGetDiscountQueryKey(id) }); 
-        setNotice(offer?.isFavorite ? t('removed_from_saved') : t('added_to_saved')); 
-        setTimeout(() => setNotice(''), 2200); 
-      } 
-    }); 
+  const handleFavorite = async () => { 
+    const added = await toggleFavorite(String(id));
+    setNotice(added ? t('added_to_saved') : t('removed_from_saved')); 
+    setTimeout(() => setNotice(''), 2200); 
   };
   
-  // Tugma bosilganda /qr sahifasiga yo'naltirish
   const handleRedeemClick = () => { 
     setLocation('/qr');
   };
@@ -95,9 +92,9 @@ export default function DiscountDetailPage() {
         <button 
           type="button" 
           onClick={handleFavorite} 
-          className={`shrink-0 p-3.5 rounded-full border shadow-sm transition-transform active:scale-90 ${offer.isFavorite ? 'border-[hsl(var(--accent))] bg-[hsl(var(--accent)/.1)] text-[hsl(var(--accent))]' : 'border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))]'}`}
+          className={`shrink-0 p-3.5 rounded-full border shadow-sm transition-transform active:scale-90 ${isSaved ? 'border-[hsl(var(--accent))] bg-[hsl(var(--accent)/.1)] text-[hsl(var(--accent))]' : 'border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))]'}`}
         >
-          <Bookmark size={20} fill={offer.isFavorite ? 'currentColor' : 'none'} />
+          <Bookmark size={20} fill={isSaved ? 'currentColor' : 'none'} />
         </button>
       </div>
       

@@ -1,61 +1,54 @@
-import { useMemo } from 'react';
-import { Bookmark } from 'lucide-react';
-import { useListFavorites, useToggleFavorite, getListFavoritesQueryKey, getGetProfileQueryKey } from '@workspace/api-client-react';
+import { ArrowLeft, Bookmark } from 'lucide-react';
+import { Link } from 'wouter';
+import { useListDiscounts } from '@workspace/api-client-react';
 import { DiscountCard, OfferCardSkeleton } from '@/components/discount-card';
-import type { Discount } from '@workspace/api-client-react';
-import { useQueryClient } from '@tanstack/react-query';
 import { useLanguage } from '@/lib/i18n';
+import { useFavorites } from '@/lib/useFavorites';
 
 export default function SavedPage() {
   const { t } = useLanguage();
-  const favorites = useListFavorites();
-  const favorite = useToggleFavorite();
-  const queryClient = useQueryClient();
+  const { savedIds, toggleFavorite, isLoading: favLoading } = useFavorites();
+  const allOffers = useListDiscounts();
 
-  const toggleFavorite = (offer: Discount) => {
-    favorite.mutate({ id: offer.id }, { 
-      onSuccess: () => { 
-        queryClient.invalidateQueries({ queryKey: getListFavoritesQueryKey() }); 
-        queryClient.invalidateQueries({ queryKey: getGetProfileQueryKey() }); 
-      } 
-    });
-  };
-  
-  const loading = favorites.isLoading;
-  const saved = useMemo(() => favorites.data || [], [favorites.data]);
+  // Barcha do'konlar orasidan faqat foydalanuvchi saqlaganlarini ajratib olish
+  const savedOffers = allOffers.data?.filter(offer => savedIds.includes(String(offer.id))) || [];
+  const isLoading = allOffers.isLoading || favLoading;
 
   return (
     <div className="page-enter pb-10">
-      <div className="mb-8">
-        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--accent))]">
-          <Bookmark size={13} /> Saqlanganlar
-        </div>
-        <h1 className="font-display text-[clamp(2.2rem,6vw,3.8rem)] font-bold leading-none tracking-[-.06em]">
-          {t('saved_offers')}
-        </h1>
+      <div className="flex items-center gap-3 mb-6">
+        <button onClick={() => window.history.back()} className="p-2 -ml-2 rounded-full hover:bg-[hsl(var(--secondary))] transition-colors text-[hsl(var(--muted-foreground))]">
+          <ArrowLeft size={22} />
+        </button>
+        <h1 className="font-display text-2xl font-bold text-[hsl(var(--foreground))]">{t('saved_offers')}</h1>
       </div>
 
-      <div className="mt-6">
-        {loading ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((item) => <OfferCardSkeleton key={item} />)}
+      {isLoading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => <OfferCardSkeleton key={i} />)}
+        </div>
+      ) : savedOffers.length > 0 ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {savedOffers.map((offer) => (
+            <DiscountCard 
+              key={offer.id} 
+              offer={{ ...offer, isFavorite: true }} 
+              onFavorite={() => toggleFavorite(String(offer.id))} 
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-20 animate-in fade-in zoom-in duration-300">
+          <div className="mx-auto w-20 h-20 rounded-full bg-[hsl(var(--secondary))] border-2 border-[hsl(var(--card-border))] flex items-center justify-center text-[hsl(var(--muted-foreground))] mb-5 shadow-sm">
+            <Bookmark size={32} />
           </div>
-        ) : saved.length ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {saved.map((offer) => (
-              <DiscountCard key={offer.id} offer={offer} onFavorite={toggleFavorite} />
-            ))}
-          </div>
-        ) : (
-          <div className="py-24 text-center">
-            <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-[hsl(var(--secondary))] mb-4 text-[hsl(var(--muted-foreground))]">
-              <Bookmark size={28} />
-            </div>
-            <h3 className="font-display text-xl font-bold">Hech narsa topilmadi</h3>
-            <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Hozircha saqlangan chegirmalar mavjud emas.</p>
-          </div>
-        )}
-      </div>
+          <h2 className="font-display text-xl font-bold text-[hsl(var(--foreground))] mb-2">Saqlanganlar yo'q</h2>
+          <p className="text-sm text-[hsl(var(--muted-foreground))]">Siz hali hech qanday chegirmani saqlamadingiz.</p>
+          <Link href="/" className="mt-8 inline-flex items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-8 py-3.5 text-sm font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all">
+            {t('discover')}
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
