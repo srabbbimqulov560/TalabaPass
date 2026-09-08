@@ -3,36 +3,33 @@ import { supabase } from '@/lib/supabase';
 
 export function useUser() {
   const queryClient = useQueryClient();
-  const token = localStorage.getItem('token');
 
-  // Ma'lumotlarni bazadan olib, 1 soat davomida xotirada (keshda) ushlab turadi
   const query = useQuery({
-    queryKey: ['currentUser', token],
+    queryKey: ['currentUser'],
     queryFn: async () => {
-      if (!token) return null;
+      // 1. Joriy xavfsiz sessiyani olamiz
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return null;
+
+      // 2. O'sha foydalanuvchining ma'lumotlarini bazadan (RLS orqali) o'qiymiz
       const { data, error } = await supabase
         .from('students')
         .select('*')
-        .eq('id', token)
+        .eq('id', session.user.id)
         .single();
       
-      if (error) {
-         console.error("Ma'lumotni olishda xatolik:", error);
-         return null;
-      }
+      if (error) return null;
       return data;
     },
-    staleTime: 1000 * 60 * 60, // 1 soat keshda saqlash
-    enabled: !!token, // Faqat token bo'lsagina ishlaydi
+    staleTime: 1000 * 60 * 60, 
   });
 
-  // Rasm yuklanganda xotiradagi (keshdagi) rasmni ham darhol yangilash
   const updateAvatar = (newAvatarUrl: string) => {
-    queryClient.setQueryData(['currentUser', token], (oldData: any) => {
+    queryClient.setQueryData(['currentUser'], (oldData: any) => {
       if (!oldData) return oldData;
       return { ...oldData, avatar_url: newAvatarUrl };
     });
   };
 
   return { ...query, updateAvatar };
-}   
+}

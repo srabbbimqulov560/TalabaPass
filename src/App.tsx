@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -6,10 +6,9 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { AppShell } from '@/components/app-shell';
 import { LanguageProvider } from '@/lib/i18n';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
+import { supabase } from '@/lib/supabase'; // Supabase ulandi
 
 // Sahifalar
-// import MerchantSignup from '../../merchant talabapass/merchant-talabapass/src/pages/MerchantSignup';
-
 import HomePage from '@/pages/home';
 import DiscountDetailPage from '@/pages/discount-detail';
 import ProfilePage from '@/pages/profile';
@@ -24,37 +23,50 @@ const queryClient = new QueryClient();
 
 function Router() {
   const [location, setLocation] = useLocation();
-  const token = localStorage.getItem('token');
+  const [session, setSession] = useState<any>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
   
-  // Ochiq sahifalar ro'yxati (bu sahifalarga tokensiz ham kirish mumkin)
-  const publicPaths = ['/login', '/signup', '/merchant-signup'];
+  const publicPaths = ['/login', '/signup', '/cashier'];
 
   useEffect(() => {
-    // 1. Yangi foydalanuvchi (token yo'q) yopiq sahifaga kirmasa -> Avtomatik Signup'ga otish
-    if (!token && !publicPaths.includes(location)) {
+    // Supabase orqali joriy xavfsiz sessiyani olish
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setIsInitializing(false);
+    });
+
+    // Foydalanuvchi kirganida/chiqqanida avtomatik kuzatish
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (isInitializing) return;
+
+    if (!session && !publicPaths.includes(location)) {
       setLocation('/signup');
     }
     
-    // 2. Tizimdagi foydalanuvchi (token bor) signup/login'ga kirmasa -> Avtomatik Asosiy(Dashbord)ga otish
-    if (token && publicPaths.includes(location)) {
+    if (session && publicPaths.includes(location)) {
       setLocation('/');
     }
-  }, [location, setLocation, token]);
+  }, [location, setLocation, session, isInitializing]);
 
-  // Yo'naltirish vaqtida sahifa miltillab (flash) ko'rinib qolmasligi uchun himoya
-  if (!token && !publicPaths.includes(location)) return null;
-  if (token && publicPaths.includes(location)) return null;
+  if (isInitializing) return null; // Yuklanayotganda oq ekran miltillashidan himoya
+
+  if (!session && !publicPaths.includes(location)) return null;
+  if (session && publicPaths.includes(location)) return null;
 
   return (
     <RoutedErrorBoundary>
       <Switch>
-        {/* Avtorizatsiya sahifalari menyusiz (to'liq ekran) ko'rinadi */}
-        {/* <Route path="/merchant-signup" component={MerchantSignup} /> */}
         <Route path="/login" component={LoginPage} />
         <Route path="/signup" component={SignupPage} />
         <Route path="/cashier" component={CashierPage} />
 
-        {/* Qolgan barcha sahifalar Header va Footer (AppShell) bilan ko'rinadi */}
         <Route>
           <AppShell>
             <Switch>
@@ -78,7 +90,6 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
 }
 
 function App() {
-  // Sahifa yangilanganda ham Dark Mode saqlanib qolishi uchun
   useEffect(() => {
     if (localStorage.getItem('theme') === 'dark') {
       document.documentElement.classList.add('dark');

@@ -88,9 +88,9 @@ export default function ProfilePage() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    queryClient.clear(); // Xotirani (Keshni) tozalaymiz
+  const handleLogout = async () => {
+    await supabase.auth.signOut(); // Supabase'dan chiqish
+    queryClient.clear(); 
     window.location.href = '/login';
   };
 
