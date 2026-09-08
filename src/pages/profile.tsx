@@ -4,7 +4,9 @@ import {
   LockKeyhole, ChevronRight, Globe, Moon, Shield, CircleHelp, CheckCircle2, Circle, Loader2
 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
-import { supabase } from '@/lib/supabase'; // Haqiqiy bazani ulaymiz
+import { supabase } from '@/lib/supabase';
+import { useUser } from '@/lib/useUser'; // Kesh tizimini ulaymiz
+import { useQueryClient } from '@tanstack/react-query';
 
 function initials(firstName?: string, lastName?: string) { 
   if (firstName && lastName) return (firstName[0] + lastName[0]).toUpperCase();
@@ -13,12 +15,12 @@ function initials(firstName?: string, lastName?: string) {
 
 export default function ProfilePage() {
   const { t, lang, setLang } = useLanguage();
+  const queryClient = useQueryClient();
   
-  // Haqiqiy User State
-  const [user, setUser] = useState<any>(null);
-  const [avatar, setAvatar] = useState<string | null>(null);
+  // Ma'lumotlar endi keshdan darhol keladi!
+  const { data: user, isLoading: isUserLoading, updateAvatar } = useUser();
+  
   const [isUploading, setIsUploading] = useState(false);
-  
   const [activeTab, setActiveTab] = useState<'id' | 'settings'>('id');
   const [isDarkTheme, setIsDarkTheme] = useState(() => {
     return localStorage.getItem('theme') === 'dark' || document.documentElement.classList.contains('dark');
@@ -28,29 +30,6 @@ export default function ProfilePage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Bazadan Talaba ma'lumotlarini yuklab olish
-  useEffect(() => {
-    const fetchUser = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        const { data, error } = await supabase
-          .from('students')
-          .select('*')
-          .eq('id', token)
-          .single();
-          
-        if (data) {
-          setUser(data);
-          if (data.avatar_url) {
-            setAvatar(data.avatar_url); // Ro'yxatdan o'tgandagi rasmni qoyish
-          }
-        }
-      }
-    };
-    fetchUser();
-  }, []);
-
-  // Mavzuni xotiraga saqlash
   useEffect(() => {
     if (isDarkTheme) {
       document.documentElement.classList.add('dark');
@@ -61,21 +40,20 @@ export default function ProfilePage() {
     }
   }, [isDarkTheme]);
 
-  // Profildan turib Rasmni haqiqiy bazaga yuklash va saqlash
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     try {
       setIsUploading(true);
-      // Ekranda kuttirmasdan darhol ko'rsatish
+      
+      // Ekranda kuttirmasdan darhol vaqtinchalik ko'rsatib turish
       const localUrl = URL.createObjectURL(file);
-      setAvatar(localUrl);
+      updateAvatar(localUrl);
 
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      // 1. Supabase Storage-ga yuklash
       const fileExt = file.name.split('.').pop();
       const fileName = `${token}-${Math.random()}.${fileExt}`;
       const filePath = `${fileName}`;
@@ -86,14 +64,12 @@ export default function ProfilePage() {
 
       if (uploadError) throw uploadError;
 
-      // 2. Yuklangan rasmning haqiqiy URL manzilini olish
       const { data: publicUrlData } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
 
       const newAvatarUrl = publicUrlData.publicUrl;
 
-      // 3. Students jadvalini yangilash (Bazaga muhrlash)
       const { error: updateError } = await supabase
         .from('students')
         .update({ avatar_url: newAvatarUrl })
@@ -101,7 +77,8 @@ export default function ProfilePage() {
 
       if (updateError) throw updateError;
       
-      setAvatar(newAvatarUrl); // Bazadagi asl linkka o'tkazish
+      // Haqiqiy linkni xotiraga yozish
+      updateAvatar(newAvatarUrl);
 
     } catch (error) {
       console.error("Rasm yuklashda xatolik:", error);
@@ -113,6 +90,7 @@ export default function ProfilePage() {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    queryClient.clear(); // Xotirani (Keshni) tozalaymiz
     window.location.href = '/login';
   };
 
@@ -121,7 +99,8 @@ export default function ProfilePage() {
     setIsLangModalOpen(false);
   };
 
-  const fullName = user ? `${user.first_name} ${user.last_name}` : 'Yuklanmoqda...';
+  const avatar = user?.avatar_url;
+  const fullName = user ? `${user.first_name} ${user.last_name}` : (isUserLoading ? 'Yuklanmoqda...' : 'Talaba');
 
   return (
     <>
@@ -198,10 +177,7 @@ export default function ProfilePage() {
             
             <div className="bg-[hsl(var(--card))] rounded-[24px] border border-[hsl(var(--card-border))] overflow-hidden flex flex-col shadow-soft">
               
-              <div 
-                onClick={() => setIsLangModalOpen(true)}
-                className="flex items-center justify-between p-4 cursor-pointer hover:bg-[hsl(var(--secondary)/.5)] transition-colors border-b border-[hsl(var(--border))]"
-              >
+              <div onClick={() => setIsLangModalOpen(true)} className="flex items-center justify-between p-4 cursor-pointer hover:bg-[hsl(var(--secondary)/.5)] transition-colors border-b border-[hsl(var(--border))]">
                 <div className="flex items-center gap-3">
                   <Globe size={22} className="text-[hsl(var(--foreground))]" />
                   <span className="text-[15px] font-semibold text-[hsl(var(--foreground))]">{t('change_language')}</span>
@@ -219,10 +195,7 @@ export default function ProfilePage() {
                   <Moon size={22} className="text-[hsl(var(--foreground))]" />
                   <span className="text-[15px] font-semibold text-[hsl(var(--foreground))]">{t('dark_mode')}</span>
                 </div>
-                <div 
-                  onClick={() => setIsDarkTheme(!isDarkTheme)}
-                  className={`w-12 h-6.5 rounded-full p-1 cursor-pointer transition-colors ${isDarkTheme ? 'bg-[hsl(var(--accent))]' : 'bg-[hsl(var(--muted))]'}`}
-                >
+                <div onClick={() => setIsDarkTheme(!isDarkTheme)} className={`w-12 h-6.5 rounded-full p-1 cursor-pointer transition-colors ${isDarkTheme ? 'bg-[hsl(var(--accent))]' : 'bg-[hsl(var(--muted))]'}`}>
                   <div className={`w-4.5 h-4.5 bg-white rounded-full shadow-sm transition-transform ${isDarkTheme ? 'translate-x-5.5' : 'translate-x-0'}`} />
                 </div>
               </div>
@@ -237,10 +210,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 </div>
-                <div 
-                  onClick={() => setIsPrivateAccount(!isPrivateAccount)}
-                  className={`w-12 h-6.5 rounded-full p-1 cursor-pointer transition-colors ${isPrivateAccount ? 'bg-[hsl(var(--accent))]' : 'bg-[hsl(var(--muted))]'}`}
-                >
+                <div onClick={() => setIsPrivateAccount(!isPrivateAccount)} className={`w-12 h-6.5 rounded-full p-1 cursor-pointer transition-colors ${isPrivateAccount ? 'bg-[hsl(var(--accent))]' : 'bg-[hsl(var(--muted))]'}`}>
                   <div className={`w-4.5 h-4.5 bg-white rounded-full shadow-sm transition-transform ${isPrivateAccount ? 'translate-x-5.5' : 'translate-x-0'}`} />
                 </div>
               </div>
@@ -253,10 +223,7 @@ export default function ProfilePage() {
                 <ChevronRight size={20} className="text-[hsl(var(--muted-foreground))]" />
               </div>
 
-              <div 
-                onClick={handleLogout}
-                className="flex items-center justify-between p-4 cursor-pointer hover:bg-red-500/10 transition-colors"
-              >
+              <div onClick={handleLogout} className="flex items-center justify-between p-4 cursor-pointer hover:bg-red-500/10 transition-colors">
                 <div className="flex items-center gap-3">
                   <LogOut size={22} className="text-red-500" />
                   <span className="text-[15px] font-semibold text-red-500">{t('logout')}</span>
@@ -270,11 +237,7 @@ export default function ProfilePage() {
 
       {isLangModalOpen && (
         <div className="fixed inset-0 z-[45] flex flex-col justify-end" style={{ height: '100dvh' }}>
-          <div 
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm" 
-            onClick={() => setIsLangModalOpen(false)} 
-          />
-          
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsLangModalOpen(false)} />
           <div className="relative bg-[hsl(var(--card))] rounded-t-[32px] p-6 pb-[100px] animate-in slide-in-from-bottom-full duration-300 shadow-[0_-10px_40px_rgba(0,0,0,0.2)] border-t border-[hsl(var(--border))]">
             <div className="w-10 h-1.5 bg-[hsl(var(--muted))] rounded-full mx-auto mb-6" />
             <h3 className="font-display text-xl font-bold mb-5 px-2 text-[hsl(var(--foreground))]">{t('select_language')}</h3>
@@ -287,7 +250,6 @@ export default function ProfilePage() {
                 </div>
                 {lang === 'uz' ? <CheckCircle2 size={24} className="text-[hsl(var(--accent))]" /> : <Circle size={24} className="text-[hsl(var(--muted-foreground))]" />}
               </div>
-
               <div onClick={() => handleLangSelect('ru')} className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer border transition-colors ${lang === 'ru' ? 'border-[hsl(var(--accent))] bg-[hsl(var(--accent)/.1)]' : 'border-transparent bg-[hsl(var(--secondary))]'}`}>
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">🇷🇺</span>
@@ -295,7 +257,6 @@ export default function ProfilePage() {
                 </div>
                 {lang === 'ru' ? <CheckCircle2 size={24} className="text-[hsl(var(--accent))]" /> : <Circle size={24} className="text-[hsl(var(--muted-foreground))]" />}
               </div>
-
               <div onClick={() => handleLangSelect('en')} className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer border transition-colors ${lang === 'en' ? 'border-[hsl(var(--accent))] bg-[hsl(var(--accent)/.1)]' : 'border-transparent bg-[hsl(var(--secondary))]'}`}>
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">🇬🇧</span>
