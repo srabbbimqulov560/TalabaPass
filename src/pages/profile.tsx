@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
-import { useUser } from '@/lib/useUser'; // Kesh tizimini ulaymiz
+import { useUser } from '@/lib/useUser'; 
 import { useQueryClient } from '@tanstack/react-query';
 
 function initials(firstName?: string, lastName?: string) { 
@@ -17,7 +17,6 @@ export default function ProfilePage() {
   const { t, lang, setLang } = useLanguage();
   const queryClient = useQueryClient();
   
-  // Ma'lumotlar endi keshdan darhol keladi!
   const { data: user, isLoading: isUserLoading, updateAvatar } = useUser();
   
   const [isUploading, setIsUploading] = useState(false);
@@ -40,45 +39,45 @@ export default function ProfilePage() {
     }
   }, [isDarkTheme]);
 
+  // YAKKA SHU FUNKSIYA TO'G'RILANDI: Rasm saqlash xatosi
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !user) return; // localStorage o'rniga hook orqali kelgan 'user' ni tekshiramiz
 
     try {
       setIsUploading(true);
       
-      // Ekranda kuttirmasdan darhol vaqtinchalik ko'rsatib turish
       const localUrl = URL.createObjectURL(file);
-      updateAvatar(localUrl);
+      if (updateAvatar) updateAvatar(localUrl);
 
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      // XATOLIK SABABI: token o'rniga haqiqiy user.id ishlatamiz
+      const userId = user.id;
 
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${token}-${Math.random()}.${fileExt}`;
-      const filePath = `${fileName}`;
+      const fileExt = file.name.split('.').pop() || 'jpg';
+      const fileName = `${userId}-${Date.now()}.${fileExt}`; // Math.random() o'rniga Date.now() ishonchliroq
 
+      // upsert: true qo'shildi - eski rasm o'rniga muammosiz yozishi uchun
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file);
+        .upload(fileName, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
       const { data: publicUrlData } = supabase.storage
         .from('avatars')
-        .getPublicUrl(filePath);
+        .getPublicUrl(fileName);
 
       const newAvatarUrl = publicUrlData.publicUrl;
 
+      // To'g'ri userId bilan bazani yangilaymiz
       const { error: updateError } = await supabase
         .from('students')
         .update({ avatar_url: newAvatarUrl })
-        .eq('id', token);
+        .eq('id', userId);
 
       if (updateError) throw updateError;
       
-      // Haqiqiy linkni xotiraga yozish
-      updateAvatar(newAvatarUrl);
+      if (updateAvatar) updateAvatar(newAvatarUrl);
 
     } catch (error) {
       console.error("Rasm yuklashda xatolik:", error);
@@ -89,7 +88,7 @@ export default function ProfilePage() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut(); // Supabase'dan chiqish
+    await supabase.auth.signOut(); 
     queryClient.clear(); 
     window.location.href = '/login';
   };
@@ -184,7 +183,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-[hsl(var(--muted-foreground))]">
-                    {lang === 'uz' ? "GB O'zbek" : lang === 'ru' ? "RU Русский" : "GB English"}
+                    {lang === 'uz' ? "UZ O'zbek" : lang === 'ru' ? "RU Русский" : "GB English"}
                   </span>
                   <ChevronRight size={20} className="text-[hsl(var(--muted-foreground))]" />
                 </div>

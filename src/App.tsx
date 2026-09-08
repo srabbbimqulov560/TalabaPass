@@ -7,6 +7,7 @@ import { AppShell } from '@/components/app-shell';
 import { LanguageProvider } from '@/lib/i18n';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { supabase } from '@/lib/supabase'; // Supabase ulandi
+import ServicesPage from '@/pages/services';
 
 // Sahifalar
 import HomePage from '@/pages/home';
@@ -70,6 +71,7 @@ function Router() {
         <Route>
           <AppShell>
             <Switch>
+              <Route path="/services" component={ServicesPage} />
               <Route path="/saved" component={SavedPage} />
               <Route path="/" component={HomePage} />
               <Route path="/discount/:id" component={DiscountDetailPage} />
