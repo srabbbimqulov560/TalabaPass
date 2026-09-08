@@ -1,27 +1,60 @@
 import { useState } from 'react';
 import { Link } from 'wouter';
-import { ArrowRight, IdCard, LockKeyhole } from 'lucide-react';
+import { ArrowRight, IdCard, LockKeyhole, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
+import { supabase } from '@/lib/supabase'; // Supabase ulandi
 
 export default function LoginPage() {
   const { t } = useLanguage();
   const [formData, setFormData] = useState({ studentId: '', password: '' });
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    setError(''); // Foydalanuvchi yozishni boshlasa xatoni yashirish
+    setError(''); 
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!formData.studentId || !formData.password) {
       setError("Iltimos, Talaba ID va parolingizni kiriting.");
       return;
     }
     
-    // Tizimga kirishni muvaffaqiyatli deb belgilab, bosh sahifaga o'tkazib yuborish
-    localStorage.setItem('token', 'fake-jwt-token');
-    window.location.href = '/'; 
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // 1. Bazadan kiritilgan Talaba ID ni qidiramiz
+      const { data: user, error: dbError } = await supabase
+        .from('students')
+        .select('id, password_hash')
+        .eq('student_id', formData.studentId)
+        .single();
+
+      if (dbError || !user) {
+        setError("Bunday Talaba ID topilmadi.");
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Parolni tekshiramiz
+      if (user.password_hash !== formData.password) {
+        setError("Parol noto'g'ri. Iltimos qaytadan urining.");
+        setIsLoading(false);
+        return;
+      }
+
+      // 3. Hamma narsa to'g'ri bo'lsa, haqiqiy ID ni xotiraga saqlab tizimga kiritamiz
+      localStorage.setItem('token', user.id);
+      window.location.href = '/'; 
+
+    } catch (err) {
+      console.error(err);
+      setError("Xatolik yuz berdi. Internetni tekshiring.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -94,10 +127,11 @@ export default function LoginPage() {
             </Link>
           </div>
           <button 
+            disabled={isLoading}
             onClick={handleLogin} 
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all"
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all disabled:opacity-70"
           >
-            Kirish <ArrowRight size={18} />
+            {isLoading ? <Loader2 className="animate-spin" /> : <>Kirish <ArrowRight size={18} /></>}
           </button>
         </div>
 
