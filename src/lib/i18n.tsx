@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 type Language = 'uz' | 'en' | 'ru';
 
@@ -342,12 +342,16 @@ const LanguageContext = createContext<ContextType | undefined>(undefined);
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLang] = useState<Language>('uz');
   
-  const t = (key: keyof typeof dictionary.uz) => {
-    return dictionary[lang][key] || dictionary.uz[key] || key;
-  };
+  // Optimizatsiya: Tarjima funksiyasi keshlandi
+  const t = useCallback((key: keyof typeof dictionary.uz) => {
+    return dictionary[lang]?.[key] || dictionary.uz[key] || key;
+  }, [lang]);
+
+  // Optimizatsiya: Context qiymatlari faqat til o'zgargandagina yangilanadi
+  const value = useMemo(() => ({ lang, setLang, t }), [lang, t]);
 
   return (
-    <LanguageContext.Provider value={{ lang, setLang, t }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );

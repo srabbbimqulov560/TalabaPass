@@ -8,12 +8,19 @@ export function DiscountCard({ offer, onFavorite }: { offer: Discount; onFavorit
   const imgSrc = offer.image || offer.logo;
   const fallbackBg = `linear-gradient(135deg, ${offer.accent || '#1caa88'} 0%, #17233c 100%)`;
 
+  const handleFavoriteClick = (e: React.MouseEvent) => {
+    e.preventDefault(); 
+    e.stopPropagation(); // Event ko'payib ketishini to'xtatadi
+    onFavorite?.(offer);
+  };
+
   return (
     <article className="relative flex items-center gap-4 bg-[hsl(var(--card))] p-3 rounded-[20px] shadow-sm border border-[hsl(var(--card-border))] transition-all hover:bg-[hsl(var(--secondary)/.4)] active:scale-[0.98]">
       
-      <Link href={`/discount/${offer.id}`} className="shrink-0 relative w-[90px] h-[90px] rounded-2xl overflow-hidden shadow-sm" style={!imgSrc ? { background: fallbackBg } : {}}>
+      <Link href={`/discount/${offer.id}`} className="shrink-0 relative w-[90px] h-[90px] rounded-2xl overflow-hidden shadow-sm" style={!imgSrc ? { background: fallbackBg } : undefined}>
         {imgSrc ? (
-          <img src={imgSrc} alt={offer.name} className="w-full h-full object-cover" />
+          // OPTIMIZATSIYA: loading="lazy" qotishlarni yo'q qiladi
+          <img src={imgSrc} alt={offer.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center font-display font-bold text-white text-xl">
             {offer.name.slice(0, 2).toUpperCase()}
@@ -22,12 +29,10 @@ export function DiscountCard({ offer, onFavorite }: { offer: Discount; onFavorit
       </Link>
 
       <Link href={`/discount/${offer.id}`} className="flex flex-col flex-1 py-0.5 min-w-0 pr-6">
-        
         <h3 className="font-display font-bold text-[16px] leading-tight text-[hsl(var(--foreground))] truncate">
           {offer.name}
         </h3>
         
-        {/* Orqa foni yo'q qilingan, yorqin matnli chegirma qismi */}
         <div className="flex items-center gap-1 mt-1.5">
           <span className="inline-flex items-center gap-1 text-[12px] font-bold text-[hsl(var(--accent))]">
             {t('discount_amount')} {offer.discount}%
@@ -51,7 +56,7 @@ export function DiscountCard({ offer, onFavorite }: { offer: Discount; onFavorit
 
       <button 
         type="button" 
-        onClick={(e) => { e.preventDefault(); onFavorite?.(offer); }} 
+        onClick={handleFavoriteClick} 
         aria-label="Save offer" 
         className="absolute right-3 top-3 p-1.5 rounded-full text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--accent))] transition-colors"
       >

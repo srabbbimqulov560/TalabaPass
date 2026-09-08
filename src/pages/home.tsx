@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { ArrowRight, Search, Sparkles, X, Coffee, ShoppingBag, BookOpen, Monitor, LayoutGrid } from 'lucide-react';
 import { Link } from 'wouter';
 import { useGetDiscountSummary, useListDiscounts } from '@workspace/api-client-react';
@@ -7,6 +7,13 @@ import { DiscountCard, OfferCardSkeleton } from '@/components/discount-card';
 import { useLanguage } from '@/lib/i18n';
 import { ScrollReveal } from '@/components/scroll-reveal';
 import { useFavorites } from '@/lib/useFavorites';
+
+// STATIK MA'LUMOTLAR TASHQARIGA CHIQARILDI (Xotira tejash uchun)
+const BANNERS = [
+  { id: 1, image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80", title: "Maxsus Takliflar" },
+  { id: 2, image: "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=800&q=80", title: "Kiyim Kechaklar" },
+  { id: 3, image: "https://images.unsplash.com/photo-1542204165-65bf26472b9b?auto=format&fit=crop&w=800&q=80", title: "O'quv Markazlari" }
+];
 
 function Section({ title, eyebrow, offers, loading, onFavorite, href }: { title: string; eyebrow: string; offers?: Discount[]; loading?: boolean; onFavorite: (offer: Discount) => void; href?: string }) {
   const { t } = useLanguage();
@@ -20,11 +27,11 @@ function Section({ title, eyebrow, offers, loading, onFavorite, href }: { title:
             </div>
             <h2 className="font-display text-xl font-bold tracking-[-.02em] text-[hsl(var(--foreground))]">{title}</h2>
           </div>
-          {href ? (
+          {href && (
             <Link href={href} className="flex items-center gap-1 text-xs font-bold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--accent))]">
               {t('see_all')} <ArrowRight size={14} />
             </Link>
-          ) : null}
+          )}
         </div>
       </ScrollReveal>
       {loading ? (
@@ -55,52 +62,56 @@ export default function HomePage() {
   const carouselRef = useRef<HTMLDivElement>(null);
   
   const params = useMemo(() => ({ search: search || undefined, category: category === 'All' ? undefined : category }), [search, category]);
+  
   const all = useListDiscounts(params);
   const popular = useListDiscounts({ section: 'popular' });
   const newest = useListDiscounts({ section: 'new' });
   const nearby = useListDiscounts({ section: 'nearby' });
   
-  // HAQIQIY BAZAGA ULANGAN SAQLASH FUNKSIYASI
   const { savedIds, toggleFavorite } = useFavorites();
   
-  const handleFavorite = (offer: Discount) => {
+  // QAYTA YUKLANISH OLDI OLINDI
+  const handleFavorite = useCallback((offer: Discount) => {
     toggleFavorite(String(offer.id));
-  };
+  }, [toggleFavorite]);
 
-  // Do'konlarga isFavorite qiymatini biriktirib beruvchi maxsus fuksiya
-  const mapOffers = (offers?: Discount[]) => 
-    offers?.map(o => ({ ...o, isFavorite: savedIds.includes(String(o.id)) }));
+  // QAYTA YUKLANISH OLDI OLINDI
+  const mapOffers = useCallback((offers?: Discount[]) => 
+    offers?.map(o => ({ ...o, isFavorite: savedIds.includes(String(o.id)) })),
+  [savedIds]);
 
   useGetDiscountSummary(); 
   const hasFilters = Boolean(search || category !== 'All');
 
+  // Karusel optimizatsiyasi
   useEffect(() => {
+    let animationFrameId: number;
     const interval = setInterval(() => {
       if (carouselRef.current) {
         const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
-        if (scrollLeft + clientWidth >= scrollWidth - 10) {
-          carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
-        } else {
-          carouselRef.current.scrollBy({ left: clientWidth, behavior: 'smooth' });
-        }
+        animationFrameId = requestAnimationFrame(() => {
+          if (scrollLeft + clientWidth >= scrollWidth - 10) {
+            carouselRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+          } else {
+            carouselRef.current?.scrollBy({ left: clientWidth, behavior: 'smooth' });
+          }
+        });
       }
     }, 4000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      cancelAnimationFrame(animationFrameId);
+    };
   }, []);
 
-  const banners = [
-    { id: 1, image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80", title: "Maxsus Takliflar" },
-    { id: 2, image: "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=800&q=80", title: "Kiyim Kechaklar" },
-    { id: 3, image: "https://images.unsplash.com/photo-1542204165-65bf26472b9b?auto=format&fit=crop&w=800&q=80", title: "O'quv Markazlari" }
-  ];
-
-  const categories = [
+  // Kategoriyalar ham tarjima o'zgargandagina yangilanadi
+  const categories = useMemo(() => [
     { id: 'All', label: t('all_categories'), icon: LayoutGrid, color: 'bg-blue-500', shadow: 'shadow-blue-500/30' },
     { id: 'Cafes', label: t('category_cafes') || 'Kafelar', icon: Coffee, color: 'bg-red-500', shadow: 'shadow-red-500/30' },
     { id: 'Shops', label: t('category_shops') || "Do'konlar", icon: ShoppingBag, color: 'bg-orange-500', shadow: 'shadow-orange-500/30' },
     { id: 'Learning', label: t('category_learning') || "Ta'lim", icon: BookOpen, color: 'bg-green-500', shadow: 'shadow-green-500/30' },
     { id: 'IT services', label: t('category_it') || 'IT Xizmatlar', icon: Monitor, color: 'bg-purple-500', shadow: 'shadow-purple-500/30' },
-  ];
+  ], [t]);
 
   return (
     <div className="page-enter pb-10">
@@ -119,9 +130,10 @@ export default function HomePage() {
 
       <ScrollReveal delay={100}>
         <div ref={carouselRef} className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-5 px-5 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
-          {banners.map((banner) => (
+          {BANNERS.map((banner) => (
             <div key={banner.id} className="min-w-[85%] md:min-w-[400px] snap-center relative rounded-3xl overflow-hidden shadow-md aspect-[21/9]">
-              <img src={banner.image} alt={banner.title} className="w-full h-full object-cover" />
+              {/* LAZY LOADING QO'SHILDI */}
+              <img src={banner.image} alt={banner.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-5">
                 <h3 className="text-white font-display font-bold text-xl">{banner.title}</h3>
               </div>
@@ -160,7 +172,6 @@ export default function HomePage() {
           <Section title={t('short_walk_away')} eyebrow={t('close_to_you')} offers={mapOffers(nearby.data)} loading={nearby.isLoading} onFavorite={handleFavorite} href="/?section=nearby" />
         </>
       )}
-
     </div>
   );
 }
