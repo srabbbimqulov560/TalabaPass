@@ -1,13 +1,10 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft } from 'lucide-react';
-import { useLocation } from 'wouter';
 import { useLanguage } from '@/lib/i18n';
-import { useUser } from '@/lib/useUser'; // <--- Kesh tizimidan foydalanamiz
+import { useUser } from '@/lib/useUser';
 
 export default function QrPage() {
   const { t } = useLanguage();
-  const [, setLocation] = useLocation();
-  const { data: user } = useUser(); // <-- Ma'lumotlarni silliq olamiz
+  const { data: user } = useUser();
   
   const [timeLeft, setTimeLeft] = useState(30);
   const [qrCode, setQrCode] = useState(generateCode());
@@ -30,22 +27,11 @@ export default function QrPage() {
   }, []);
 
   return (
-    <div className="page-enter flex flex-col items-center justify-center min-h-[calc(100vh-180px)] pb-10">
+    <div className="page-enter flex flex-col items-center justify-center min-h-[calc(100vh-180px)] pb-10 pt-6">
       
-      <div className="w-full max-w-sm mb-auto mt-4">
-        <button 
-          type="button" 
-          onClick={() => window.history.back()} 
-          className="mb-8 flex items-center gap-2 text-sm font-bold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-        >
-          <ArrowLeft size={17} /> Ortga qaytish
-        </button>
-      </div>
-
       <div className="w-full max-w-sm rounded-[32px] bg-[hsl(var(--card))] p-8 text-center shadow-float border border-[hsl(var(--card-border))] relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-[hsl(var(--accent)/.05)] rounded-full blur-3xl -z-10"></div>
 
-        {/* Foydalanuvchi ismi keshdan zudlik bilan chiqadi */}
         <h2 className="font-display text-xl font-bold text-[hsl(var(--foreground))] mb-6 mt-2">
           {user ? `${user.first_name} ${user.last_name}` : 'Talaba'} kodi
         </h2>
