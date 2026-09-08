@@ -11,7 +11,7 @@ import { Loader2 } from 'lucide-react'; // Yuklanish belgisi
 // --- TALABALAR UCHUN SAHIFALAR ---
 import { AppShell } from '@/components/app-shell';
 import HomePage from '@/pages/home';
-import ServicesPage from '@/pages/services';
+import ServicesPage from '@/pages/Services';
 import SavedPage from '@/pages/saved';
 import ProfilePage from '@/pages/profile';
 import QrPage from '@/pages/qr';
