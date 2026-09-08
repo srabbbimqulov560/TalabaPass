@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Link } from 'wouter';
-import { ArrowLeft, ArrowRight, Camera, LockKeyhole, UserRound, IdCard, CheckCircle2, Circle, Loader2, GraduationCap, ChevronDown, Search, Check } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Camera, LockKeyhole, UserRound, IdCard, CheckCircle2, Circle, Loader2, GraduationCap, ChevronDown, Search, Check, Store } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 
@@ -178,7 +178,6 @@ export default function SignupPage() {
 
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
 
-  // --- Yangilangan handleFinish (iPhone qotishiga qarshi + Storage yuklash) ---
   const handleFinish = async () => {
     setIsLoading(true);
     setError('');
@@ -190,7 +189,6 @@ export default function SignupPage() {
       let avatarUrl = null;
 
       if (avatarFile) {
-        // iPhone xatoliklarining oldini olish uchun nomni Date.now() bilan yozamiz
         const fileExt = avatarFile.name.split('.').pop() || 'jpg';
         const fileName = `${user.id}-${Date.now()}.${fileExt}`;
         
@@ -200,7 +198,6 @@ export default function SignupPage() {
 
         if (uploadError) throw new Error("Rasmni saqlashda xatolik: " + uploadError.message);
 
-        // Ommaviy manzilni (Public URL) olish
         const { data: publicUrlData } = supabase.storage
           .from('avatars')
           .getPublicUrl(fileName);
@@ -208,7 +205,6 @@ export default function SignupPage() {
         avatarUrl = publicUrlData.publicUrl;
       }
 
-      // Students jadvaliga rasmni yozib qo'yish
       if (avatarUrl) {
         const { error: updateError } = await supabase
           .from('students')
@@ -264,11 +260,9 @@ export default function SignupPage() {
                 </div>
               ))}
             </div>
+            
+            {/* 1-BOSQICHDAN "ALLAQACHON HISOBINGIZ BORMI" OLIB TASHLANDI */}
             <div className="mt-auto flex flex-col gap-5">
-              <div className="text-center">
-                <span className="text-[13px] font-medium text-[hsl(var(--muted-foreground))]">Allaqachon hisobingiz bormi? </span>
-                <Link href="/login" className="text-[13px] font-bold text-[hsl(var(--foreground))] hover:text-[hsl(var(--accent))] underline underline-offset-2">Kirish</Link>
-              </div>
               <button onClick={nextStep} className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all">
                 Davom etish <ArrowRight size={18} />
               </button>
@@ -278,7 +272,7 @@ export default function SignupPage() {
 
         {step === 2 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col">
-            <div className="mt-4 mb-8">
+            <div className="mt-4 mb-6">
               <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">O'zingizni tanishtiring</h2>
             </div>
             <div className="space-y-4">
@@ -291,9 +285,24 @@ export default function SignupPage() {
               </div>
               {error && <p className="text-red-500 text-sm font-semibold ml-2">{error}</p>}
             </div>
-            <button onClick={nextStep} className="mt-auto flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all">
-              Keyingisi <ArrowRight size={18} />
-            </button>
+
+            {/* YOKI "KIRISH", YOKI "BIZNES", YOKI "KEYINGISI" BARCHASI SHU YERDA JAMLANDI */}
+            <div className="mt-auto flex flex-col gap-3">
+              
+              <div className="text-center mb-2">
+                <span className="text-[13px] font-medium text-[hsl(var(--muted-foreground))]">Allaqachon hisobingiz bormi? </span>
+                <Link href="/login" className="text-[13px] font-bold text-[hsl(var(--foreground))] hover:text-[hsl(var(--accent))] underline underline-offset-2">Kirish</Link>
+              </div>
+
+              {/* ENDI BU YERDA <Link> ISHLATILDI VA SAHIFA YANGILANMAYDI */}
+              <Link href="/merchant/signup" className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] py-3.5 text-[15px] font-bold text-[hsl(var(--foreground))] hover:border-[hsl(var(--accent))] hover:text-[hsl(var(--accent))] active:scale-95 transition-all shadow-sm">
+                <Store size={18} /> Biznes sifatida ro'yxatdan o'tish
+              </Link>
+
+              <button onClick={nextStep} className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all">
+                Keyingisi <ArrowRight size={18} />
+              </button>
+            </div>
           </div>
         )}
 
@@ -393,7 +402,6 @@ export default function SignupPage() {
               <p className="text-sm text-[hsl(var(--muted-foreground))]">Hisobingiz muvaffaqiyatli yaratildi! <br/> Do'konlarda oson tanilish uchun rasm yuklang.</p>
             </div>
             <div className="relative group mb-auto">
-              {/* iPhone'da qotmasligi uchun input oddiy qilib yozildi */}
               <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
               <div onClick={() => fileInputRef.current?.click()} className="grid h-40 w-40 cursor-pointer place-items-center overflow-hidden rounded-full bg-[hsl(var(--secondary))] border-4 border-dashed border-[hsl(var(--border))] hover:border-[hsl(var(--accent))] transition-all">
                 {avatarPreview ? <img src={avatarPreview} alt="Profile" className="h-full w-full object-cover" /> : <Camera size={44} className="opacity-50 text-[hsl(var(--muted-foreground))]" />}
