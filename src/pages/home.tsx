@@ -8,11 +8,11 @@ import { useLanguage } from '@/lib/i18n';
 import { ScrollReveal } from '@/components/scroll-reveal';
 import { useFavorites } from '@/lib/useFavorites';
 
-// STATIK MA'LUMOTLAR TASHQARIGA CHIQARILDI (Xotira tejash uchun)
 const BANNERS = [
   { id: 1, image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80", title: "Maxsus Takliflar" },
   { id: 2, image: "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=800&q=80", title: "Kiyim Kechaklar" },
-  { id: 3, image: "https://images.unsplash.com/photo-1542204165-65bf26472b9b?auto=format&fit=crop&w=800&q=80", title: "O'quv Markazlari" }
+  { id: 3, image: "https://images.unsplash.com/photo-1542204165-65bf26472b9b?auto=format&fit=crop&w=800&q=80", title: "O'quv Markazlari" },
+  { id: 4, image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80", title: "Texnologiyalar" }
 ];
 
 function Section({ title, eyebrow, offers, loading, onFavorite, href }: { title: string; eyebrow: string; offers?: Discount[]; loading?: boolean; onFavorite: (offer: Discount) => void; href?: string }) {
@@ -70,12 +70,10 @@ export default function HomePage() {
   
   const { savedIds, toggleFavorite } = useFavorites();
   
-  // QAYTA YUKLANISH OLDI OLINDI
   const handleFavorite = useCallback((offer: Discount) => {
     toggleFavorite(String(offer.id));
   }, [toggleFavorite]);
 
-  // QAYTA YUKLANISH OLDI OLINDI
   const mapOffers = useCallback((offers?: Discount[]) => 
     offers?.map(o => ({ ...o, isFavorite: savedIds.includes(String(o.id)) })),
   [savedIds]);
@@ -83,28 +81,35 @@ export default function HomePage() {
   useGetDiscountSummary(); 
   const hasFilters = Boolean(search || category !== 'All');
 
-  // Karusel optimizatsiyasi
+  // HAQIQIY CHEKSIZ KARUSEL YECHIMI
+  // 4 ta bannerni 50 marta ko'paytirib, jami 200 ta qilamiz. Bu ularni aslo tugamasligini ta'minlaydi.
+  // loading="lazy" bo'lgani uchun xotiraga hech qanday og'irligi tushmaydi.
+  const infiniteBanners = Array(50).fill(BANNERS).flat();
+
   useEffect(() => {
-    let animationFrameId: number;
     const interval = setInterval(() => {
       if (carouselRef.current) {
-        const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
-        animationFrameId = requestAnimationFrame(() => {
-          if (scrollLeft + clientWidth >= scrollWidth - 10) {
-            carouselRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+        const carousel = carouselRef.current;
+        const firstChild = carousel.firstElementChild as HTMLElement;
+        
+        if (firstChild) {
+          // Bitta bannerning aniq kengligi va o'rtadagi joy (16px gap) ni hisoblash
+          const itemWidth = firstChild.offsetWidth + 16;
+          
+          // Agar haqiqatan ham 200 ta bannerning oxiriga yetsak (juda kam ehtimol), orqaga sakratmasdan sezdirmay 0 ga qaytaradi
+          if (carousel.scrollLeft + carousel.clientWidth >= carousel.scrollWidth - itemWidth) {
+            carousel.scrollTo({ left: 0 }); 
           } else {
-            carouselRef.current?.scrollBy({ left: clientWidth, behavior: 'smooth' });
+            // Faqat bitta banner kengligida ohista o'ngga surish
+            carousel.scrollBy({ left: itemWidth, behavior: 'smooth' });
           }
-        });
+        }
       }
-    }, 4000);
-    return () => {
-      clearInterval(interval);
-      cancelAnimationFrame(animationFrameId);
-    };
+    }, 3500); // Har 3.5 soniyada navbatdagisiga o'tadi
+    
+    return () => clearInterval(interval);
   }, []);
 
-  // Kategoriyalar ham tarjima o'zgargandagina yangilanadi
   const categories = useMemo(() => [
     { id: 'All', label: t('all_categories'), icon: LayoutGrid, color: 'bg-blue-500', shadow: 'shadow-blue-500/30' },
     { id: 'Cafes', label: t('category_cafes') || 'Kafelar', icon: Coffee, color: 'bg-red-500', shadow: 'shadow-red-500/30' },
@@ -130,9 +135,8 @@ export default function HomePage() {
 
       <ScrollReveal delay={100}>
         <div ref={carouselRef} className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-5 px-5 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
-          {BANNERS.map((banner) => (
-            <div key={banner.id} className="min-w-[85%] md:min-w-[400px] snap-center relative rounded-3xl overflow-hidden shadow-md aspect-[21/9]">
-              {/* LAZY LOADING QO'SHILDI */}
+          {infiniteBanners.map((banner, idx) => (
+            <div key={`${banner.id}-${idx}`} className="min-w-[85%] md:min-w-[400px] snap-center relative rounded-3xl overflow-hidden shadow-md aspect-[21/9]">
               <img src={banner.image} alt={banner.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-5">
                 <h3 className="text-white font-display font-bold text-xl">{banner.title}</h3>
@@ -143,13 +147,14 @@ export default function HomePage() {
       </ScrollReveal>
 
       <ScrollReveal delay={200}>
-        <div className="flex overflow-x-auto gap-5 pb-6 pt-6 mt-2 -mx-5 px-5 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
+        {/* KATEGORIYALAR KOMPYUTERDA (O'RTADAN YOYILADI VA ORASI OCHIQ) */}
+        <div className="flex overflow-x-auto gap-5 md:gap-10 pb-6 pt-6 mt-2 -mx-5 px-5 md:-mx-4 md:px-4 md:justify-center [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
           {categories.map((cat) => (
             <div key={cat.id} onClick={() => setCategory(cat.id)} className="flex flex-col items-center gap-2 cursor-pointer flex-shrink-0">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center text-white transition-all duration-300 ${cat.color} ${category === cat.id ? `shadow-lg scale-110 ${cat.shadow} ring-4 ring-offset-2 ring-offset-[hsl(var(--background))] ring-[hsl(var(--border))]` : ''}`}>
-                <cat.icon size={26} strokeWidth={2.5} />
+              <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-white transition-all duration-300 ${cat.color} ${category === cat.id ? `shadow-lg scale-110 ${cat.shadow} ring-4 ring-offset-2 ring-offset-[hsl(var(--background))] ring-[hsl(var(--border))]` : ''}`}>
+                <cat.icon size={26} className="md:w-8 md:h-8" strokeWidth={2.5} />
               </div>
-              <span className={`text-[11px] font-bold ${category === cat.id ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))]'}`}>{cat.label}</span>
+              <span className={`text-[11px] md:text-[13px] font-bold ${category === cat.id ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))]'}`}>{cat.label}</span>
             </div>
           ))}
         </div>

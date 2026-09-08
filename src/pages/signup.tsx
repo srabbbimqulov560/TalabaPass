@@ -4,9 +4,7 @@ import { ArrowLeft, ArrowRight, Camera, LockKeyhole, UserRound, IdCard, CheckCir
 import { useLanguage } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 
-// O'zbekistondagi deyarli barcha universitetlar ro'yxati (Kengaytirilgan)
 const UNIVERSITIES = [
-  // --- Toshkent ---
   "O'zbekiston milliy universiteti (O'zMU)", "Toshkent davlat texnika universiteti (TDTU)", 
   "Toshkent davlat iqtisodiyot universiteti (TDIU)", "Toshkent moliya instituti (TMI)", 
   "Jahon iqtisodiyoti va diplomatiya universiteti (JIDU)", "O'zbekiston davlat jahon tillari universiteti (O'zDJTU)", 
@@ -21,7 +19,6 @@ const UNIVERSITIES = [
   "Toshkent to'qimachilik va yengil sanoat instituti (TTESI)", "Toshkent farmatsevtika instituti (ToshFarI)",
   "O'zbekiston xalqaro islom akademiyasi", "Jamoat xavfsizligi universiteti", "Bojxona instituti",
   
-  // --- Xorijiy filiallar va Xususiy universitetlar ---
   "Westminster xalqaro universiteti (WIUT)", "Inha universiteti (IUT)", "Amity universiteti", 
   "Webster universiteti", "Akfa universiteti (AKFA)", "Toshkent shahridagi Turin politexnika universiteti (TTPU)", 
   "Kimyo xalqaro universiteti (KIUT - sobiq Yeoju)", "Singapur menejmentni rivojlantirish instituti (MDIS)", 
@@ -30,45 +27,30 @@ const UNIVERSITIES = [
   "Alfraganus universiteti", "Renessans ta'lim universiteti", "Toshkent xalqaro ta'lim universiteti (TIUE)",
   "Stars International University", "Jahon tillari va biznes instituti", "Profi universiteti",
   "Toshkent amaliy fanlar universiteti (UTAS)", "Diplomat universiteti", "Cambridge xalqaro universiteti",
-  "M.V. Lomonosov nomidagi MGU Toshkent filiali", "G.V. Plexanov nomidagi Rossiya iqtisodiyot universiteti filiali",
-  "I.M. Gubkin nomidagi Rossiya davlat neft va gaz universiteti filiali", 
-  "MISiS Milliy tadqiqot texnologik universiteti filiali", "MGIMO filiali", "A.I. Gertsen nomidagi davlat pedagogika universiteti filiali",
   
-  // --- Samarqand ---
   "Samarqand davlat universiteti (SamDU)", "Samarqand davlat tibbiyot universiteti (SamDTU)",
   "Samarqand iqtisodiyot va servis instituti (SamISI)", "Samarqand davlat arxitektura-qurilish universiteti (SamDAQU)",
-  "Samarqand davlat chet tillar instituti (SamDChTI)", "Samarqand davlat veterinariya meditsinasi, chorvachilik va biotexnologiyalar universiteti",
+  "Samarqand davlat chet tillar instituti (SamDChTI)", "Samarqand davlat veterinariya meditsinasi",
   "Silk Road xalqaro turizm va madaniy meros universiteti", "Samarqand xalqaro texnologiya universiteti (SIUT)",
   
-  // --- Buxoro, Navoiy, Xorazm ---
   "Buxoro davlat universiteti (BuxDU)", "Buxoro davlat tibbiyot instituti (BuxDTI)", 
   "Buxoro muhandislik-texnologiya instituti (BuxMTI)", "Buxoro davlat pedagogika instituti",
   "Navoiy davlat konchilik va texnologiyalar universiteti (NDKTU)", "Navoiy davlat pedagogika instituti (NavDPI)",
-  "Urganch davlat universiteti (UrDU)", "Toshkent tibbiyot akademiyasi Urganch filiali", "TATU Urganch filiali",
+  "Urganch davlat universiteti (UrDU)",
   
-  // --- Farg'ona vodiysi ---
   "Farg'ona davlat universiteti (FarDU)", "Farg'ona politexnika instituti (FarPI)", 
   "Farg'ona jamoat salomatligi tibbiyot instituti", "Andijon davlat universiteti (ADU)", 
   "Andijon davlat tibbiyot instituti (ADTI)", "Andijon mashinasozlik instituti (AndMI)", 
-  "Andijon qishloq xo'jaligi va agrotexnologiyalar instituti", "Namangan davlat universiteti (NamDU)", 
-  "Namangan muhandislik-qurilish instituti (NamMQI)", "Namangan muhandislik-texnologiya instituti (NamMTI)",
-  "Namangan davlat chet tillari instituti", "Sharda universiteti (Andijon)", "ISFT instituti (Namangan filiali)",
+  "Namangan davlat universiteti (NamDU)", "Namangan muhandislik-qurilish instituti (NamMQI)",
   
-  // --- Qashqadaryo, Surxondaryo, Jizzax, Sirdaryo ---
   "Qarshi davlat universiteti (QarDU)", "Qarshi muhandislik-iqtisodiyot instituti (QarMII)", 
-  "Termiz davlat universiteti (TerDU)", "Termiz muhandislik-texnologiya instituti", 
-  "Termiz agrotexnologiyalar va innovatsion rivojlanish instituti", "Jizzax davlat pedagogika universiteti (JDPU)", 
-  "Jizzax politexnika instituti (JizPI)", "Sambhram universiteti (Jizzax)", "Qozon federal universiteti Jizzax filiali",
-  "Guliston davlat universiteti (GulDU)", 
+  "Termiz davlat universiteti (TerDU)", "Jizzax davlat pedagogika universiteti (JDPU)", 
+  "Jizzax politexnika instituti (JizPI)", "Guliston davlat universiteti (GulDU)", 
   
-  // --- Qoraqalpog'iston ---
   "Qoraqalpoq davlat universiteti (QDU)", "Nukus davlat pedagogika instituti (NDPI)", 
-  "Toshkent davlat agrar universiteti Nukus filiali", "Qoraqalpoq tibbiyot instituti", "TATU Nukus filiali",
-  
   "Boshqa (O'zim kiritaman)"
 ];
 
-// Parol kuchliligini hisoblash funksiyasi
 const getPasswordStrength = (pass: string) => {
   if (!pass) return { score: 0, text: '', color: 'bg-transparent', width: '0%' };
   
@@ -77,9 +59,8 @@ const getPasswordStrength = (pass: string) => {
   if (/[A-Z]/.test(pass)) score += 1;
   if (/[a-z]/.test(pass)) score += 1;
   if (/\d/.test(pass)) score += 1;
-  if (/[^A-Za-z0-9]/.test(pass)) score += 1; // maxsus belgi
+  if (/[^A-Za-z0-9]/.test(pass)) score += 1;
 
-  // Xavfsizlik darajalari: Oson (1-2), O'rtacha (3-4), Kuchli (5)
   if (score <= 2) return { score, text: 'Oson', color: 'bg-red-500', width: '33.3%' };
   if (score === 3 || score === 4) return { score, text: "O'rtacha", color: 'bg-yellow-500', width: '66.6%' };
   if (score === 5) return { score, text: 'Kuchli', color: 'bg-green-500', width: '100%' };
@@ -144,7 +125,6 @@ export default function SignupPage() {
       if (!formData.studentId) { setError("Talaba ID raqamini kiriting"); return; }
       if (!formData.university) { setError("Universitetni tanlang yoki kiriting"); return; }
       
-      // Jonli (Live) parol tekshiruvi natijasiga qarab utkazish
       if (strength.score < 5) { 
         setError("Parol yetarlicha kuchli emas. Barcha talablarni bajaring (Yashil darajaga yetkazing)!"); 
         return; 
@@ -198,23 +178,38 @@ export default function SignupPage() {
 
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
 
+  // --- Yangilangan handleFinish (iPhone qotishiga qarshi + Storage yuklash) ---
   const handleFinish = async () => {
     setIsLoading(true);
     setError('');
     
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Sessiya topilmadi, iltimos qaytadan kiring.");
+
+      let avatarUrl = null;
+
       if (avatarFile) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Sessiya topilmadi, iltimos qaytadan kiring.");
-
-        const fileExt = avatarFile.name.split('.').pop();
-        const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+        // iPhone xatoliklarining oldini olish uchun nomni Date.now() bilan yozamiz
+        const fileExt = avatarFile.name.split('.').pop() || 'jpg';
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
         
-        const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, avatarFile);
-        if (uploadError) throw uploadError;
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, avatarFile, { upsert: true });
 
-        const avatarUrl = supabase.storage.from('avatars').getPublicUrl(fileName).data.publicUrl;
+        if (uploadError) throw new Error("Rasmni saqlashda xatolik: " + uploadError.message);
 
+        // Ommaviy manzilni (Public URL) olish
+        const { data: publicUrlData } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(fileName);
+
+        avatarUrl = publicUrlData.publicUrl;
+      }
+
+      // Students jadvaliga rasmni yozib qo'yish
+      if (avatarUrl) {
         const { error: updateError } = await supabase
           .from('students')
           .update({ avatar_url: avatarUrl })
@@ -222,8 +217,11 @@ export default function SignupPage() {
 
         if (updateError) throw updateError;
       }
+
       window.location.href = '/'; 
+
     } catch (err: any) {
+      console.error(err);
       setError(err.message || "Rasm yuklashda xatolik yuz berdi.");
       setIsLoading(false);
     }
@@ -358,7 +356,6 @@ export default function SignupPage() {
                   <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="Masalan: Pa$$w0rd!" className="w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-4 font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))]" />
                 </div>
                 
-                {/* JONLI PAROL INDIKATORI */}
                 <div className="mt-2.5 px-2">
                   <div className="flex justify-between items-center mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
                     <span>Parol xavfsizligi</span>
@@ -396,6 +393,7 @@ export default function SignupPage() {
               <p className="text-sm text-[hsl(var(--muted-foreground))]">Hisobingiz muvaffaqiyatli yaratildi! <br/> Do'konlarda oson tanilish uchun rasm yuklang.</p>
             </div>
             <div className="relative group mb-auto">
+              {/* iPhone'da qotmasligi uchun input oddiy qilib yozildi */}
               <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
               <div onClick={() => fileInputRef.current?.click()} className="grid h-40 w-40 cursor-pointer place-items-center overflow-hidden rounded-full bg-[hsl(var(--secondary))] border-4 border-dashed border-[hsl(var(--border))] hover:border-[hsl(var(--accent))] transition-all">
                 {avatarPreview ? <img src={avatarPreview} alt="Profile" className="h-full w-full object-cover" /> : <Camera size={44} className="opacity-50 text-[hsl(var(--muted-foreground))]" />}
