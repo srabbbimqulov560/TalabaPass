@@ -143,3 +143,10 @@
   from { background-position: 200% 0; } 
   to { background-position: -200% 0; } 
 }
+
+@keyframes scan {
+  0% { top: 5%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 95%; opacity: 0; }
+}

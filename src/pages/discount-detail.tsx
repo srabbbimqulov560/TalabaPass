@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { ArrowLeft, Bookmark, Check, Clock3, Copy, MapPin, Star, Ticket, X } from 'lucide-react';
+import { ArrowLeft, Bookmark, Clock3, MapPin, Star, Ticket, X } from 'lucide-react';
 import { Link, useLocation, useParams } from 'wouter';
-import { useGetDiscount, getGetDiscountQueryKey, useRedeemDiscount, useToggleFavorite } from '@workspace/api-client-react';
+import { useGetDiscount, getGetDiscountQueryKey, useToggleFavorite } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLanguage } from '@/lib/i18n';
 
@@ -13,8 +13,6 @@ export default function DiscountDetailPage() {
   const queryClient = useQueryClient();
   const detail = useGetDiscount(id, { query: { queryKey: getGetDiscountQueryKey(id) } });
   const favorite = useToggleFavorite();
-  const redeem = useRedeemDiscount();
-  const [redeemed, setRedeemed] = useState<{ code: string; businessName: string } | null>(null);
   const [notice, setNotice] = useState('');
   const offer = detail.data;
 
@@ -28,11 +26,9 @@ export default function DiscountDetailPage() {
     }); 
   };
   
-  const handleRedeem = () => { 
-    redeem.mutate({ id }, { 
-      onSuccess: (result) => setRedeemed({ code: result.code, businessName: result.businessName }), 
-      onError: () => setNotice(t('verify_failed')) 
-    }); 
+  // Tugma bosilganda /qr sahifasiga yo'naltirish
+  const handleRedeemClick = () => { 
+    setLocation('/qr');
   };
 
   if (detail.isLoading) return <DetailSkeleton />;
@@ -53,7 +49,6 @@ export default function DiscountDetailPage() {
   return (
     <div className="page-enter flex flex-col h-[calc(100dvh-200px)] max-w-3xl mx-auto overflow-y-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
       
-      {/* Tepadagi Qaytish tugmasi */}
       <button 
         type="button" 
         onClick={() => setLocation('/')} 
@@ -62,7 +57,6 @@ export default function DiscountDetailPage() {
         <ArrowLeft size={17} /> {t('back_to_discover')}
       </button>
       
-      {/* Siqilgan va moslashuvchan Rasm */}
       <div 
         className="w-full flex-1 min-h-[120px] max-h-[22vh] rounded-[28px] overflow-hidden shadow-sm mb-5 flex items-center justify-center text-4xl md:text-6xl font-display font-bold border border-[hsl(var(--card-border))] shrink-0" 
         style={{ backgroundColor: `${offer.accent}15`, color: offer.accent || '#1caa88' }}
@@ -74,7 +68,6 @@ export default function DiscountDetailPage() {
         )}
       </div>
       
-      {/* Sarlavha va Ma'lumotlar */}
       <div className="flex items-start justify-between gap-3 shrink-0 mb-4">
         <div>
           <h1 className="font-display text-2xl md:text-3xl font-bold leading-tight text-[hsl(var(--foreground))] line-clamp-2">
@@ -108,7 +101,6 @@ export default function DiscountDetailPage() {
         </button>
       </div>
       
-      {/* Ixchamlashtirilgan Manzil va Vaqt Kartalari */}
       <div className="grid gap-2.5 grid-cols-1 sm:grid-cols-2 shrink-0 mb-4">
         <div className="rounded-[20px] bg-[hsl(var(--card))] border border-[hsl(var(--card-border))] p-3.5 shadow-sm flex flex-col justify-center">
           <div className="mb-1 flex items-center gap-1.5 text-[hsl(var(--accent))]">
@@ -129,52 +121,26 @@ export default function DiscountDetailPage() {
         </div>
       </div>
 
-      {/* Chegirmani Olish Tugmasi (mt-auto orqali avtomatik eng pastga tushadi) */}
       <div className="mt-auto shrink-0 pb-2">
         <button 
           type="button" 
-          onClick={handleRedeem} 
-          disabled={redeem.isPending || Boolean(redeemed)} 
-          className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] px-5 py-4 font-display text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float transition-transform hover:-translate-y-0.5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
+          onClick={handleRedeemClick} 
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] px-5 py-4 font-display text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float transition-transform hover:-translate-y-0.5 active:scale-[0.98]"
         >
-          {redeemed ? <><Check size={18} />{t('discount_code_ready')}</> : redeem.isPending ? t('checking') : <>{t('redeem_offer')} <ArrowLeft className="rotate-180" size={17} /></>}
+          {t('redeem_offer')} <ArrowLeft className="rotate-180" size={17} />
         </button>
       </div>
       
-      {/* Bildirishnomalar va Qalqib chiquvchi oyna (Modal) */}
       {notice ? (
         <div className="fixed bottom-[100px] md:bottom-5 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-5 py-3 text-xs font-bold text-[hsl(var(--primary-foreground))] shadow-float">
           {notice}
           <button type="button" onClick={() => setNotice('')}><X size={14} /></button>
         </div>
       ) : null}
-
-      {redeemed ? (
-        <div className="fixed inset-0 z-[100] grid place-items-center bg-black/60 p-5 backdrop-blur-sm">
-          <div className="relative w-full max-w-sm rounded-[32px] bg-[hsl(var(--card))] p-8 text-center shadow-float animate-in zoom-in-95 duration-200 border border-[hsl(var(--border))]">
-            <button type="button" onClick={() => setRedeemed(null)} className="absolute right-4 top-4 text-[hsl(var(--muted-foreground))] hover:text-red-500 transition-colors">
-              <X size={20} />
-            </button>
-            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[hsl(var(--accent)/.1)] text-[hsl(var(--accent))] shadow-sm border border-[hsl(var(--accent)/.2)]">
-              <Check size={32} />
-            </div>
-            <div className="mt-5 text-[11px] font-bold uppercase tracking-[.18em] text-[hsl(var(--accent))]">{t('id_verified')}</div>
-            <h2 className="mt-2 font-display text-2xl font-bold text-[hsl(var(--foreground))]">{t('show_this_code')}</h2>
-            <div className="my-6 rounded-2xl border-2 border-dashed border-[hsl(var(--accent))] bg-[hsl(var(--secondary))] px-4 py-5 font-mono text-3xl font-bold tracking-[.18em] text-[hsl(var(--accent))]">
-              {redeemed.code}
-            </div>
-            <p className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Ushbu kod <span className="font-bold text-[hsl(var(--foreground))]">{redeemed.businessName}</span> {t('valid_at')}</p>
-            <button type="button" onClick={() => navigator.clipboard?.writeText(redeemed.code)} className="mt-6 inline-flex items-center justify-center w-full gap-2 rounded-xl bg-[hsl(var(--secondary))] py-3 text-xs font-bold text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))] transition-colors border border-[hsl(var(--border))]">
-              <Copy size={16} /> {t('copy_code')}
-            </button>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
 
-// Yuklanish holati (Skeleton) ni ham ekran o'lchamiga moslashtiramiz
 function DetailSkeleton() {
   return (
     <div className="page-enter flex flex-col h-[calc(100dvh-200px)] max-w-3xl mx-auto">

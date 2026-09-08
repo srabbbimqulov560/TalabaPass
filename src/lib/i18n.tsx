@@ -88,15 +88,24 @@ const dictionary = {
     off: 'CHEGIRMA',
     discount_amount: 'Chegirma:',
     service_type: 'XIZMATI',
+    
+    // Saqlash va Tasdiqlash
+    removed_from_saved: 'Saqlanganlardan o\'chirildi',
+    added_to_saved: 'Saqlanganlarga qo\'shildi',
     discount_code_ready: 'Chegirma kodi tayyor',
     checking: 'Tekshirilmoqda...',
     id_verified: 'Student ID tasdiqlandi',
-    show_this_code: 'Shu kodni ko\'rsating',
     valid_at: 'da amal qiladi.',
     copy_code: 'Kodni nusxalash',
-    removed_from_saved: 'Saqlanganlardan o\'chirildi',
-    added_to_saved: 'Saqlanganlarga qo\'shildi',
     verify_failed: 'Guvohnoma tasdiqlanmadi. Qaytadan urining.',
+    
+    // QR va Tasdiqlash
+    qr_title: 'Sizning QR kodingiz',
+    qr_desc: 'Chegirmani olish uchun ushbu QR kodni kassirga ko\'rsating.',
+    refreshing_in: 'Yangilanishiga',
+    sec: 'soniya',
+    student_verified: 'Talaba maqomi tasdiqlangan',
+    show_this_code: 'Shu kodni ko\'rsating',
     
     // Avtorizatsiya tugmalari
     login_btn: 'Kirish',
@@ -188,15 +197,24 @@ const dictionary = {
     off: 'OFF',
     discount_amount: 'Discount:',
     service_type: 'SERVICE',
+
+    // Saqlash va Tasdiqlash
+    removed_from_saved: 'Removed from saved',
+    added_to_saved: 'Added to saved',
     discount_code_ready: 'Discount code ready',
     checking: 'Checking...',
     id_verified: 'Student ID verified',
-    show_this_code: 'Show this code',
     valid_at: 'valid at',
     copy_code: 'Copy code',
-    removed_from_saved: 'Removed from saved',
-    added_to_saved: 'Added to saved',
     verify_failed: 'ID verification failed. Try again.',
+
+    // QR and Verification
+    qr_title: 'Your QR Code',
+    qr_desc: 'Show this QR code to the cashier to redeem the offer.',
+    refreshing_in: 'Refreshing in',
+    sec: 'sec',
+    student_verified: 'Student status verified',
+    show_this_code: 'Show this code',
     
     // Auth buttons
     login_btn: 'Log in',
@@ -288,15 +306,24 @@ const dictionary = {
     off: 'СКИДКА',
     discount_amount: 'Скидка:',
     service_type: 'СЕРВИС',
+
+    // Saqlash va Tasdiqlash
+    removed_from_saved: 'Удалено из сохраненных',
+    added_to_saved: 'Добавлено в сохраненные',
     discount_code_ready: 'Код скидки готов',
     checking: 'Проверка...',
     id_verified: 'Студенческий ID подтвержден',
-    show_this_code: 'Покажите этот код',
     valid_at: 'действителен в',
     copy_code: 'Копировать код',
-    removed_from_saved: 'Удалено из сохраненных',
-    added_to_saved: 'Добавлено в сохраненные',
     verify_failed: 'Не удалось подтвердить ID. Попробуйте снова.',
+
+    // QR and Verification
+    qr_title: 'Ваш QR-код',
+    qr_desc: 'Покажите этот QR-код кассиру для получения скидки.',
+    refreshing_in: 'Обновление через',
+    sec: 'сек',
+    student_verified: 'Статус студента подтвержден',
+    show_this_code: 'Покажите этот код',
     
     // Кнопки авторизации
     login_btn: 'Войти',

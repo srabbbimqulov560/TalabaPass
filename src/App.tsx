@@ -9,6 +9,7 @@ import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
 // Sahifalar
 // import MerchantSignup from '../../merchant talabapass/merchant-talabapass/src/pages/MerchantSignup';
+
 import HomePage from '@/pages/home';
 import DiscountDetailPage from '@/pages/discount-detail';
 import ProfilePage from '@/pages/profile';
@@ -17,18 +18,43 @@ import LoginPage from '@/pages/login';
 import SignupPage from '@/pages/signup';
 import CashierPage from '@/pages/cashier';
 import SavedPage from '@/pages/saved';
+import QrPage from '@/pages/qr';
 
 const queryClient = new QueryClient();
 
 function Router() {
+  const [location, setLocation] = useLocation();
+  const token = localStorage.getItem('token');
+  
+  // Ochiq sahifalar ro'yxati (bu sahifalarga tokensiz ham kirish mumkin)
+  const publicPaths = ['/login', '/signup', '/merchant-signup'];
+
+  useEffect(() => {
+    // 1. Yangi foydalanuvchi (token yo'q) yopiq sahifaga kirmasa -> Avtomatik Signup'ga otish
+    if (!token && !publicPaths.includes(location)) {
+      setLocation('/signup');
+    }
+    
+    // 2. Tizimdagi foydalanuvchi (token bor) signup/login'ga kirmasa -> Avtomatik Asosiy(Dashbord)ga otish
+    if (token && publicPaths.includes(location)) {
+      setLocation('/');
+    }
+  }, [location, setLocation, token]);
+
+  // Yo'naltirish vaqtida sahifa miltillab (flash) ko'rinib qolmasligi uchun himoya
+  if (!token && !publicPaths.includes(location)) return null;
+  if (token && publicPaths.includes(location)) return null;
+
   return (
     <RoutedErrorBoundary>
       <Switch>
+        {/* Avtorizatsiya sahifalari menyusiz (to'liq ekran) ko'rinadi */}
         {/* <Route path="/merchant-signup" component={MerchantSignup} /> */}
         <Route path="/login" component={LoginPage} />
         <Route path="/signup" component={SignupPage} />
         <Route path="/cashier" component={CashierPage} />
 
+        {/* Qolgan barcha sahifalar Header va Footer (AppShell) bilan ko'rinadi */}
         <Route>
           <AppShell>
             <Switch>
@@ -36,6 +62,7 @@ function Router() {
               <Route path="/" component={HomePage} />
               <Route path="/discount/:id" component={DiscountDetailPage} />
               <Route path="/profile" component={ProfilePage} />
+              <Route path="/qr" component={QrPage} />
               <Route component={NotFound} />
             </Switch>
           </AppShell>
