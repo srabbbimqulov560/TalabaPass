@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ShieldCheck, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import QRCode from 'react-qr-code';
 
@@ -7,10 +7,7 @@ export default function QrPage() {
   const [student, setStudent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   
-  // Xavfsizlik: 30 soniyalik taymer
-  const [timeLeft, setTimeLeft] = useState(30);
-  const [qrKey, setQrKey] = useState(Date.now()); // QR kodni yangilab turish uchun
-  
+  const [qrKey, setQrKey] = useState(Date.now()); // Yashirin dinamik kod
   const [isFlipped, setIsFlipped] = useState(false);
 
   useEffect(() => {
@@ -25,19 +22,12 @@ export default function QrPage() {
     fetchStudent();
   }, []);
 
-  // Har 1 soniyada taymerni kamaytirish va 30s da QR ni yangilash
+  // MANTIQ SAQLANIB QOLDI: Har 30 soniyada QR kodni ichki qiymati o'zgaradi (Ekranda sezdirmasdan)
   useEffect(() => {
     if (!student) return;
-    
     const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          setQrKey(Date.now()); // Yangi vaqt muhri (Timestamp) olinadi
-          return 30; // Taymer yana 30 dan boshlanadi
-        }
-        return prev - 1;
-      });
-    }, 1000);
+      setQrKey(Date.now()); 
+    }, 30000); 
 
     return () => clearInterval(timer);
   }, [student]);
@@ -55,7 +45,7 @@ export default function QrPage() {
     );
   }
 
-  // QR KOD ICHIDAGI SIRLI YONZUV: TalabaID + "|" + Yaratilgan Vaqt
+  // QR KOD ICHIDAGI YASHIRIN YOZUV (UUID va Vaqt). Tashqarida ko'rinmaydi.
   const qrValue = `${student.id}|${qrKey}`;
 
   return (
@@ -68,20 +58,13 @@ export default function QrPage() {
         </p>
       </div>
 
-      {/* 3D KARTA KONTEYNERI */}
       <div className="relative w-[300px] h-[460px] perspective-1000 cursor-pointer" onClick={() => setIsFlipped(!isFlipped)}>
         <div 
           className="w-full h-full transition-transform duration-700 ease-out"
-          style={{ 
-            transformStyle: 'preserve-3d', 
-            transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' 
-          }}
+          style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
         >
           {/* KARTA OLDI TOMONI */}
-          <div 
-            className="absolute w-full h-full rounded-[32px] overflow-hidden bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] shadow-2xl flex flex-col p-6"
-            style={{ backfaceVisibility: 'hidden' }}
-          >
+          <div className="absolute w-full h-full rounded-[32px] overflow-hidden bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] shadow-2xl flex flex-col p-6" style={{ backfaceVisibility: 'hidden' }}>
             <div className="flex justify-between items-start mb-6">
               <div className="w-12 h-12 rounded-xl bg-[hsl(var(--accent)/.1)] flex items-center justify-center text-[hsl(var(--accent))]">
                 <ShieldCheck size={28} />
@@ -115,33 +98,30 @@ export default function QrPage() {
             </div>
           </div>
 
-          {/* KARTA ORQA TOMONI (QR KOD) */}
+          {/* KARTA ORQA TOMONI (OLDINGI TOZA DIZAYN) */}
           <div 
-            className="absolute w-full h-full rounded-[32px] bg-black border-2 border-[hsl(var(--border))] shadow-2xl flex flex-col items-center justify-center p-8"
+            className="absolute w-full h-full rounded-[32px] bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] shadow-2xl flex flex-col items-center justify-center p-6"
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
           >
-            <div className="bg-white p-4 rounded-3xl w-full aspect-square mb-6">
-              <QRCode 
-                value={qrValue} 
-                size={256} 
-                style={{ height: "auto", maxWidth: "100%", width: "100%" }} 
-              />
+            <div className="flex-1 flex flex-col items-center justify-center w-full">
+              
+              {/* Katta oq QR Kod qutisi */}
+              <div className="bg-white p-5 rounded-3xl mb-6 shadow-sm border border-[hsl(var(--border))]">
+                <QRCode value={qrValue} size={180} />
+              </div>
+              
+              {/* Tasdiqlangan badgi */}
+              <div className="flex items-center gap-1.5 bg-green-500/10 text-green-500 px-5 py-2.5 rounded-full font-bold text-[15px] mb-6 border border-green-500/20">
+                <CheckCircle2 size={20} /> Verified Student
+              </div>
+              
+              {/* Amal qilish muddati */}
+              <div className="text-center w-full bg-[hsl(var(--secondary))] py-4 rounded-[20px]">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[hsl(var(--muted-foreground))] mb-1.5">Amal qilish muddati</p>
+                <p className="text-[15px] font-extrabold text-[hsl(var(--foreground))]">2024 - 2028</p>
+              </div>
+
             </div>
-            
-            <h3 className="text-white font-bold text-lg mb-2 flex items-center gap-2">
-              <RefreshCw size={18} className="animate-spin-slow" /> Dinamik Kod
-            </h3>
-            
-            {/* TAYMER PROGRESS BAR */}
-            <div className="w-full bg-white/20 h-2 rounded-full overflow-hidden mb-2">
-              <div 
-                className="h-full bg-[hsl(var(--accent))] transition-all duration-1000 ease-linear"
-                style={{ width: `${(timeLeft / 30) * 100}%` }}
-              />
-            </div>
-            <p className="text-[12px] font-medium text-white/60 text-center">
-              Xavfsizlik uchun kod <span className="font-bold text-white">{timeLeft} soniyada</span> yangilanadi. Skrinshot o'tmaydi.
-            </p>
           </div>
 
         </div>
