@@ -1,118 +1,112 @@
-import { useState, useMemo, useCallback } from 'react';
-import { Search, X, Flame, MapPin, LayoutGrid, ArrowLeft } from 'lucide-react';
+import { Search, Loader2, Store, MapPin, ChevronRight } from 'lucide-react';
+import { useState, useMemo } from 'react';
 import { Link } from 'wouter';
-import { useListDiscounts } from '@workspace/api-client-react';
-import type { Discount } from '@workspace/api-client-react';
-import { DiscountCard, OfferCardSkeleton } from '@/components/discount-card';
-import { useFavorites } from '@/lib/useFavorites';
+import { supabase } from '@/lib/supabase';
+import { useQuery } from '@tanstack/react-query';
 import { ScrollReveal } from '@/components/scroll-reveal';
 
 export default function ServicesPage() {
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'all' | 'popular' | 'nearby'>('all');
 
-  // Backend API ga yuboriladigan qidiruv va filtr parametrlari
-  const params = useMemo(() => {
-    const p: any = {};
-    if (search) p.search = search;
-    if (filter !== 'all') p.section = filter;
-    return p;
-  }, [search, filter]);
+  // BAZADAN BARCHA DO'KONLARNI (MERCHANTS) TORTIB OLISH
+  const { data: merchants, isLoading } = useQuery({
+    queryKey: ['allMerchants'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('merchants')
+        .select('*')
+        .order('name', { ascending: true });
+        
+      if (error) throw error;
+      return data;
+    }
+  });
 
-  // Barcha ma'lumotlarni tortib olish
-  const { data, isLoading } = useListDiscounts(params);
-  
-  // Saqlanganlar mexanizmi
-  const { savedIds, toggleFavorite } = useFavorites();
-  const handleFavorite = useCallback((offer: Discount) => {
-    toggleFavorite(String(offer.id));
-  }, [toggleFavorite]);
-
-  const mappedData = useMemo(() => 
-    data?.map(o => ({ ...o, isFavorite: savedIds.includes(String(o.id)) })),
-  [data, savedIds]);
-
-  // Filtr tugmalari
-  const FILTERS = [
-    { id: 'all', label: 'Barchasi', icon: LayoutGrid },
-    { id: 'popular', label: 'Eng mashhur', icon: Flame },
-    { id: 'nearby', label: 'Eng yaqin', icon: MapPin },
-  ] as const;
+  // Qidiruv tizimi
+  const filteredMerchants = useMemo(() => {
+    if (!merchants) return [];
+    return merchants.filter((m: any) => 
+      m.name?.toLowerCase().includes(search.toLowerCase()) || 
+      m.category?.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [merchants, search]);
 
   return (
-    // BU YERDA O'ZGARISH: pt-2 olib tashlandi, o'rniga tepaga tortish uchun -mt-2 qo'shildi
-    <div className="page-enter pb-10 -mt-2">
-      
-      {/* Sarlavha o'rniga Orqaga qaytish (mb-5 dan mb-3 ga qisqardi) */}
-      <div className="mb-3 -ml-2">
-        <Link href="/" className="inline-flex items-center gap-2 py-1.5 px-2 text-[15px] font-bold text-[hsl(var(--foreground))] transition-all hover:text-[hsl(var(--accent))] active:scale-95">
-          <ArrowLeft size={20} /> Asosiy
-        </Link>
-      </div>
-
-      {/* Qidiruv tizimi */}
+    <div className="page-enter pb-10">
       <ScrollReveal>
-        <div className="relative flex items-center bg-[hsl(var(--card))] rounded-2xl p-1.5 shadow-sm border border-[hsl(var(--border))] mb-4">
+        <div className="mb-6 flex items-end justify-between">
+          <div>
+            <h1 className="font-display text-3xl font-bold tracking-tight text-[hsl(var(--foreground))]">
+              Barcha <span className="text-[hsl(var(--accent))]">Do'konlar</span>
+            </h1>
+            <p className="mt-1 text-sm font-medium text-[hsl(var(--muted-foreground))]">
+              O'zingizga kerakli xizmat ko'rsatish shoxobchasini tanlang
+            </p>
+          </div>
+        </div>
+
+        <div className="relative flex items-center bg-[hsl(var(--card))] rounded-2xl p-1.5 shadow-sm border border-[hsl(var(--border))] mb-8">
           <Search size={20} className="ml-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
           <input 
             value={search} 
             onChange={(e) => setSearch(e.target.value)} 
             type="search" 
-            placeholder="Qahva, kurs yoki kerakli narsa qidiring..." 
+            placeholder="Do'kon yoki toifa qidirish..." 
             className="min-w-0 flex-1 bg-transparent px-3 py-3.5 text-sm font-medium text-[hsl(var(--foreground))] outline-none placeholder:text-[hsl(var(--muted-foreground))]" 
           />
-          {search && (
-            <button onClick={() => setSearch('')} className="p-2 text-[hsl(var(--muted-foreground))] hover:text-red-500 mr-1 transition-colors">
-              <X size={18}/>
-            </button>
-          )}
         </div>
       </ScrollReveal>
 
-      {/* Saralash (Filtr) tugmalari */}
-      <ScrollReveal delay={100}>
-        <div className="flex gap-2.5 mb-5 overflow-x-auto pb-2 -mx-5 px-5 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
-          {FILTERS.map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id)}
-              className={`flex items-center gap-2 whitespace-nowrap px-5 py-2.5 rounded-full text-[13px] font-bold transition-all border shrink-0 ${
-                filter === f.id
-                  ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] border-[hsl(var(--primary))] shadow-sm'
-                  : 'bg-[hsl(var(--card))] text-[hsl(var(--foreground))] border-[hsl(var(--border))] hover:border-[hsl(var(--accent))]'
-              }`}
-            >
-              <f.icon size={16} className={filter === f.id ? '' : 'text-[hsl(var(--muted-foreground))]'} />
-              {f.label}
-            </button>
-          ))}
-        </div>
-      </ScrollReveal>
-
-      {/* Natijalar ro'yxati (Grid) */}
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3, 4, 5, 6].map((i) => <OfferCardSkeleton key={i} />)}
-        </div>
-      ) : mappedData?.length ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {mappedData.map((offer, index) => (
-            <ScrollReveal key={offer.id} delay={index * 50}>
-              <DiscountCard offer={offer} onFavorite={handleFavorite} />
+        <div className="flex justify-center py-20"><Loader2 className="animate-spin text-[hsl(var(--accent))]" size={32}/></div>
+      ) : filteredMerchants && filteredMerchants.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-8">
+          {filteredMerchants.map((merchant: any, idx: number) => (
+            <ScrollReveal key={merchant.id} delay={idx * 50}>
+              <Link href={`/store/${merchant.id}`}>
+                {/* 1. overflow-hidden qo'shildi, toshib ketmasligi uchun */}
+                <div className="flex bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[24px] p-4 shadow-sm hover:border-[hsl(var(--accent))] transition-all active:scale-[0.98] cursor-pointer items-center gap-4 group overflow-hidden">
+                  
+                  {/* Do'kon Logosi */}
+                  <div className="w-16 h-16 rounded-full bg-[hsl(var(--secondary))] shrink-0 overflow-hidden border border-[hsl(var(--border))]">
+                    {merchant.logo_url ? (
+                      <img src={merchant.logo_url} alt={merchant.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[hsl(var(--muted-foreground))]">
+                        <Store size={28}/>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Do'kon Ma'lumotlari (2. min-w-0 va truncate qoidalari qat'iy o'rnatildi) */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-[16px] text-[hsl(var(--foreground))] leading-tight truncate mb-1">
+                      {merchant.name}
+                    </h3>
+                    <div className="text-[11px] font-bold text-[hsl(var(--accent))] uppercase tracking-wider mb-1.5 truncate">
+                      {merchant.category}
+                    </div>
+                    <div className="flex items-center gap-1 text-[12px] font-medium text-[hsl(var(--muted-foreground))]">
+                      <MapPin size={13} className="shrink-0" /> 
+                      <span className="truncate">{merchant.description?.split('\n')[0]?.replace('📍 Manzil: ', '') || "Manzil ko'rsatilmagan"}</span>
+                    </div>
+                  </div>
+
+                  {/* 3. ml-auto va shrink-0 bilan o'ng tomonga mutlaqo qotirildi */}
+                  <div className="w-8 h-8 rounded-full bg-[hsl(var(--secondary))] flex items-center justify-center text-[hsl(var(--muted-foreground))] group-hover:bg-[hsl(var(--accent))] group-hover:text-white transition-colors shrink-0 ml-auto">
+                    <ChevronRight size={18} />
+                  </div>
+
+                </div>
+              </Link>
             </ScrollReveal>
           ))}
         </div>
       ) : (
-        <div className="rounded-[22px] border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--card)/.5)] p-10 text-center flex flex-col items-center justify-center gap-3 mt-4">
-          <Search size={40} className="text-[hsl(var(--muted-foreground))/50]" />
-          <div>
-            <p className="text-base font-bold text-[hsl(var(--foreground))]">Hech narsa topilmadi</p>
-            <p className="text-[13px] text-[hsl(var(--muted-foreground))] mt-1">Boshqa so'z bilan qidirib ko'ring yoki filterni tozalang</p>
-          </div>
+        <div className="text-center py-12 bg-[hsl(var(--card))] rounded-[24px] border border-dashed border-[hsl(var(--border))]">
+          <p className="font-bold text-[hsl(var(--muted-foreground))]">Do'konlar topilmadi</p>
         </div>
       )}
-      
     </div>
   );
 }
-// tkshirish

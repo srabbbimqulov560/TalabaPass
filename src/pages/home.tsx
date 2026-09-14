@@ -1,11 +1,9 @@
-import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowRight, Search, Sparkles, X, Coffee, ShoppingBag, BookOpen, Monitor, LayoutGrid } from 'lucide-react';
-import { Link } from 'wouter';
-import { useGetDiscountSummary, useListDiscounts } from '@workspace/api-client-react';
-import type { Discount } from '@workspace/api-client-react';
-import { DiscountCard, OfferCardSkeleton } from '@/components/discount-card';
-import { useLanguage } from '@/lib/i18n';
+import { useMemo, useState, useRef, useEffect } from 'react';
+import { Search, X, Coffee, ShoppingBag, BookOpen, Monitor, LayoutGrid, Clock, Store, Sparkles, Loader2, Bookmark } from 'lucide-react';
+import { useLocation } from 'wouter'; // Link o'rniga useLocation ishlatamiz
 import { ScrollReveal } from '@/components/scroll-reveal';
+import { supabase } from '@/lib/supabase';
+import { useQuery } from '@tanstack/react-query';
 import { useFavorites } from '@/lib/useFavorites';
 
 const BANNERS = [
@@ -15,75 +13,35 @@ const BANNERS = [
   { id: 4, image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80", title: "Texnologiyalar" }
 ];
 
-function Section({ title, eyebrow, offers, loading, onFavorite, href }: { title: string; eyebrow: string; offers?: Discount[]; loading?: boolean; onFavorite: (offer: Discount) => void; href?: string }) {
-  const { t } = useLanguage();
-  return (
-    <section className="mt-8">
-      <ScrollReveal>
-        <div className="mb-4 flex items-end justify-between px-1">
-          <div>
-            <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--accent))]">
-              <Sparkles size={12} />{eyebrow}
-            </div>
-            <h2 className="font-display text-xl font-bold tracking-[-.02em] text-[hsl(var(--foreground))]">{title}</h2>
-          </div>
-          {href && (
-            <Link href={href} className="flex items-center gap-1 text-xs font-bold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--accent))]">
-              {t('see_all')} <ArrowRight size={14} />
-            </Link>
-          )}
-        </div>
-      </ScrollReveal>
-      {loading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => <OfferCardSkeleton key={i} />)}
-        </div>
-      ) : offers?.length ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {offers.slice(0, 3).map((offer, index) => (
-            <ScrollReveal key={offer.id} delay={index * 100}>
-              <DiscountCard offer={offer} onFavorite={onFavorite} />
-            </ScrollReveal>
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-[22px] border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--card)/.5)] p-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
-          {t('no_offers_found')}
-        </div>
-      )}
-    </section>
-  );
-}
-
 export default function HomePage() {
-  const { t } = useLanguage();
+  const [, setLocation] = useLocation(); // Sahifaga o'tkazuvchi kanca (hook)
+  
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const carouselRef = useRef<HTMLDivElement>(null);
   
-  const params = useMemo(() => ({ search: search || undefined, category: category === 'All' ? undefined : category }), [search, category]);
-  
-  const all = useListDiscounts(params);
-  const popular = useListDiscounts({ section: 'popular' });
-  const newest = useListDiscounts({ section: 'new' });
-  const nearby = useListDiscounts({ section: 'nearby' });
-  
+  // Saqlanganlar (Favorites) ro'yxatini boshqarish
   const { savedIds, toggleFavorite } = useFavorites();
-  
-  const handleFavorite = useCallback((offer: Discount) => {
-    toggleFavorite(String(offer.id));
-  }, [toggleFavorite]);
 
-  const mapOffers = useCallback((offers?: Discount[]) => 
-    offers?.map(o => ({ ...o, isFavorite: savedIds.includes(String(o.id)) })),
-  [savedIds]);
+  // BAZADAN HAQIQIY CHEGIRMALAR
+  const { data: allDiscounts, isLoading } = useQuery({
+    queryKey: ['allDiscounts'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('discounts').select(`*, merchant:merchants(name, logo_url, category)`).order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    }
+  });
 
-  useGetDiscountSummary(); 
-  const hasFilters = Boolean(search || category !== 'All');
+  const filteredDiscounts = useMemo(() => {
+    if (!allDiscounts) return [];
+    return allDiscounts.filter((discount: any) => {
+      const matchesSearch = discount.product_name.toLowerCase().includes(search.toLowerCase()) || discount.merchant?.name?.toLowerCase().includes(search.toLowerCase());
+      const matchesCategory = category === 'All' || discount.merchant?.category === category;
+      return matchesSearch && matchesCategory;
+    });
+  }, [allDiscounts, search, category]);
 
-  // HAQIQIY CHEKSIZ KARUSEL YECHIMI
-  // 4 ta bannerni 50 marta ko'paytirib, jami 200 ta qilamiz. Bu ularni aslo tugamasligini ta'minlaydi.
-  // loading="lazy" bo'lgani uchun xotiraga hech qanday og'irligi tushmaydi.
   const infiniteBanners = Array(50).fill(BANNERS).flat();
 
   useEffect(() => {
@@ -91,44 +49,34 @@ export default function HomePage() {
       if (carouselRef.current) {
         const carousel = carouselRef.current;
         const firstChild = carousel.firstElementChild as HTMLElement;
-        
         if (firstChild) {
-          // Bitta bannerning aniq kengligi va o'rtadagi joy (16px gap) ni hisoblash
           const itemWidth = firstChild.offsetWidth + 16;
-          
-          // Agar haqiqatan ham 200 ta bannerning oxiriga yetsak (juda kam ehtimol), orqaga sakratmasdan sezdirmay 0 ga qaytaradi
-          if (carousel.scrollLeft + carousel.clientWidth >= carousel.scrollWidth - itemWidth) {
-            carousel.scrollTo({ left: 0 }); 
-          } else {
-            // Faqat bitta banner kengligida ohista o'ngga surish
-            carousel.scrollBy({ left: itemWidth, behavior: 'smooth' });
-          }
+          if (carousel.scrollLeft + carousel.clientWidth >= carousel.scrollWidth - itemWidth) carousel.scrollTo({ left: 0 }); 
+          else carousel.scrollBy({ left: itemWidth, behavior: 'smooth' });
         }
       }
-    }, 3500); // Har 3.5 soniyada navbatdagisiga o'tadi
-    
+    }, 3500); 
     return () => clearInterval(interval);
   }, []);
 
   const categories = useMemo(() => [
-    { id: 'All', label: t('all_categories'), icon: LayoutGrid, color: 'bg-blue-500', shadow: 'shadow-blue-500/30' },
-    { id: 'Cafes', label: t('category_cafes') || 'Kafelar', icon: Coffee, color: 'bg-red-500', shadow: 'shadow-red-500/30' },
-    { id: 'Shops', label: t('category_shops') || "Do'konlar", icon: ShoppingBag, color: 'bg-orange-500', shadow: 'shadow-orange-500/30' },
-    { id: 'Learning', label: t('category_learning') || "Ta'lim", icon: BookOpen, color: 'bg-green-500', shadow: 'shadow-green-500/30' },
-    { id: 'IT services', label: t('category_it') || 'IT Xizmatlar', icon: Monitor, color: 'bg-purple-500', shadow: 'shadow-purple-500/30' },
-  ], [t]);
+    { id: 'All', label: 'Barchasi', icon: LayoutGrid, color: 'bg-blue-500', shadow: 'shadow-blue-500/30' },
+    { id: 'Kafe / Restoran', label: 'Kafelar', icon: Coffee, color: 'bg-red-500', shadow: 'shadow-red-500/30' },
+    { id: 'Kiyim-kechak', label: "Do'konlar", icon: ShoppingBag, color: 'bg-orange-500', shadow: 'shadow-orange-500/30' },
+    { id: "O'quv markazi", label: "Ta'lim", icon: BookOpen, color: 'bg-green-500', shadow: 'shadow-green-500/30' },
+    { id: 'Texnika do‘koni', label: 'Texnika', icon: Monitor, color: 'bg-purple-500', shadow: 'shadow-purple-500/30' },
+  ], []);
+
+  const hasFilters = Boolean(search || category !== 'All');
 
   return (
     <div className="page-enter pb-10">
-      
       <ScrollReveal>
-        <div className="relative flex items-center bg-[hsl(var(--card))] rounded-2xl p-1.5 shadow-sm border border-[hsl(var(--border))] mb-6">
+        <div className="relative flex items-center bg-[hsl(var(--card))] rounded-2xl p-1.5 shadow-sm border border-[hsl(var(--border))] mb-6 mt-2">
           <Search size={20} className="ml-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} type="search" placeholder={t('search_placeholder')} className="min-w-0 flex-1 bg-transparent px-3 py-3.5 text-sm font-medium text-[hsl(var(--foreground))] outline-none placeholder:text-[hsl(var(--muted-foreground))]" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} type="search" placeholder="Qidirish (masalan: Burger, Najot Ta'lim...)" className="min-w-0 flex-1 bg-transparent px-3 py-3.5 text-sm font-medium text-[hsl(var(--foreground))] outline-none placeholder:text-[hsl(var(--muted-foreground))]" />
           {search && (
-            <button onClick={() => setSearch('')} className="p-2 text-[hsl(var(--muted-foreground))] hover:text-red-500 mr-1">
-              <X size={18}/>
-            </button>
+            <button onClick={() => setSearch('')} className="p-2 text-[hsl(var(--muted-foreground))] hover:text-red-500 mr-1"><X size={18}/></button>
           )}
         </div>
       </ScrollReveal>
@@ -147,7 +95,6 @@ export default function HomePage() {
       </ScrollReveal>
 
       <ScrollReveal delay={200}>
-        {/* KATEGORIYALAR KOMPYUTERDA (O'RTADAN YOYILADI VA ORASI OCHIQ) */}
         <div className="flex overflow-x-auto gap-5 md:gap-10 pb-6 pt-6 mt-2 -mx-5 px-5 md:-mx-4 md:px-4 md:justify-center [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
           {categories.map((cat) => (
             <div key={cat.id} onClick={() => setCategory(cat.id)} className="flex flex-col items-center gap-2 cursor-pointer flex-shrink-0">
@@ -160,23 +107,91 @@ export default function HomePage() {
         </div>
       </ScrollReveal>
 
-      {hasFilters ? (
-        <div className="mt-4">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-semibold text-[hsl(var(--muted-foreground))]">{t('showing_results')}</span>
+      <ScrollReveal delay={300}>
+        <div className="mt-4 mb-4 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 font-display text-[19px] font-bold text-[hsl(var(--foreground))]">
+            <Sparkles size={20} className="text-amber-500" />
+            {hasFilters ? "Topilgan chegirmalar" : "Yangi chegirmalar"}
+          </h2>
+          {hasFilters && (
             <button type="button" onClick={() => { setSearch(''); setCategory('All'); }} className="flex items-center gap-1 rounded-full bg-[hsl(var(--secondary))] px-3 py-1.5 text-xs font-bold text-[hsl(var(--foreground))]">
-              {t('clear')} <X size={12} />
+              Tozalash <X size={12} />
             </button>
-          </div>
-          <Section title={t('matching_offers')} eyebrow={t('your_search')} offers={mapOffers(all.data)} loading={all.isLoading} onFavorite={handleFavorite} />
+          )}
         </div>
-      ) : (
-        <>
-          <Section title={t('popular_with_students')} eyebrow={t('popular_now')} offers={mapOffers(popular.data)} loading={popular.isLoading} onFavorite={handleFavorite} href="/?section=popular" />
-          <Section title={t('fresh_this_week')} eyebrow={t('just_arrived')} offers={mapOffers(newest.data)} loading={newest.isLoading} onFavorite={handleFavorite} href="/?section=new" />
-          <Section title={t('short_walk_away')} eyebrow={t('close_to_you')} offers={mapOffers(nearby.data)} loading={nearby.isLoading} onFavorite={handleFavorite} href="/?section=nearby" />
-        </>
-      )}
+
+        {isLoading ? (
+          <div className="flex justify-center py-10"><Loader2 className="animate-spin text-[hsl(var(--accent))]" size={32}/></div>
+        ) : filteredDiscounts && filteredDiscounts.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-8">
+            {filteredDiscounts.map((discount: any) => {
+              const isSaved = savedIds.includes(String(discount.id));
+              return (
+                <div 
+                  key={discount.id} 
+                  onClick={() => setLocation(`/discount/${discount.id}`)}
+                  className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[20px] overflow-hidden shadow-sm hover:border-[hsl(var(--accent))] transition-all active:scale-[0.98] cursor-pointer flex flex-col h-full relative group"
+                >
+                  {/* FOIZ KO'RSATKICHI */}
+                  <div className="absolute top-3 right-3 z-10 bg-red-500 text-white text-[14px] font-extrabold px-3 py-1.5 rounded-xl shadow-lg">
+                    -{discount.discount_percent}%
+                  </div>
+                  
+                  {/* Gorizontal Rasm */}
+                  <div className="w-full aspect-video bg-[hsl(var(--secondary))] overflow-hidden relative">
+                    <img src={discount.image_url} alt={discount.product_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    
+                    {/* Do'kon Logosi */}
+                    <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-[hsl(var(--card))/90] backdrop-blur-md px-3 py-1.5 rounded-full border border-[hsl(var(--border))] shadow-sm">
+                      {discount.merchant?.logo_url ? (
+                        <img src={discount.merchant.logo_url} className="w-5 h-5 rounded-full object-cover" />
+                      ) : (
+                        <Store size={16} className="text-[hsl(var(--muted-foreground))]" />
+                      )}
+                      <span className="text-[12px] font-bold text-[hsl(var(--foreground))] line-clamp-1">{discount.merchant?.name}</span>
+                    </div>
+                  </div>
+
+                  {/* Ma'lumotlar qismi */}
+                  <div className="p-4 flex-1 flex flex-col">
+                    <h3 className="font-bold text-[15px] text-[hsl(var(--foreground))] leading-tight line-clamp-2">
+                      {discount.product_name.replace(/,/g, ' • ')}
+                    </h3>
+                    
+                    {/* Vaqt va SAQLASH TUGMASI */}
+                    <div className="mt-auto pt-3 flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-[12px] font-semibold text-[hsl(var(--muted-foreground))]">
+                        <Clock size={14} className="text-[hsl(var(--accent))]" /> 
+                        {discount.start_time.slice(0, 5)} - {discount.end_time.slice(0, 5)}
+                      </div>
+                      
+                      <button 
+                        onClick={(e) => {
+                          e.preventDefault(); 
+                          e.stopPropagation(); // MASHU QATOR KARTANI BOSILISHIDAN (ICHKARIGA O'TIB KETISHDAN) TO'XTATADI
+                          toggleFavorite(String(discount.id));
+                        }}
+                        className={`p-2 rounded-full transition-all active:scale-90 ${
+                          isSaved 
+                            ? 'text-[hsl(var(--accent))] bg-[hsl(var(--accent)/.15)]' 
+                            : 'text-[hsl(var(--muted-foreground))] bg-[hsl(var(--secondary))] hover:bg-[hsl(var(--border))]'
+                        }`}
+                      >
+                        <Bookmark size={18} fill={isSaved ? 'currentColor' : 'none'} />
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-12 bg-[hsl(var(--card))] rounded-[24px] border border-dashed border-[hsl(var(--border))]">
+            <p className="font-bold text-[hsl(var(--muted-foreground))]">Hech narsa topilmadi</p>
+          </div>
+        )}
+      </ScrollReveal>
     </div>
   );
 }

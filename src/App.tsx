@@ -7,6 +7,7 @@ import { LanguageProvider } from '@/lib/i18n';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { supabase } from '@/lib/supabase'; 
 import { Loader2 } from 'lucide-react'; // Yuklanish belgisi
+import StoreDetailPage from '@/pages/store-detail';
 
 // --- TALABALAR UCHUN SAHIFALAR ---
 import { AppShell } from '@/components/app-shell';
@@ -127,6 +128,11 @@ function Router() {
             // TALABALAR UCHUN TEGISHLI SAHIFALAR
             <AppShell>
               <Switch>
+                {/* ... boshqa routelar */}
+                <Route path="/services" component={ServicesPage} />
+                <Route path="/store/:id" component={StoreDetailPage} /> {/* YANGI QO'SHILGAN QATOR */}
+                <Route path="/saved" component={SavedPage} />
+                {/* ... */}
                 <Route path="/" component={HomePage} />
                 <Route path="/services" component={ServicesPage} />
                 <Route path="/saved" component={SavedPage} />
