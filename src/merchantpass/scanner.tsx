@@ -12,43 +12,54 @@ export default function MerchantScanner() {
     setLoading(true);
 
     try {
-      // 1. O'qilgan kod UUID (uzun ID) yoki oddiy talaba ID (raqam) ekanligini aniqlaymiz
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(text);
-      
-      // 2. Bazadan talabani aqlli qidirish (UUID bo'lsa 'id' dan, bo'lmasa 'student_id' dan izlaydi)
+      let searchId = text; // Asl ID ni qidirish uchun
+
+      // 1. XAVFSIZLIK: Dinamik 30 soniyalik QR kod mantig'i
+      if (text.includes('|')) {
+        const [scannedId, timestampStr] = text.split('|');
+        const timestamp = parseInt(timestampStr, 10);
+        const timeDiff = Date.now() - timestamp; // Qancha vaqt o'tgani
+
+        // Agar 30 soniyadan (30000 ms) ko'p vaqt o'tgan bo'lsa - BLOKLASH!
+        if (timeDiff > 30000 || timeDiff < 0) {
+          throw new Error("QR kod muddati tugagan! Talabadan dasturga kirib kodni yangilashni so'rang (Skrinshot o'tmaydi).");
+        }
+        
+        searchId = scannedId; // Agar vaqt to'g'ri bo'lsa, ID ni olamiz
+      }
+
+      // 2. Bazadan talabani qidirish
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchId);
       const { data: student, error: studentError } = await supabase
         .from('students')
         .select('*')
-        .eq(isUUID ? 'id' : 'student_id', text)
+        .eq(isUUID ? 'id' : 'student_id', searchId)
         .maybeSingle();
 
       if (studentError || !student) {
-        throw new Error("Bunday talaba bazadan topilmadi yoki QR kod yaroqsiz!");
+        throw new Error("Bunday talaba bazadan topilmadi!");
       }
 
-      // 3. Do'kon sessiyasini olamiz
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Do'kon akkauntiga kirilmagan!");
 
-      // 4. Skanerlash tarixiga yozamiz
-      const { error: historyError } = await supabase.from('scan_history').insert({
+      // 3. Skanerlash tarixiga yozamiz
+      await supabase.from('scan_history').insert({
         merchant_id: user.id,
         student_id: student.id
       });
-      
-      if (historyError) throw new Error("Tarixga yozishda xato: " + historyError.message);
 
-      // 5. Ekranda tasdiqlanganini ko'rsatamiz
+      // 4. Tasdiqlandi
       setResult({
         success: true,
-        message: "Talaba tasdiqlandi!",
+        message: "Tasdiqlandi!",
         student: student
       });
 
     } catch (error: any) {
       setResult({
         success: false,
-        message: error.message || "Xatolik yuz berdi"
+        message: error.message || "Noma'lum xatolik"
       });
     } finally {
       setLoading(false);
@@ -58,7 +69,6 @@ export default function MerchantScanner() {
   return (
     <div className="page-enter pb-20">
       
-      {/* Skaner animatsiyasi uchun maxsus CSS */}
       <style>{`
         @keyframes scan-laser {
           0%, 100% { transform: translateY(0); opacity: 0; }
@@ -79,26 +89,16 @@ export default function MerchantScanner() {
         <div className="relative w-full aspect-[3/4] max-w-sm mx-auto overflow-hidden rounded-[40px] bg-black shadow-2xl border-4 border-[hsl(var(--border))]">
           
           <Scanner 
-            components={{ 
-              finder: false, // <--- tracker o'rniga finder yoziladi
-            }}
+            components={{ finder: false }}
             onScan={(detectedCodes) => {
-              if (detectedCodes && detectedCodes.length > 0) {
-                handleScan(detectedCodes[0].rawValue);
-              }
+              if (detectedCodes && detectedCodes.length > 0) handleScan(detectedCodes[0].rawValue);
             }} 
             onError={(err) => console.log(err)}
           />
           
-          {/* ZAMONAVIY QORONG'I FONI VA OYNA */}
           <div className="absolute inset-0 pointer-events-none">
-            {/* O'rtadagi shaffof oyna (Atrofi qorong'i bo'lishi uchun shadow ishlatildi) */}
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[260px] h-[260px] rounded-[32px] shadow-[0_0_0_9999px_rgba(0,0,0,0.6)] border-2 border-white/20 overflow-hidden">
-              
-              {/* Yugurib turuvchi lazer chizig'i */}
               <div className="absolute top-0 left-0 w-full h-[2px] bg-[hsl(var(--accent))] shadow-[0_0_20px_4px_hsl(var(--accent))] animate-scan-laser" />
-              
-              {/* Burchaklardagi qalin yashil hoshiyalar */}
               <div className="absolute -top-[2px] -left-[2px] w-10 h-10 border-t-4 border-l-4 border-[hsl(var(--accent))] rounded-tl-[32px]"></div>
               <div className="absolute -top-[2px] -right-[2px] w-10 h-10 border-t-4 border-r-4 border-[hsl(var(--accent))] rounded-tr-[32px]"></div>
               <div className="absolute -bottom-[2px] -left-[2px] w-10 h-10 border-b-4 border-l-4 border-[hsl(var(--accent))] rounded-bl-[32px]"></div>
@@ -114,7 +114,6 @@ export default function MerchantScanner() {
           )}
         </div>
       ) : (
-        /* NATIJA OYNASI */
         <div className="w-full max-w-sm mx-auto bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-8 rounded-[40px] text-center shadow-xl animate-in zoom-in-95 slide-in-from-bottom-8 duration-300">
           {result.success ? (
             <>
@@ -142,7 +141,7 @@ export default function MerchantScanner() {
                 <XCircle size={48} />
               </div>
               <h3 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-2">Tasdiqlanmadi</h3>
-              <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))] leading-relaxed px-4">{result.message}</p>
+              <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))] leading-relaxed px-4 text-red-500">{result.message}</p>
             </>
           )}
 
