@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef} from 'react';
 import { Store, ArrowRight, ArrowLeft, CheckCircle2, LockKeyhole, UserRound, Loader2, Briefcase, MapPin, Clock, Camera, Eye, EyeOff, Navigation } from 'lucide-react';
 import { Link } from 'wouter';
 import { supabase } from '@/lib/supabase';

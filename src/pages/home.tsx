@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { Search, X, Coffee, ShoppingBag, BookOpen, Monitor, LayoutGrid, Clock, Store, Sparkles, Loader2, Bookmark } from 'lucide-react';
-import { useLocation } from 'wouter'; // Link o'rniga useLocation ishlatamiz
+import { useLocation } from 'wouter';
 import { ScrollReveal } from '@/components/scroll-reveal';
 import { supabase } from '@/lib/supabase';
 import { useQuery } from '@tanstack/react-query';
@@ -14,13 +14,12 @@ const BANNERS = [
 ];
 
 export default function HomePage() {
-  const [, setLocation] = useLocation(); // Sahifaga o'tkazuvchi kanca (hook)
+  const [, setLocation] = useLocation();
   
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const carouselRef = useRef<HTMLDivElement>(null);
   
-  // Saqlanganlar (Favorites) ro'yxatini boshqarish
   const { savedIds, toggleFavorite } = useFavorites();
 
   // BAZADAN HAQIQIY CHEGIRMALAR
@@ -71,8 +70,10 @@ export default function HomePage() {
 
   return (
     <div className="page-enter pb-10">
+      
+      {/* QIDIRUV QISMI (Xush kelibsiz olib tashlandi, to'g'ridan-to'g'ri qidiruv bilan boshlanadi) */}
       <ScrollReveal>
-        <div className="relative flex items-center bg-[hsl(var(--card))] rounded-2xl p-1.5 shadow-sm border border-[hsl(var(--border))] mb-6 mt-2">
+        <div className="relative flex items-center bg-[hsl(var(--card))] rounded-2xl p-1.5 shadow-sm border border-[hsl(var(--border))] mb-6 mt-1">
           <Search size={20} className="ml-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
           <input value={search} onChange={(e) => setSearch(e.target.value)} type="search" placeholder="Qidirish (masalan: Burger, Najot Ta'lim...)" className="min-w-0 flex-1 bg-transparent px-3 py-3.5 text-sm font-medium text-[hsl(var(--foreground))] outline-none placeholder:text-[hsl(var(--muted-foreground))]" />
           {search && (
@@ -81,6 +82,7 @@ export default function HomePage() {
         </div>
       </ScrollReveal>
 
+      {/* BANNERLAR */}
       <ScrollReveal delay={100}>
         <div ref={carouselRef} className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-5 px-5 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
           {infiniteBanners.map((banner, idx) => (
@@ -94,6 +96,7 @@ export default function HomePage() {
         </div>
       </ScrollReveal>
 
+      {/* KATEGORIYALAR */}
       <ScrollReveal delay={200}>
         <div className="flex overflow-x-auto gap-5 md:gap-10 pb-6 pt-6 mt-2 -mx-5 px-5 md:-mx-4 md:px-4 md:justify-center [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
           {categories.map((cat) => (
@@ -107,6 +110,7 @@ export default function HomePage() {
         </div>
       </ScrollReveal>
 
+      {/* CHEGIRMALAR */}
       <ScrollReveal delay={300}>
         <div className="mt-4 mb-4 flex items-center justify-between">
           <h2 className="flex items-center gap-2 font-display text-[19px] font-bold text-[hsl(var(--foreground))]">
@@ -132,16 +136,13 @@ export default function HomePage() {
                   onClick={() => setLocation(`/discount/${discount.id}`)}
                   className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[20px] overflow-hidden shadow-sm hover:border-[hsl(var(--accent))] transition-all active:scale-[0.98] cursor-pointer flex flex-col h-full relative group"
                 >
-                  {/* FOIZ KO'RSATKICHI */}
                   <div className="absolute top-3 right-3 z-10 bg-red-500 text-white text-[14px] font-extrabold px-3 py-1.5 rounded-xl shadow-lg">
                     -{discount.discount_percent}%
                   </div>
                   
-                  {/* Gorizontal Rasm */}
                   <div className="w-full aspect-video bg-[hsl(var(--secondary))] overflow-hidden relative">
                     <img src={discount.image_url} alt={discount.product_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     
-                    {/* Do'kon Logosi */}
                     <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-[hsl(var(--card))/90] backdrop-blur-md px-3 py-1.5 rounded-full border border-[hsl(var(--border))] shadow-sm">
                       {discount.merchant?.logo_url ? (
                         <img src={discount.merchant.logo_url} className="w-5 h-5 rounded-full object-cover" />
@@ -152,13 +153,11 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* Ma'lumotlar qismi */}
                   <div className="p-4 flex-1 flex flex-col">
                     <h3 className="font-bold text-[15px] text-[hsl(var(--foreground))] leading-tight line-clamp-2">
                       {discount.product_name.replace(/,/g, ' • ')}
                     </h3>
                     
-                    {/* Vaqt va SAQLASH TUGMASI */}
                     <div className="mt-auto pt-3 flex items-center justify-between">
                       <div className="flex items-center gap-1.5 text-[12px] font-semibold text-[hsl(var(--muted-foreground))]">
                         <Clock size={14} className="text-[hsl(var(--accent))]" /> 
@@ -168,7 +167,7 @@ export default function HomePage() {
                       <button 
                         onClick={(e) => {
                           e.preventDefault(); 
-                          e.stopPropagation(); // MASHU QATOR KARTANI BOSILISHIDAN (ICHKARIGA O'TIB KETISHDAN) TO'XTATADI
+                          e.stopPropagation(); 
                           toggleFavorite(String(discount.id));
                         }}
                         className={`p-2 rounded-full transition-all active:scale-90 ${

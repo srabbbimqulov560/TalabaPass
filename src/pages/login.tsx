@@ -68,6 +68,11 @@ export default function LoginPage() {
               <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
               <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="Parolingizni kiriting" className="w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-4 font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))]" />
             </div>
+            <div className="text-right mt-2 mb-4 pr-1">
+  <Link href="/forgot-password" className="text-[12px] font-bold text-[hsl(var(--accent))] hover:underline cursor-pointer">
+    Parolni unutdingizmi?
+  </Link>
+</div>
           </div>
 
           {error && <p className="text-red-500 text-sm font-semibold ml-2">{error}</p>}

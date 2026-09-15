@@ -92,6 +92,11 @@ export default function MerchantLogin() {
               className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-4 pl-12 pr-4 rounded-2xl text-sm font-semibold outline-none focus:border-[hsl(var(--accent))] text-[hsl(var(--foreground))] transition-all"
             />
           </div>
+          <div className="text-right mt-2 mb-4 pr-1">
+  <Link href="/forgot-password" className="text-[12px] font-bold text-[hsl(var(--accent))] hover:underline cursor-pointer">
+    Parolni unutdingizmi?
+  </Link>
+</div>
 
           <button 
             type="submit" 

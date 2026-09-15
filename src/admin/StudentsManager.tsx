@@ -10,6 +10,7 @@ export default function StudentsManager() {
   
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [expiryDate, setExpiryDate] = useState('');
 
   const { data: students, isLoading } = useQuery({
     queryKey: ['adminStudents'],
@@ -25,11 +26,29 @@ export default function StudentsManager() {
   const displayList = activeTab === 'pending' ? pendingStudents : activeStudents;
 
   const handleApprove = async (id: string) => {
+    if (!expiryDate) {
+      alert("Iltimos, avval talabalikning amal qilish muddatini belgilang!");
+      return;
+    }
+    
     setIsActionLoading(true);
     try {
-      await supabase.from('students').update({ is_active: true }).eq('id', id);
+      // 1. Talabani faollashtirish va muddat qo'yish
+      await supabase.from('students').update({ 
+        is_active: true, 
+        expires_at: expiryDate 
+      }).eq('id', id);
+
+      // 2. Tasdiqlanganlik haqida Xabarnoma yuborish!
+      await supabase.from('notifications').insert([{
+        user_id: id,
+        title: "Arizangiz tasdiqlandi! 🎉",
+        message: `Tabriklaymiz, sizning Talaba ID kartangiz muvaffaqiyatli tasdiqlandi. Karta amal qilish muddati: ${expiryDate.split('-').reverse().join('.')}. Endi bemalol chegirmalardan foydalanishingiz mumkin!`
+      }]);
+
       queryClient.invalidateQueries({ queryKey: ['adminStudents'] });
       setSelectedStudent(null); 
+      setExpiryDate('');
     } catch (err) {
       alert("Xatolik yuz berdi");
     } finally {
@@ -65,7 +84,7 @@ export default function StudentsManager() {
   return (
     <AdminLayout title="Talabalar nazorati">
       
-      {/* MODAL QISMI */}
+      {/* MODAL QISMI (YONMA-YON TEKSHIRUV) */}
       {selectedStudent && (
         <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 md:p-8 backdrop-blur-sm">
           <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] w-full max-w-5xl rounded-[32px] overflow-hidden flex flex-col md:flex-row shadow-2xl relative animate-in zoom-in-95 duration-300 max-h-[90vh]">
@@ -76,7 +95,7 @@ export default function StudentsManager() {
 
             <div className="w-full md:w-[60%] bg-black flex items-center justify-center p-4 relative min-h-[300px]">
               {selectedStudent.document_url ? (
-                <img src={selectedStudent.document_url} className="w-full h-full max-h-[80vh] object-contain" alt="Guvohnoma" />
+                <img src={selectedStudent.document_url} className="w-full h-full max-h-[80vh] object-contain rounded-xl" alt="Guvohnoma" />
               ) : (
                 <div className="text-white/50 flex flex-col items-center">
                   <FileImage size={64} className="mb-4 opacity-50" />
@@ -110,21 +129,34 @@ export default function StudentsManager() {
                 </div>
               </div>
 
-              <div className="mt-8 pt-6 border-t border-[hsl(var(--border))] grid grid-cols-2 gap-3">
-                <button 
-                  disabled={isActionLoading}
-                  onClick={() => handleDelete(selectedStudent.id, selectedStudent.first_name)} 
-                  className="w-full py-4 rounded-2xl text-[15px] font-bold text-red-500 bg-red-500/10 hover:bg-red-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  <Trash2 size={18} /> Rad etish
-                </button>
-                <button 
-                  disabled={isActionLoading}
-                  onClick={() => handleApprove(selectedStudent.id)} 
-                  className="w-full py-4 rounded-2xl text-[15px] font-bold text-white bg-green-500 hover:bg-green-600 transition-all flex items-center justify-center gap-2 shadow-float active:scale-95 disabled:opacity-50"
-                >
-                  {isActionLoading ? <Loader2 className="animate-spin" size={18} /> : <><CheckCircle size={18} /> Tasdiqlash</>}
-                </button>
+              {/* MUDDAT BELGILASH VA TUGMALAR */}
+              <div className="mt-8 pt-6 border-t border-[hsl(var(--border))]">
+                <div className="mb-4">
+                  <label className="text-xs font-bold uppercase text-[hsl(var(--muted-foreground))] mb-1.5 block">Amal qilish muddati (Majburiy)</label>
+                  <input 
+                    type="date" 
+                    value={expiryDate}
+                    onChange={(e) => setExpiryDate(e.target.value)}
+                    className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-3 px-4 rounded-xl font-bold outline-none focus:border-[hsl(var(--primary))] text-[hsl(var(--foreground))]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    disabled={isActionLoading}
+                    onClick={() => handleDelete(selectedStudent.id, selectedStudent.first_name)} 
+                    className="w-full py-4 rounded-xl text-[15px] font-bold text-red-500 bg-red-500/10 hover:bg-red-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <Trash2 size={18} /> Rad etish
+                  </button>
+                  <button 
+                    disabled={isActionLoading}
+                    onClick={() => handleApprove(selectedStudent.id)} 
+                    className="w-full py-4 rounded-xl text-[15px] font-bold text-white bg-green-500 hover:bg-green-600 transition-all flex items-center justify-center gap-2 shadow-float active:scale-95 disabled:opacity-50"
+                  >
+                    {isActionLoading ? <Loader2 className="animate-spin" size={18} /> : <><CheckCircle size={18} /> Tasdiqlash</>}
+                  </button>
+                </div>
               </div>
             </div>
             
@@ -186,7 +218,6 @@ export default function StudentsManager() {
                 
                 <div className="flex gap-2">
                   {activeTab === 'pending' ? (
-                    // KUTAYOTGANLAR UCHUN: TEZKOR RAD ETISH TUGMASI QAYTDI
                     <button 
                       onClick={() => handleDelete(student.id, student.first_name)} 
                       className="px-4 py-2 rounded-xl text-sm font-bold text-red-500 bg-red-500/10 hover:bg-red-500/20 transition-colors flex items-center gap-1.5"
@@ -194,7 +225,6 @@ export default function StudentsManager() {
                       <Trash2 size={16} /> Rad etish
                     </button>
                   ) : (
-                    // TASDIQLANGANLAR UCHUN: BLOKLASH TUGMASI
                     <button 
                       onClick={() => handleBlock(student.id)} 
                       className="px-4 py-2 rounded-xl text-sm font-bold text-orange-500 bg-orange-500/10 hover:bg-orange-500/20 transition-colors flex items-center gap-1.5"

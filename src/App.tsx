@@ -7,6 +7,8 @@ import { LanguageProvider } from '@/lib/i18n';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { supabase } from '@/lib/supabase'; 
 import { Loader2 } from 'lucide-react';
+import ForgotPassword from '@/pages/forgot-password';
+import NotificationsPage from '@/pages/notifications';
 
 // --- ADMIN UCHUN SAHIFALAR ---
 import AdminDashboard from '@/admin/AdminDashboard';
@@ -91,6 +93,7 @@ function Router() {
           <Route path="/merchant/login" component={MerchantLogin} />
           <Route path="/merchant/signup" component={MerchantSignup} />
           <Route path="/cashier" component={CashierPage} />
+          <Route path="/forgot-password" component={ForgotPassword} />
           
           {/* Ruxsatsiz yopiq sahifaga o'tishga urinsa loginga otib yuboradi */}
           <Route>
@@ -107,7 +110,7 @@ function Router() {
   return (
     <RoutedErrorBoundary>
       <Switch>
-        {/* Ro'yxatdan o'tishni to'liq tugatmagan odamlar ishlata olishi uchun */}
+        {/* Ro'yxatdan o'tish sahifalari */}
         <Route path="/signup" component={SignupPage} />
         <Route path="/merchant/signup" component={MerchantSignup} />
 
@@ -115,11 +118,11 @@ function Router() {
         <Route path="/login"><Redirect to="/" /></Route>
         <Route path="/merchant/login"><Redirect to="/merchant" /></Route>
 
-        {/* 🌟 ASOSIY YECHIM: ADMIN PANEL MANZILI QOBIQLARDAN ENG TEPADA TURISHI SHART! */}
+        {/* 🌟 ADMIN PANEL MANZILI (QOBIQLARDAN TEPADA) */}
         <Route path="/admin" component={AdminDashboard} />
         <Route path="/admin/merchants" component={MerchantsManager} />
         <Route path="/admin/students" component={StudentsManager} /> 
-        <Route path="/admin/discounts" component={DiscountsManager} /> {/* <--- QO'SHILDI */}
+        <Route path="/admin/discounts" component={DiscountsManager} />
 
         {/* BARCHA ASOSIY VA YOPIQ SAHIFALAR QOBIQ (SHELL) ICHIDA */}
         <Route>
@@ -136,10 +139,11 @@ function Router() {
               </Switch>
             </MerchantAppShell>
           ) : (
-            // TALABALAR UCHUN TEGISHLI SAHIFALAR
+            // TALABALAR UCHUN TEGISHLI SAHIFALAR (APP SHELL ICHIDA TO'G'RI JOYLASHTIRILDI)
             <AppShell>
               <Switch>
                 <Route path="/" component={HomePage} />
+                <Route path="/notifications" component={NotificationsPage} />
                 <Route path="/services" component={ServicesPage} />
                 <Route path="/store/:id" component={StoreDetailPage} />
                 <Route path="/saved" component={SavedPage} />

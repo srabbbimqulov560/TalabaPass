@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'wouter';
 import { ArrowLeft, ArrowRight, Camera, LockKeyhole, UserRound, IdCard, CheckCircle2, Circle, Loader2, GraduationCap, ChevronDown, Search, Check, Store, Eye, EyeOff, FileImage } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
@@ -67,6 +67,11 @@ const getPasswordStrength = (pass: string) => {
 };
 
 export default function SignupPage() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+const canvasRef = useRef<HTMLCanvasElement>(null);
+const [isCameraOpen, setIsCameraOpen] = useState(false);
+const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+
   const { t, lang, setLang } = useLanguage();
   
   const [showPassword, setShowPassword] = useState(false);
@@ -115,6 +120,55 @@ export default function SignupPage() {
 
   const filteredUnis = UNIVERSITIES.filter(u => u.toLowerCase().includes(uniSearch.toLowerCase()));
   const strength = getPasswordStrength(formData.password);
+
+const startCamera = async () => {
+  setError('');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      video: { facingMode: 'environment' } // Orqa kamerani ochishga harakat qiladi
+    });
+    setCameraStream(stream);
+    setIsCameraOpen(true);
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream;
+    }
+  } catch (err) {
+    setError("Kameraga ruxsat berilmadi yoki qurilmada kamera yo'q.");
+  }
+};
+const stopCamera = useCallback(() => {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(track => track.stop());
+    setCameraStream(null);
+    setIsCameraOpen(false);
+  }
+}, [cameraStream]);
+
+const capturePhoto = () => {
+  if (videoRef.current && canvasRef.current) {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], "id_card_photo.jpg", { type: "image/jpeg" });
+          setDocumentFile(file);
+          setDocumentPreview(URL.createObjectURL(blob));
+          stopCamera();
+        }
+      }, 'image/jpeg', 0.9);
+    }
+  }
+};
+
+// Agar boshqa qadamga o'tsa kamerani o'chirish (Memory leak oldini olish)
+useEffect(() => {
+  return () => stopCamera();
+}, [stopCamera]);
 
   const nextStep = async () => {
     if (step === 1) { setStep(2); return; }
@@ -390,32 +444,65 @@ export default function SignupPage() {
           </div>
         )}
 
-        {/* YANGI: 4-QADAM - HUJJAT YUKLASH */}
+        {/* YANGI: 4-QADAM - JONLI KAMERA VA HUJJAT YUKLASH */}
         {step === 4 && (
-          <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col items-center justify-center">
-            <div className="text-center mb-10 mt-auto">
-              <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))] mb-2">Hujjat yuklang</h2>
+          <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col items-center justify-center relative">
+            <div className="text-center mb-6 mt-4">
+              <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))] mb-2">Hujjatni tasvirga oling</h2>
               <p className="text-sm text-[hsl(var(--muted-foreground))] px-4">
-                Tasdiqlash uchun <b>Talabalik guvohnomasi</b> yoki <b>ID kartangiz</b> rasmini yuklang. Bu rasm faqat Adminlarga ko'rinadi.
+                Talabalik guvohnomasi yoki ID kartangizni kadr ichiga to'g'rilab rasmga oling. Galereyadan yuklash man etiladi.
               </p>
             </div>
 
-            <div className="relative group mb-auto w-full max-w-[280px]">
-              <input type="file" ref={docInputRef} onChange={handleDocUpload} accept="image/*" className="hidden" />
-              <div 
-                onClick={() => docInputRef.current?.click()} 
-                className="w-full aspect-[1.6/1] cursor-pointer overflow-hidden rounded-3xl bg-[hsl(var(--secondary))] border-4 border-dashed border-[hsl(var(--border))] hover:border-[hsl(var(--accent))] flex items-center justify-center transition-all shadow-sm"
-              >
-                {documentPreview ? (
-                  <img src={documentPreview} alt="Document" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="flex flex-col items-center text-[hsl(var(--muted-foreground))]">
-                    <FileImage size={48} className="opacity-50 mb-3" />
-                    <span className="text-sm font-bold uppercase tracking-wider">Rasm tanlash</span>
+            {/* KAMERA EKRANI VA SHABLON */}
+            <div className="relative w-full max-w-sm aspect-[4/3] bg-black rounded-[32px] overflow-hidden shadow-xl mb-6">
+              
+              {!documentPreview && !isCameraOpen && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[hsl(var(--secondary))] border-4 border-dashed border-[hsl(var(--border))]">
+                  <FileImage size={48} className="opacity-50 mb-4 text-[hsl(var(--muted-foreground))]" />
+                  <button onClick={startCamera} className="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-bold py-3 px-6 rounded-full shadow-lg active:scale-95 transition-all">
+                    Kamerani yoqish
+                  </button>
+                </div>
+              )}
+
+              {/* Jonli Video Feed */}
+              {isCameraOpen && (
+                <>
+                  <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                  
+                  {/* ID KARTA SHABLONI (Qora shaffof fon va ochiq rom) */}
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+                    <div className="w-[85%] h-[60%] border-[4px] border-white/70 rounded-xl relative shadow-[0_0_0_999px_rgba(0,0,0,0.6)]">
+                      <div className="absolute inset-0 border-[2px] border-white/30 border-dashed rounded-xl m-1"></div>
+                      <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap">Hujjatni shu romga kiriting</p>
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  {/* Rasmga olish tugmasi */}
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
+                    <button onClick={capturePhoto} className="w-16 h-16 bg-white/30 backdrop-blur-md rounded-full border-[4px] border-white flex items-center justify-center active:scale-90 transition-all shadow-xl">
+                      <div className="w-10 h-10 bg-white rounded-full"></div>
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Olingan rasm tayyor bo'lsa */}
+              {documentPreview && (
+                <>
+                  <img src={documentPreview} className="w-full h-full object-cover" alt="Hujjat" />
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                    <button onClick={() => { setDocumentPreview(null); setDocumentFile(null); startCamera(); }} className="bg-white text-black font-bold py-2 px-5 rounded-full shadow-lg">
+                      Qaytadan olish
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
+            
+            {/* Yozilmagan kanvas (orqada ishlaydi) */}
+            <canvas ref={canvasRef} className="hidden" />
 
             {error && <p className="text-red-500 text-[13px] font-bold mb-4 text-center">{error}</p>}
 
