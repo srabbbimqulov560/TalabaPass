@@ -44,7 +44,22 @@ export default function QrPage() {
       </div>
     );
   }
-
+  
+if (student && !student.is_active) {
+    return (
+      <div className="page-enter py-20 px-6 text-center flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="w-24 h-24 bg-orange-500/10 text-orange-500 rounded-full flex items-center justify-center mb-6 border-4 border-orange-500/20">
+          <Loader2 className="animate-spin" size={40} />
+        </div>
+        <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-3">
+          Arizangiz ko'rib chiqilmoqda
+        </h2>
+        <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed max-w-sm">
+          Sizning Talaba ID ma'lumotlaringiz administratorlar tomonidan tekshirilmoqda. Tasdiqlangach, bu yerda chegirma olish uchun QR kodingiz paydo bo'ladi.
+        </p>
+      </div>
+    );
+  }
   // QR KOD QIYMATI: Talaba UUID'si va joriy vaqt (Skaner shuni o'qib tekshiradi)
   const qrValue = `${student.id}|${qrKey}`;
 

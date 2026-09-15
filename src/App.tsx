@@ -6,13 +6,18 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { LanguageProvider } from '@/lib/i18n';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { supabase } from '@/lib/supabase'; 
-import { Loader2 } from 'lucide-react'; // Yuklanish belgisi
-import StoreDetailPage from '@/pages/store-detail';
+import { Loader2 } from 'lucide-react';
+
+// --- ADMIN UCHUN SAHIFALAR ---
+import AdminDashboard from '@/admin/AdminDashboard';
+import MerchantsManager from '@/admin/MerchantsManager';
+import StudentsManager from '@/admin/StudentsManager';
 
 // --- TALABALAR UCHUN SAHIFALAR ---
 import { AppShell } from '@/components/app-shell';
 import HomePage from '@/pages/home';
 import ServicesPage from '@/pages/Services';
+import StoreDetailPage from '@/pages/store-detail';
 import SavedPage from '@/pages/saved';
 import ProfilePage from '@/pages/profile';
 import QrPage from '@/pages/qr';
@@ -34,7 +39,7 @@ import MerchantProfile from '@/merchantpass/profile';
 
 const queryClient = new QueryClient();
 
-// 1. Yangi: Maxsus xavfsiz yo'naltiruvchi komponent
+// Maxsus xavfsiz yo'naltiruvchi komponent
 function Redirect({ to }: { to: string }) {
   const [, setLocation] = useLocation();
   useEffect(() => {
@@ -71,7 +76,6 @@ function Router() {
     );
   }
 
-  // Hozirgi manzil biznes paneliga tegishli ekanligini aniqlash
   const isMerchantRoute = location.startsWith('/merchant');
 
   // ==========================================
@@ -102,13 +106,18 @@ function Router() {
   return (
     <RoutedErrorBoundary>
       <Switch>
-        {/* Ro'yxatdan o'tishni to'liq tugatmagan (rasm yuklash bosqichidagi) odamlar ishlata olishi uchun */}
+        {/* Ro'yxatdan o'tishni to'liq tugatmagan odamlar ishlata olishi uchun */}
         <Route path="/signup" component={SignupPage} />
         <Route path="/merchant/signup" component={MerchantSignup} />
 
         {/* Tizimga kirib bo'lgan odam adashib loginga bossa, ichkariga qaytarib otamiz */}
         <Route path="/login"><Redirect to="/" /></Route>
         <Route path="/merchant/login"><Redirect to="/merchant" /></Route>
+
+        {/* 🌟 ASOSIY YECHIM: ADMIN PANEL MANZILI QOBIQLARDAN ENG TEPADA TURISHI SHART! */}
+        <Route path="/admin" component={AdminDashboard} />
+        <Route path="/admin/merchants" component={MerchantsManager} />
+        <Route path="/admin/students" component={StudentsManager} /> {/* <--- QO'SHILDI */}
 
         {/* BARCHA ASOSIY VA YOPIQ SAHIFALAR QOBIQ (SHELL) ICHIDA */}
         <Route>
@@ -128,13 +137,9 @@ function Router() {
             // TALABALAR UCHUN TEGISHLI SAHIFALAR
             <AppShell>
               <Switch>
-                {/* ... boshqa routelar */}
-                <Route path="/services" component={ServicesPage} />
-                <Route path="/store/:id" component={StoreDetailPage} /> {/* YANGI QO'SHILGAN QATOR */}
-                <Route path="/saved" component={SavedPage} />
-                {/* ... */}
                 <Route path="/" component={HomePage} />
                 <Route path="/services" component={ServicesPage} />
+                <Route path="/store/:id" component={StoreDetailPage} />
                 <Route path="/saved" component={SavedPage} />
                 <Route path="/discount/:id" component={DiscountDetailPage} />
                 <Route path="/profile" component={ProfilePage} />

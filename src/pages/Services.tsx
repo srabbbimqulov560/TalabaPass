@@ -8,13 +8,14 @@ import { ScrollReveal } from '@/components/scroll-reveal';
 export default function ServicesPage() {
   const [search, setSearch] = useState('');
 
-  // BAZADAN BARCHA DO'KONLARNI (MERCHANTS) TORTIB OLISH
+  // BAZADAN FAQAT TASDIQLANGAN DO'KONLARNI (MERCHANTS) TORTIB OLISH
   const { data: merchants, isLoading } = useQuery({
     queryKey: ['allMerchants'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('merchants')
         .select('*')
+        .eq('is_active', true) // E'TIBOR BERING: Faqat admin tasdiqlagan do'konlar chiqadi!
         .order('name', { ascending: true });
         
       if (error) throw error;
@@ -64,7 +65,6 @@ export default function ServicesPage() {
           {filteredMerchants.map((merchant: any, idx: number) => (
             <ScrollReveal key={merchant.id} delay={idx * 50}>
               <Link href={`/store/${merchant.id}`}>
-                {/* 1. overflow-hidden qo'shildi, toshib ketmasligi uchun */}
                 <div className="flex bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[24px] p-4 shadow-sm hover:border-[hsl(var(--accent))] transition-all active:scale-[0.98] cursor-pointer items-center gap-4 group overflow-hidden">
                   
                   {/* Do'kon Logosi */}
@@ -78,7 +78,7 @@ export default function ServicesPage() {
                     )}
                   </div>
                   
-                  {/* Do'kon Ma'lumotlari (2. min-w-0 va truncate qoidalari qat'iy o'rnatildi) */}
+                  {/* Do'kon Ma'lumotlari */}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-[16px] text-[hsl(var(--foreground))] leading-tight truncate mb-1">
                       {merchant.name}
@@ -92,7 +92,7 @@ export default function ServicesPage() {
                     </div>
                   </div>
 
-                  {/* 3. ml-auto va shrink-0 bilan o'ng tomonga mutlaqo qotirildi */}
+                  {/* O'ng tomondagi kursor qotirildi */}
                   <div className="w-8 h-8 rounded-full bg-[hsl(var(--secondary))] flex items-center justify-center text-[hsl(var(--muted-foreground))] group-hover:bg-[hsl(var(--accent))] group-hover:text-white transition-colors shrink-0 ml-auto">
                     <ChevronRight size={18} />
                   </div>
