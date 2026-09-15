@@ -35,12 +35,15 @@ export default function MerchantsManager() {
 
   // Rad etish / O'chirish funksiyasi
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Rostdan ham "${name}" do'konini tizimdan butunlay o'chirmoqchimisiz?`)) return;
+    if (!confirm(`ROSTDAN HAM O'CHIRASIZMI?\n\n"${name}" do'koni tizimdan butunlay tozalanadi. Boshqa do'kon bu nom va login bilan qayta ro'yxatdan o'tishi mumkin bo'ladi.`)) return;
     try {
-      await supabase.from('merchants').delete().eq('id', id);
+      // Yangi xavfsiz RPC funksiyamizni chaqiramiz
+      const { error } = await supabase.rpc('delete_user_by_admin', { target_user_id: id });
+      if (error) throw error;
+      
       queryClient.invalidateQueries({ queryKey: ['adminMerchants'] });
     } catch (err) {
-      alert("O'chirishda xatolik");
+      alert("O'chirishda xatolik yuz berdi");
     }
   };
 

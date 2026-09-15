@@ -12,6 +12,7 @@ import { Loader2 } from 'lucide-react';
 import AdminDashboard from '@/admin/AdminDashboard';
 import MerchantsManager from '@/admin/MerchantsManager';
 import StudentsManager from '@/admin/StudentsManager';
+import DiscountsManager from '@/admin/DiscountsManager';
 
 // --- TALABALAR UCHUN SAHIFALAR ---
 import { AppShell } from '@/components/app-shell';
@@ -117,7 +118,8 @@ function Router() {
         {/* 🌟 ASOSIY YECHIM: ADMIN PANEL MANZILI QOBIQLARDAN ENG TEPADA TURISHI SHART! */}
         <Route path="/admin" component={AdminDashboard} />
         <Route path="/admin/merchants" component={MerchantsManager} />
-        <Route path="/admin/students" component={StudentsManager} /> {/* <--- QO'SHILDI */}
+        <Route path="/admin/students" component={StudentsManager} /> 
+        <Route path="/admin/discounts" component={DiscountsManager} /> {/* <--- QO'SHILDI */}
 
         {/* BARCHA ASOSIY VA YOPIQ SAHIFALAR QOBIQ (SHELL) ICHIDA */}
         <Route>

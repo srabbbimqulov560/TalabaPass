@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Link } from 'wouter';
-import { ArrowLeft, ArrowRight, Camera, LockKeyhole, UserRound, IdCard, CheckCircle2, Circle, Loader2, GraduationCap, ChevronDown, Search, Check, Store, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Camera, LockKeyhole, UserRound, IdCard, CheckCircle2, Circle, Loader2, GraduationCap, ChevronDown, Search, Check, Store, Eye, EyeOff, FileImage } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 
@@ -53,7 +53,6 @@ const UNIVERSITIES = [
 
 const getPasswordStrength = (pass: string) => {
   if (!pass) return { score: 0, text: '', color: 'bg-transparent', width: '0%' };
-  
   let score = 0;
   if (pass.length >= 8) score += 1;
   if (/[A-Z]/.test(pass)) score += 1;
@@ -64,42 +63,49 @@ const getPasswordStrength = (pass: string) => {
   if (score <= 2) return { score, text: 'Oson', color: 'bg-red-500', width: '33.3%' };
   if (score === 3 || score === 4) return { score, text: "O'rtacha", color: 'bg-yellow-500', width: '66.6%' };
   if (score === 5) return { score, text: 'Kuchli', color: 'bg-green-500', width: '100%' };
-  
   return { score: 0, text: '', color: 'bg-transparent', width: '0%' };
 };
 
 export default function SignupPage() {
   const { t, lang, setLang } = useLanguage();
   
-  // TO'G'RILANDI: State'lar komponent ichiga olindi va ikkita alohida state yaratildi
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({ 
-    fullName: '', 
-    studentId: '', 
-    university: '',
-    password: '', 
-    confirmPassword: '' 
+    fullName: '', studentId: '', university: '', password: '', confirmPassword: '' 
   });
+  
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [documentPreview, setDocumentPreview] = useState<string | null>(null);
   
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  
   const [isUniOpen, setIsUniOpen] = useState(false);
   const [uniSearch, setUniSearch] = useState('');
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setError(''); 
   };
 
-  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDocUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setDocumentFile(file);
+      setDocumentPreview(URL.createObjectURL(file));
+      setError('');
+    }
+  };
+
+  const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setAvatarFile(file);
@@ -107,10 +113,7 @@ export default function SignupPage() {
     }
   };
 
-  const filteredUnis = UNIVERSITIES.filter(u => 
-    u.toLowerCase().includes(uniSearch.toLowerCase())
-  );
-
+  const filteredUnis = UNIVERSITIES.filter(u => u.toLowerCase().includes(uniSearch.toLowerCase()));
   const strength = getPasswordStrength(formData.password);
 
   const nextStep = async () => {
@@ -128,12 +131,7 @@ export default function SignupPage() {
     if (step === 3) {
       if (!formData.studentId) { setError("Talaba ID raqamini kiriting"); return; }
       if (!formData.university) { setError("Universitetni tanlang yoki kiriting"); return; }
-      
-      if (strength.score < 5) { 
-        setError("Parol yetarlicha kuchli emas. Barcha talablarni bajaring (Yashil darajaga yetkazing)!"); 
-        return; 
-      }
-      
+      if (strength.score < 5) { setError("Parol yetarlicha kuchli emas. Yashil darajaga yetkazing!"); return; }
       if (formData.password !== formData.confirmPassword) { setError("Parollar mos kelmadi!"); return; }
 
       setIsLoading(true);
@@ -166,14 +164,44 @@ export default function SignupPage() {
             last_name: lastName,
             student_id: formData.studentId,
             university: formData.university,
-            avatar_url: null 
+            is_active: false,
+            avatar_url: null,
+            document_url: null
           }]);
 
         if (dbError) throw dbError;
         setStep(4);
-
       } catch (err: any) {
         setError(err.message || "Ro'yxatdan o'tishda xatolik yuz berdi.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    if (step === 4) {
+      if (!documentFile) {
+        setError("Iltimos, talabalik guvohnomangiz yoki ID kartangizni yuklang!");
+        return;
+      }
+      setIsLoading(true);
+      setError('');
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Sessiya topilmadi");
+
+        const fileExt = documentFile.name.split('.').pop() || 'jpg';
+        const fileName = `doc-${user.id}-${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage.from('documents').upload(fileName, documentFile);
+        if (uploadError) throw new Error("Hujjatni yuklashda xatolik");
+
+        const { data: publicUrlData } = supabase.storage.from('documents').getPublicUrl(fileName);
+        await supabase.from('students').update({ document_url: publicUrlData.publicUrl }).eq('id', user.id);
+        
+        setStep(5);
+      } catch (err: any) {
+        setError(err.message);
       } finally {
         setIsLoading(false);
       }
@@ -190,39 +218,19 @@ export default function SignupPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Sessiya topilmadi, iltimos qaytadan kiring.");
 
-      let avatarUrl = null;
-
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop() || 'jpg';
         const fileName = `${user.id}-${Date.now()}.${fileExt}`;
         
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(fileName, avatarFile, { upsert: true });
+        const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, avatarFile, { upsert: true });
+        if (uploadError) throw new Error("Rasmni saqlashda xatolik");
 
-        if (uploadError) throw new Error("Rasmni saqlashda xatolik: " + uploadError.message);
-
-        const { data: publicUrlData } = supabase.storage
-          .from('avatars')
-          .getPublicUrl(fileName);
-
-        avatarUrl = publicUrlData.publicUrl;
+        const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
+        await supabase.from('students').update({ avatar_url: publicUrlData.publicUrl }).eq('id', user.id);
       }
-
-      if (avatarUrl) {
-        const { error: updateError } = await supabase
-          .from('students')
-          .update({ avatar_url: avatarUrl })
-          .eq('id', user.id);
-
-        if (updateError) throw updateError;
-      }
-
       window.location.href = '/'; 
-
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Rasm yuklashda xatolik yuz berdi.");
+      setError(err.message);
       setIsLoading(false);
     }
   };
@@ -232,16 +240,16 @@ export default function SignupPage() {
   return (
     <div className="min-h-[100dvh] flex flex-col bg-[hsl(var(--background))] relative overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-1.5 bg-[hsl(var(--secondary))] z-50">
-        <div className="h-full bg-[hsl(var(--accent))] transition-all duration-500 ease-out rounded-r-full" style={{ width: `${(step / 4) * 100}%` }} />
+        <div className="h-full bg-[hsl(var(--accent))] transition-all duration-500 ease-out rounded-r-full" style={{ width: `${(step / 5) * 100}%` }} />
       </div>
 
       <div className="flex items-center justify-between px-6 pt-8 pb-4 shrink-0 relative z-10">
-        {step > 1 && step < 4 ? (
+        {step > 1 && step < 5 ? (
           <button onClick={prevStep} className="p-2 -ml-2 rounded-full hover:bg-[hsl(var(--secondary))] transition-colors text-[hsl(var(--muted-foreground))]">
             <ArrowLeft size={22} />
           </button>
         ) : <div className="w-10"></div>}
-        <div className="text-xs font-bold text-[hsl(var(--muted-foreground))] tracking-widest uppercase">{step} / 4 QADAM</div>
+        <div className="text-xs font-bold text-[hsl(var(--muted-foreground))] tracking-widest uppercase">{step} / 5 QADAM</div>
       </div>
 
       <div className="flex-1 flex flex-col px-6 max-w-md w-full mx-auto pb-10 relative z-10">
@@ -264,7 +272,6 @@ export default function SignupPage() {
                 </div>
               ))}
             </div>
-            
             <div className="mt-auto flex flex-col gap-5">
               <button onClick={nextStep} className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all">
                 Davom etish <ArrowRight size={18} />
@@ -275,28 +282,15 @@ export default function SignupPage() {
 
         {step === 2 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col">
-            <div className="mt-4 mb-6">
-              <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">O'zingizni tanishtiring</h2>
-            </div>
+            <div className="mt-4 mb-6"><h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">O'zingizni tanishtiring</h2></div>
             <div className="space-y-4">
-              
-              {/* TO'G'RILANDI: Ism familiya qutisi o'z holiga qaytarildi */}
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">To'liq ismingiz (Ism va Familiya)</label>
                 <div className="relative">
                   <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
-                  <input 
-                    type="text" 
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={handleChange}
-                    placeholder="Masalan: Shoxjaxon Rabimqulov" 
-                    required
-                    className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-4 pl-12 pr-4 rounded-2xl text-sm font-semibold outline-none focus:border-[hsl(var(--accent))] text-[hsl(var(--foreground))] transition-all"
-                  />
+                  <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} placeholder="Masalan: Shoxjaxon Rabimqulov" required className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-4 pl-12 pr-4 rounded-2xl text-sm font-semibold outline-none focus:border-[hsl(var(--accent))] text-[hsl(var(--foreground))] transition-all" />
                 </div>
               </div>
-              
               {error && <p className="text-red-500 text-sm font-semibold ml-2">{error}</p>}
             </div>
 
@@ -305,11 +299,9 @@ export default function SignupPage() {
                 <span className="text-[13px] font-medium text-[hsl(var(--muted-foreground))]">Allaqachon hisobingiz bormi? </span>
                 <Link href="/login" className="text-[13px] font-bold text-[hsl(var(--foreground))] hover:text-[hsl(var(--accent))] underline underline-offset-2">Kirish</Link>
               </div>
-
               <Link href="/merchant/signup" className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] py-3.5 text-[15px] font-bold text-[hsl(var(--foreground))] hover:border-[hsl(var(--accent))] hover:text-[hsl(var(--accent))] active:scale-95 transition-all shadow-sm">
                 <Store size={18} /> Biznes sifatida ro'yxatdan o'tish
               </Link>
-
               <button onClick={nextStep} className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all">
                 Keyingisi <ArrowRight size={18} />
               </button>
@@ -319,11 +311,8 @@ export default function SignupPage() {
 
         {step === 3 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col">
-            <div className="mt-4 mb-6">
-              <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">Talaba ma'lumotlari</h2>
-            </div>
+            <div className="mt-4 mb-6"><h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">Talaba ma'lumotlari</h2></div>
             <div className="space-y-4 mb-8">
-              
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Talaba ID</label>
                 <div className="relative">
@@ -341,7 +330,6 @@ export default function SignupPage() {
                   </div>
                   <ChevronDown className={`absolute right-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] transition-transform ${isUniOpen ? 'rotate-180' : ''}`} size={20} />
                 </div>
-
                 {isUniOpen && (
                   <div className="absolute top-[100%] left-0 w-full mt-2 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl shadow-xl z-50 max-h-[250px] flex flex-col overflow-hidden">
                     <div className="p-3 border-b border-[hsl(var(--border))] flex items-center gap-2 bg-[hsl(var(--secondary)/.5)]">
@@ -351,14 +339,11 @@ export default function SignupPage() {
                     <div className="overflow-y-auto flex-1 p-2 space-y-1">
                       {filteredUnis.length > 0 ? (
                         filteredUnis.map((uni, idx) => (
-                          <div key={idx} onClick={() => { setFormData({ ...formData, university: uni }); setIsUniOpen(false); setUniSearch(''); }} className={`p-3 text-sm rounded-xl cursor-pointer transition-colors ${formData.university === uni ? 'bg-[hsl(var(--accent)/.1)] text-[hsl(var(--accent))] font-bold' : 'text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))]'}`}>
-                            {uni}
-                          </div>
+                          <div key={idx} onClick={() => { setFormData({ ...formData, university: uni }); setIsUniOpen(false); setUniSearch(''); }} className={`p-3 text-sm rounded-xl cursor-pointer transition-colors ${formData.university === uni ? 'bg-[hsl(var(--accent)/.1)] text-[hsl(var(--accent))] font-bold' : 'text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))]'}`}>{uni}</div>
                         ))
                       ) : (
                         <div className="p-3 text-sm text-[hsl(var(--muted-foreground))] text-center">Topilmadi. O'zingiz kiriting:</div>
                       )}
-                      
                       {uniSearch && !filteredUnis.includes(uniSearch) && (
                         <div onClick={() => { setFormData({ ...formData, university: uniSearch }); setIsUniOpen(false); setUniSearch(''); }} className="p-3 text-sm rounded-xl cursor-pointer bg-[hsl(var(--accent)/.1)] text-[hsl(var(--accent))] hover:bg-[hsl(var(--accent)/.2)] transition-colors font-semibold flex items-center justify-between">
                           <span>"{uniSearch}" deb saqlash</span> <Check size={16} />
@@ -369,34 +354,17 @@ export default function SignupPage() {
                 )}
               </div>
 
-              {/* TO'G'RILANDI: Asosiy parol va ko'z ikonka */}
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Murakkab Parol yarating</label>
                 <div className="relative">
                   <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
-                  <input 
-                    type={showPassword ? "text" : "password"} 
-                    name="password" 
-                    value={formData.password} 
-                    onChange={handleChange} 
-                    placeholder="Masalan: Pa$$w0rd!" 
-                    className="w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-12 font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))]" 
-                  />
-                  <button 
-                    type="button" 
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors outline-none"
-                  >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
+                  <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange} placeholder="Masalan: Pa$$w0rd!" className="w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-12 font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))]" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors outline-none">{showPassword ? <EyeOff size={20} /> : <Eye size={20} />}</button>
                 </div>
-                
                 <div className="mt-2.5 px-2">
                   <div className="flex justify-between items-center mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
                     <span>Parol xavfsizligi</span>
-                    <span className={strength.text === 'Oson' ? 'text-red-500' : strength.text === "O'rtacha" ? 'text-yellow-500' : strength.text === 'Kuchli' ? 'text-green-500' : ''}>
-                      {strength.text}
-                    </span>
+                    <span className={strength.text === 'Oson' ? 'text-red-500' : strength.text === "O'rtacha" ? 'text-yellow-500' : strength.text === 'Kuchli' ? 'text-green-500' : ''}>{strength.text}</span>
                   </div>
                   <div className="h-1.5 w-full bg-[hsl(var(--secondary))] rounded-full overflow-hidden flex">
                     <div className={`h-full transition-all duration-300 ease-out ${strength.color}`} style={{ width: strength.width }}></div>
@@ -404,26 +372,12 @@ export default function SignupPage() {
                 </div>
               </div>
 
-              {/* TO'G'RILANDI: Tasdiqlash paroli va uning alohida ko'z ikonasi */}
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Parolni tasdiqlang</label>
                 <div className="relative">
                   <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
-                  <input 
-                    type={showConfirmPassword ? "text" : "password"} 
-                    name="confirmPassword" 
-                    value={formData.confirmPassword} 
-                    onChange={handleChange} 
-                    placeholder="Parolni qayta kiriting" 
-                    className="w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-12 font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))]" 
-                  />
-                  <button 
-                    type="button" 
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors outline-none"
-                  >
-                    {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
+                  <input type={showConfirmPassword ? "text" : "password"} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="Parolni qayta kiriting" className="w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-12 font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))]" />
+                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors outline-none">{showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}</button>
                 </div>
               </div>
               
@@ -436,15 +390,55 @@ export default function SignupPage() {
           </div>
         )}
 
+        {/* YANGI: 4-QADAM - HUJJAT YUKLASH */}
         {step === 4 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col items-center justify-center">
             <div className="text-center mb-10 mt-auto">
+              <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))] mb-2">Hujjat yuklang</h2>
+              <p className="text-sm text-[hsl(var(--muted-foreground))] px-4">
+                Tasdiqlash uchun <b>Talabalik guvohnomasi</b> yoki <b>ID kartangiz</b> rasmini yuklang. Bu rasm faqat Adminlarga ko'rinadi.
+              </p>
+            </div>
+
+            <div className="relative group mb-auto w-full max-w-[280px]">
+              <input type="file" ref={docInputRef} onChange={handleDocUpload} accept="image/*" className="hidden" />
+              <div 
+                onClick={() => docInputRef.current?.click()} 
+                className="w-full aspect-[1.6/1] cursor-pointer overflow-hidden rounded-3xl bg-[hsl(var(--secondary))] border-4 border-dashed border-[hsl(var(--border))] hover:border-[hsl(var(--accent))] flex items-center justify-center transition-all shadow-sm"
+              >
+                {documentPreview ? (
+                  <img src={documentPreview} alt="Document" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="flex flex-col items-center text-[hsl(var(--muted-foreground))]">
+                    <FileImage size={48} className="opacity-50 mb-3" />
+                    <span className="text-sm font-bold uppercase tracking-wider">Rasm tanlash</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {error && <p className="text-red-500 text-[13px] font-bold mb-4 text-center">{error}</p>}
+
+            <button 
+              disabled={isLoading || !documentFile} 
+              onClick={nextStep} 
+              className="mt-auto flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all disabled:opacity-50"
+            >
+              {isLoading ? <Loader2 className="animate-spin" /> : <>Saqlash va Davom etish <ArrowRight size={18}/></>}
+            </button>
+          </div>
+        )}
+
+        {/* 5-QADAM - PROFIL RASMI */}
+        {step === 5 && (
+          <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col items-center justify-center">
+            <div className="text-center mb-10 mt-auto">
               <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))] mb-2">Profil rasmi</h2>
-              <p className="text-sm text-[hsl(var(--muted-foreground))]">Hisobingiz muvaffaqiyatli yaratildi! <br/> Do'konlarda oson tanilish uchun rasm yuklang.</p>
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">Dasturda chiroyli ko'rinishi uchun <br/> yuzingiz ko'ringan rasm yuklang.</p>
             </div>
             <div className="relative group mb-auto">
-              <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
-              <div onClick={() => fileInputRef.current?.click()} className="grid h-40 w-40 cursor-pointer place-items-center overflow-hidden rounded-full bg-[hsl(var(--secondary))] border-4 border-dashed border-[hsl(var(--border))] hover:border-[hsl(var(--accent))] transition-all">
+              <input type="file" ref={avatarInputRef} onChange={handleAvatarUpload} accept="image/*" className="hidden" />
+              <div onClick={() => avatarInputRef.current?.click()} className="grid h-40 w-40 cursor-pointer place-items-center overflow-hidden rounded-[40px] bg-[hsl(var(--secondary))] border-4 border-dashed border-[hsl(var(--border))] hover:border-[hsl(var(--accent))] transition-all">
                 {avatarPreview ? <img src={avatarPreview} alt="Profile" className="h-full w-full object-cover" /> : <Camera size={44} className="opacity-50 text-[hsl(var(--muted-foreground))]" />}
               </div>
             </div>
@@ -456,7 +450,7 @@ export default function SignupPage() {
                 </button>
               ) : (
                 <>
-                  <button onClick={() => fileInputRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all">
+                  <button onClick={() => avatarInputRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all">
                     <Camera size={20} /> Rasm yuklash
                   </button>
                   <button disabled={isLoading} onClick={handleSkip} className="py-3 text-sm font-bold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors disabled:opacity-50">
