@@ -10,14 +10,17 @@ export default function MerchantHome() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No user");
 
-      // 1. Hamma ko'rishlar (views) ni olamiz
-      const { data: views } = await supabase.from('discount_views').select('student_id').eq('merchant_id', user.id);
+      // 1. HAQIQIY MIJOZLAR (Faqat skaner qilingan talabalar)
+      const { data: scans } = await supabase.from('scan_history').select('student_id').eq('merchant_id', user.id);
       
-      // 2. Noyob talabalarni (Jami Mijozlarni) hisoblaymiz (Set yordamida takroriylarni o'chiramiz)
-      const uniqueStudents = new Set(views?.map(v => v.student_id)).size;
+      // Set orqali bir xil talaba 10 marta kelsa ham, uni 1 ta yagona mijoz deb hisoblaymiz
+      const uniqueCustomers = new Set(scans?.map(s => s.student_id)).size;
+
+      // 2. Ko'rishlar (Sahifada chegirmangizni ko'rganlar)
+      const { data: views } = await supabase.from('discount_views').select('student_id').eq('merchant_id', user.id);
       const totalViews = views?.length || 0;
 
-      // 3. Faol chegirmalarni hisoblaymiz (faqat sanasi o'tib ketmaganlarini)
+      // 3. Faol chegirmalar
       const today = new Date().toISOString().split('T')[0];
       const { count: activeCount } = await supabase
         .from('discounts')
@@ -26,12 +29,12 @@ export default function MerchantHome() {
         .gte('end_date', today);
 
       return {
-        customers: uniqueStudents,
+        customers: uniqueCustomers, // <--- Endi aynan skaner qilinganlar soni chiqadi!
         activeDiscounts: activeCount || 0,
         views: totalViews
       };
     },
-    refetchInterval: 1000 * 60 // Har daqiqada yangilanib turadi
+    refetchInterval: 1000 * 60 
   });
 
   return (
@@ -57,7 +60,7 @@ export default function MerchantHome() {
           <div className="col-span-2 bg-[hsl(var(--card))] p-5 rounded-3xl border border-[hsl(var(--border))] shadow-sm flex items-center justify-between">
             <div>
               <p className="text-3xl font-bold">{stats?.views || 0}</p>
-              <p className="text-xs font-semibold text-[hsl(var(--muted-foreground))] mt-1">Sizning chegirmalaringiz ko'rildi</p>
+              <p className="text-xs font-semibold text-[hsl(var(--muted-foreground))] mt-1">Chegirmalaringiz ko'rildi</p>
             </div>
             <div className="w-14 h-14 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-500">
               <Eye size={28}/>

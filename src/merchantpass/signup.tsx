@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Store, ArrowRight, ArrowLeft, CheckCircle2, LockKeyhole, UserRound, Loader2, Briefcase, MapPin, Clock, Camera } from 'lucide-react';
+import { Store, ArrowRight, ArrowLeft, CheckCircle2, LockKeyhole, UserRound, Loader2, Briefcase, MapPin, Clock, Camera, Eye, EyeOff, Navigation } from 'lucide-react';
 import { Link } from 'wouter';
 import { supabase } from '@/lib/supabase';
 
@@ -35,6 +35,13 @@ export default function MerchantSignup() {
   const [error, setError] = useState('');
   const [nameAvailable, setNameAvailable] = useState<boolean | null>(null);
 
+  // YANGILIK: Parollarni ko'rsatish statelari
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // YANGILIK: GPS lokatsiya uchun state
+  const [isLocating, setIsLocating] = useState(false);
+
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -66,17 +73,44 @@ export default function MerchantSignup() {
     }
   };
 
+  // YANGILIK: REAL GPS LOKATSIYA MANTIG'I (Xaritadan oladi)
   const handleMapPick = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setFormData(prev => ({ ...prev, location: "Toshkent sh., Amir Temur ko'chasi 108-uy" }));
-      setLoading(false);
-    }, 800);
+    if (!navigator.geolocation) {
+      setError("Qurilmangizda joylashuvni aniqlash imkoniyati yo'q.");
+      return;
+    }
+    
+    setIsLocating(true);
+    setError('');
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          
+          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=uz`);
+          const data = await response.json();
+          
+          if (data && data.display_name) {
+            setFormData(prev => ({ ...prev, location: data.display_name }));
+          } else {
+            setFormData(prev => ({ ...prev, location: `${latitude}, ${longitude}` }));
+          }
+        } catch (err) {
+          setError("Internet orqali manzilni aniqlashda xatolik yuz berdi.");
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      (err) => {
+        setError("Joylashuvni aniqlashga ruxsat bermadingiz yoki GPS o'chiq.");
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
 
-  // 1-O'ZGARISH: Nomni tekshirish logikasi kuchaytirildi
   const checkNameAvailability = async () => {
-    // Ortiqcha probellarni olib tashlaymiz: "  Do'kon    Nomi  " => "Do'kon Nomi"
     const cleanName = formData.name.trim().replace(/\s+/g, ' ');
     
     if (cleanName.length < 3) {
@@ -84,7 +118,6 @@ export default function MerchantSignup() {
       return;
     }
     
-    // Tozalangan nomni Inputga qaytarib yozib qo'yamiz (chiroyli ko'rinishi uchun)
     setFormData(prev => ({ ...prev, name: cleanName }));
     setLoading(true);
 
@@ -92,7 +125,7 @@ export default function MerchantSignup() {
       const { data, error: fetchError } = await supabase
         .from('merchants')
         .select('name')
-        .ilike('name', cleanName); // Katta-kichik harfni farqlamaydi
+        .ilike('name', cleanName); 
 
       if (fetchError) throw fetchError;
 
@@ -142,7 +175,7 @@ export default function MerchantSignup() {
         .insert([{
           id: authData.user.id,
           category: formData.category,
-          name: formData.name, // Tozalangan nom ketadi
+          name: formData.name,
           description: mergedDescription,
           logo_url: null,
           discount_percent: 0, 
@@ -299,6 +332,7 @@ export default function MerchantSignup() {
           </div>
         )}
 
+        {/* YANGILIK: 4-QADAMDA REAL GPS TUGMASI QO'SHILDI */}
         {step === 4 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col">
             <div className="mt-4 mb-8">
@@ -310,15 +344,14 @@ export default function MerchantSignup() {
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Manzil</label>
                 
-                <div 
-                  onClick={handleMapPick}
-                  className="w-full h-[120px] bg-[hsl(var(--secondary)/.5)] rounded-2xl border-2 border-dashed border-[hsl(var(--border))] overflow-hidden relative mb-3 flex items-center justify-center cursor-pointer hover:border-[hsl(var(--accent))] transition-colors group"
+                <button 
+                  onClick={handleMapPick} 
+                  disabled={isLocating}
+                  className="mb-3 w-full flex items-center justify-center gap-2 bg-[hsl(var(--accent)/.15)] text-[hsl(var(--accent))] font-bold py-3 rounded-2xl border border-[hsl(var(--accent)/.3)] active:scale-95 transition-all"
                 >
-                  <div className="z-10 flex flex-col items-center gap-2 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--accent))] transition-colors">
-                    {loading ? <Loader2 className="animate-spin" size={28} /> : <MapPin size={28} />}
-                    <span className="text-xs font-bold">{loading ? "Manzil qidirilmoqda..." : "Xaritadan belgilash"}</span>
-                  </div>
-                </div>
+                  {isLocating ? <Loader2 className="animate-spin" size={18}/> : <Navigation size={18}/>}
+                  {isLocating ? "Xaritadan qidirilmoqda..." : "📍 Hozirgi joylashuvimni aniqlash"}
+                </button>
 
                 <div className="relative">
                   <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
@@ -364,6 +397,8 @@ export default function MerchantSignup() {
 
             </div>
 
+            {error && <p className="text-red-500 text-[13px] font-bold mt-2">{error}</p>}
+
             <button 
               onClick={nextStep}
               disabled={!formData.location}
@@ -374,6 +409,7 @@ export default function MerchantSignup() {
           </div>
         )}
 
+        {/* YANGILIK: 5-QADAMDA PAROL KO'RSATISH (EYE) QO'SHILDI */}
         {step === 5 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col">
             <div className="mt-4 mb-8">
@@ -382,29 +418,40 @@ export default function MerchantSignup() {
             </div>
             
             <div className="space-y-4">
-              <div className="relative">
-                <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
-                <input
-                  type="text"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleChange}
-                  placeholder="Login o'ylab toping (bo'sh joysiz)"
-                  className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] rounded-2xl py-4 pl-12 pr-4 text-sm font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))] transition-all"
-                />
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Login</label>
+                <div className="relative">
+                  <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
+                  <input
+                    type="text"
+                    name="username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    placeholder="Biznes uchun login"
+                    className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] rounded-2xl py-4 pl-12 pr-4 text-sm font-bold outline-none focus:border-[hsl(var(--accent))] text-[hsl(var(--foreground))] transition-all"
+                  />
+                </div>
               </div>
 
               <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Parol</label>
                 <div className="relative">
                   <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="Parol kiriting"
-                    className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] rounded-2xl py-4 pl-12 pr-4 text-sm font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))] transition-all"
+                    className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] rounded-2xl py-4 pl-12 pr-12 text-sm font-bold outline-none focus:border-[hsl(var(--accent))] text-[hsl(var(--foreground))] transition-all"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
                 </div>
                 
                 <div className="mt-2.5 px-2">
@@ -423,13 +470,20 @@ export default function MerchantSignup() {
               <div className="relative">
                 <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
                 <input
-                  type="password"
+                  type={showConfirmPassword ? "text" : "password"}
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   placeholder="Parolni takrorlang"
-                  className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] rounded-2xl py-4 pl-12 pr-4 text-sm font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))] transition-all"
+                  className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] rounded-2xl py-4 pl-12 pr-12 text-sm font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))] transition-all"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+                >
+                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
               </div>
             </div>
             

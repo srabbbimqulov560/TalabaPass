@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Link } from 'wouter';
-import { ArrowLeft, ArrowRight, Camera, LockKeyhole, UserRound, IdCard, CheckCircle2, Circle, Loader2, GraduationCap, ChevronDown, Search, Check, Store } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Camera, LockKeyhole, UserRound, IdCard, CheckCircle2, Circle, Loader2, GraduationCap, ChevronDown, Search, Check, Store, Eye, EyeOff } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 
@@ -70,6 +70,10 @@ const getPasswordStrength = (pass: string) => {
 
 export default function SignupPage() {
   const { t, lang, setLang } = useLanguage();
+  
+  // TO'G'RILANDI: State'lar komponent ichiga olindi va ikkita alohida state yaratildi
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({ 
@@ -261,7 +265,6 @@ export default function SignupPage() {
               ))}
             </div>
             
-            {/* 1-BOSQICHDAN "ALLAQACHON HISOBINGIZ BORMI" OLIB TASHLANDI */}
             <div className="mt-auto flex flex-col gap-5">
               <button onClick={nextStep} className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all">
                 Davom etish <ArrowRight size={18} />
@@ -276,25 +279,33 @@ export default function SignupPage() {
               <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">O'zingizni tanishtiring</h2>
             </div>
             <div className="space-y-4">
+              
+              {/* TO'G'RILANDI: Ism familiya qutisi o'z holiga qaytarildi */}
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">To'liq ismingiz (Ism va Familiya)</label>
                 <div className="relative">
                   <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
-                  <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} placeholder="Masalan: Shoxjaxon Rabimqulov" className="w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-4 font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))]" />
+                  <input 
+                    type="text" 
+                    name="fullName"
+                    value={formData.fullName}
+                    onChange={handleChange}
+                    placeholder="Masalan: Shoxjaxon Rabimqulov" 
+                    required
+                    className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-4 pl-12 pr-4 rounded-2xl text-sm font-semibold outline-none focus:border-[hsl(var(--accent))] text-[hsl(var(--foreground))] transition-all"
+                  />
                 </div>
               </div>
+              
               {error && <p className="text-red-500 text-sm font-semibold ml-2">{error}</p>}
             </div>
 
-            {/* YOKI "KIRISH", YOKI "BIZNES", YOKI "KEYINGISI" BARCHASI SHU YERDA JAMLANDI */}
             <div className="mt-auto flex flex-col gap-3">
-              
               <div className="text-center mb-2">
                 <span className="text-[13px] font-medium text-[hsl(var(--muted-foreground))]">Allaqachon hisobingiz bormi? </span>
                 <Link href="/login" className="text-[13px] font-bold text-[hsl(var(--foreground))] hover:text-[hsl(var(--accent))] underline underline-offset-2">Kirish</Link>
               </div>
 
-              {/* ENDI BU YERDA <Link> ISHLATILDI VA SAHIFA YANGILANMAYDI */}
               <Link href="/merchant/signup" className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] py-3.5 text-[15px] font-bold text-[hsl(var(--foreground))] hover:border-[hsl(var(--accent))] hover:text-[hsl(var(--accent))] active:scale-95 transition-all shadow-sm">
                 <Store size={18} /> Biznes sifatida ro'yxatdan o'tish
               </Link>
@@ -358,11 +369,26 @@ export default function SignupPage() {
                 )}
               </div>
 
+              {/* TO'G'RILANDI: Asosiy parol va ko'z ikonka */}
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Murakkab Parol yarating</label>
                 <div className="relative">
                   <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
-                  <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="Masalan: Pa$$w0rd!" className="w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-4 font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))]" />
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    name="password" 
+                    value={formData.password} 
+                    onChange={handleChange} 
+                    placeholder="Masalan: Pa$$w0rd!" 
+                    className="w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-12 font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))]" 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors outline-none"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
                 </div>
                 
                 <div className="mt-2.5 px-2">
@@ -378,11 +404,26 @@ export default function SignupPage() {
                 </div>
               </div>
 
+              {/* TO'G'RILANDI: Tasdiqlash paroli va uning alohida ko'z ikonasi */}
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Parolni tasdiqlang</label>
                 <div className="relative">
                   <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
-                  <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="Parolni qayta kiriting" className="w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-4 font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))]" />
+                  <input 
+                    type={showConfirmPassword ? "text" : "password"} 
+                    name="confirmPassword" 
+                    value={formData.confirmPassword} 
+                    onChange={handleChange} 
+                    placeholder="Parolni qayta kiriting" 
+                    className="w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-12 font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))]" 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors outline-none"
+                  >
+                    {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
                 </div>
               </div>
               
