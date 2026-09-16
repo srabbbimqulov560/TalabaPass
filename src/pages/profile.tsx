@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { 
   ShieldCheck, UserRound, ScanBarcode, Rotate3d, LogOut, Camera, 
-  LockKeyhole, ChevronRight, Globe, Moon, Shield, CircleHelp, CheckCircle2, Circle, Loader2
+  LockKeyhole, ChevronRight, Globe, Moon, Shield, CircleHelp, CheckCircle2, Circle, Loader2, Edit3, X, Eye, EyeOff
 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
@@ -12,6 +12,22 @@ function initials(firstName?: string, lastName?: string) {
   if (firstName && lastName) return (firstName[0] + lastName[0]).toUpperCase();
   return 'SP'; 
 }
+
+// PAROL KUCHLILIGINI TEKSHIRISH FUNKSIYASI (Ro'yxatdan o'tishdagi kabi)
+const getPasswordStrength = (pass: string) => {
+  if (!pass) return { score: 0, text: '', color: 'bg-transparent', width: '0%' };
+  let score = 0;
+  if (pass.length >= 8) score += 1;
+  if (/[A-Z]/.test(pass)) score += 1;
+  if (/[a-z]/.test(pass)) score += 1;
+  if (/\d/.test(pass)) score += 1;
+  if (/[^A-Za-z0-9]/.test(pass)) score += 1;
+
+  if (score <= 2) return { score, text: 'Oson', color: 'bg-red-500', width: '33.3%' };
+  if (score === 3 || score === 4) return { score, text: "O'rtacha", color: 'bg-yellow-500', width: '66.6%' };
+  if (score === 5) return { score, text: 'Kuchli', color: 'bg-green-500', width: '100%' };
+  return { score: 0, text: '', color: 'bg-transparent', width: '0%' };
+};
 
 export default function ProfilePage() {
   const { t, lang, setLang } = useLanguage();
@@ -26,6 +42,16 @@ export default function ProfilePage() {
   });
   const [isPrivateAccount, setIsPrivateAccount] = useState(false);
   const [isLangModalOpen, setIsLangModalOpen] = useState(false);
+  
+  // TAHRIRLASH MODALI UCHUN STATELAR
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', oldPassword: '', newPassword: '', confirmPassword: '' });
+  const [showOldPass, setShowOldPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+  
+  const [isSaving, setIsSaving] = useState(false);
+  const [editError, setEditError] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -39,24 +65,34 @@ export default function ProfilePage() {
     }
   }, [isDarkTheme]);
 
-  // YAKKA SHU FUNKSIYA TO'G'RILANDI: Rasm saqlash xatosi
+  useEffect(() => {
+    if (user && isEditModalOpen) {
+      setEditForm({ 
+        firstName: user.first_name || '', 
+        lastName: user.last_name || '', 
+        oldPassword: '', 
+        newPassword: '', 
+        confirmPassword: '' 
+      });
+      setEditError('');
+    }
+  }, [user, isEditModalOpen]);
+
+  const strength = getPasswordStrength(editForm.newPassword);
+
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !user) return; // localStorage o'rniga hook orqali kelgan 'user' ni tekshiramiz
+    if (!file || !user) return; 
 
     try {
       setIsUploading(true);
-      
       const localUrl = URL.createObjectURL(file);
       if (updateAvatar) updateAvatar(localUrl);
 
-      // XATOLIK SABABI: token o'rniga haqiqiy user.id ishlatamiz
       const userId = user.id;
-
       const fileExt = file.name.split('.').pop() || 'jpg';
-      const fileName = `${userId}-${Date.now()}.${fileExt}`; // Math.random() o'rniga Date.now() ishonchliroq
+      const fileName = `${userId}-${Date.now()}.${fileExt}`; 
 
-      // upsert: true qo'shildi - eski rasm o'rniga muammosiz yozishi uchun
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(fileName, file, { upsert: true });
@@ -69,14 +105,12 @@ export default function ProfilePage() {
 
       const newAvatarUrl = publicUrlData.publicUrl;
 
-      // To'g'ri userId bilan bazani yangilaymiz
       const { error: updateError } = await supabase
         .from('students')
         .update({ avatar_url: newAvatarUrl })
         .eq('id', userId);
 
       if (updateError) throw updateError;
-      
       if (updateAvatar) updateAvatar(newAvatarUrl);
 
     } catch (error) {
@@ -96,6 +130,59 @@ export default function ProfilePage() {
   const handleLangSelect = (selectedLang: 'uz' | 'en' | 'ru') => {
     setLang(selectedLang);
     setIsLangModalOpen(false);
+  };
+
+  // SHAXSIY MA'LUMOTLAR VA PAROLNI TEKSHIRIB SAQLASH
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setIsSaving(true);
+    setEditError('');
+
+    try {
+      if (!editForm.firstName.trim() || !editForm.lastName.trim()) {
+        throw new Error("Ism va familiya bo'sh bo'lishi mumkin emas!");
+      }
+
+      // 1. Ism va familiyani bazada yangilash
+      const { error: dbError } = await supabase
+        .from('students')
+        .update({ first_name: editForm.firstName.trim(), last_name: editForm.lastName.trim() })
+        .eq('id', user.id);
+
+      if (dbError) throw dbError;
+
+      // 2. Agar foydalanuvchi parolni o'zgartirmoqchi bo'lsa
+      if (editForm.oldPassword || editForm.newPassword || editForm.confirmPassword) {
+        if (!editForm.oldPassword) throw new Error("Parolni o'zgartirish uchun eski parolni kiriting!");
+        if (!editForm.newPassword) throw new Error("Yangi parolni kiriting!");
+        if (editForm.newPassword !== editForm.confirmPassword) throw new Error("Yangi parollar bir xil emas!");
+        if (strength.score < 5) throw new Error("Yangi parol yetarlicha kuchli emas (Yashil darajaga yetkazing)!");
+
+        // Eski parolni to'g'riligini tekshirish uchun joriy email bilan qayta sign-in qilamiz
+        const fakeEmail = `${user.student_id.toLowerCase()}@talabapass.uz`;
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: fakeEmail,
+          password: editForm.oldPassword
+        });
+
+        if (signInError) {
+          throw new Error("Eski parol xato kiritildi!");
+        }
+
+        // Agar eski parol to'g'ri bo'lsa, yangi parolni yozamiz
+        const { error: passwordError } = await supabase.auth.updateUser({ password: editForm.newPassword });
+        if (passwordError) throw passwordError;
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+      setIsEditModalOpen(false);
+      alert("Ma'lumotlar muvaffaqiyatli saqlandi!");
+
+    } catch (err: any) {
+      setEditError(err.message || "Xatolik yuz berdi");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const avatar = user?.avatar_url;
@@ -176,6 +263,14 @@ export default function ProfilePage() {
             
             <div className="bg-[hsl(var(--card))] rounded-[24px] border border-[hsl(var(--card-border))] overflow-hidden flex flex-col shadow-soft">
               
+              <div onClick={() => setIsEditModalOpen(true)} className="flex items-center justify-between p-4 cursor-pointer hover:bg-[hsl(var(--secondary)/.5)] transition-colors border-b border-[hsl(var(--border))]">
+                <div className="flex items-center gap-3">
+                  <Edit3 size={22} className="text-[hsl(var(--foreground))]" />
+                  <span className="text-[15px] font-semibold text-[hsl(var(--foreground))]">Shaxsiy ma'lumotlar</span>
+                </div>
+                <ChevronRight size={20} className="text-[hsl(var(--muted-foreground))]" />
+              </div>
+
               <div onClick={() => setIsLangModalOpen(true)} className="flex items-center justify-between p-4 cursor-pointer hover:bg-[hsl(var(--secondary)/.5)] transition-colors border-b border-[hsl(var(--border))]">
                 <div className="flex items-center gap-3">
                   <Globe size={22} className="text-[hsl(var(--foreground))]" />
@@ -234,6 +329,107 @@ export default function ProfilePage() {
         )}
       </div>
 
+      {/* 🌟 TAHRIRLASH MODALI (3 TA PAROL INPUTI BILAN) */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !isSaving && setIsEditModalOpen(false)} />
+          <div className="relative w-full max-w-sm bg-[hsl(var(--card))] rounded-[32px] p-6 shadow-2xl animate-in zoom-in-95 duration-300 border border-[hsl(var(--border))] my-8 max-h-[90vh] overflow-y-auto">
+            
+            <button onClick={() => !isSaving && setIsEditModalOpen(false)} className="absolute top-4 right-4 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
+              <X size={24} />
+            </button>
+            
+            <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-6">Shaxsiy ma'lumotlar</h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold uppercase text-[hsl(var(--muted-foreground))] block mb-1">Ism</label>
+                <input 
+                  type="text" value={editForm.firstName} onChange={(e) => setEditForm({...editForm, firstName: e.target.value})}
+                  className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-3 px-4 rounded-xl font-semibold outline-none focus:border-[hsl(var(--primary))] text-[hsl(var(--foreground))]" 
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase text-[hsl(var(--muted-foreground))] block mb-1">Familiya</label>
+                <input 
+                  type="text" value={editForm.lastName} onChange={(e) => setEditForm({...editForm, lastName: e.target.value})}
+                  className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-3 px-4 rounded-xl font-semibold outline-none focus:border-[hsl(var(--primary))] text-[hsl(var(--foreground))]" 
+                />
+              </div>
+
+              <hr className="border-t border-[hsl(var(--border))] my-4" />
+              <p className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-2">Parolni o'zgartirish (ixtiyoriy)</p>
+
+              {/* Eski parol */}
+              <div>
+                <label className="text-[11px] font-bold text-[hsl(var(--muted-foreground))] block mb-1">Eski parol</label>
+                <div className="relative">
+                  <input 
+                    type={showOldPass ? "text" : "password"} placeholder="Joriy parol..." value={editForm.oldPassword} onChange={(e) => setEditForm({...editForm, oldPassword: e.target.value})}
+                    className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-3 pl-4 pr-12 rounded-xl font-semibold outline-none focus:border-[hsl(var(--primary))] text-[hsl(var(--foreground))]" 
+                  />
+                  <button type="button" onClick={() => setShowOldPass(!showOldPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]">
+                    {showOldPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Yangi parol */}
+              <div>
+                <label className="text-[11px] font-bold text-[hsl(var(--muted-foreground))] block mb-1">Yangi parol</label>
+                <div className="relative">
+                  <input 
+                    type={showNewPass ? "text" : "password"} placeholder="Yangi parol..." value={editForm.newPassword} onChange={(e) => setEditForm({...editForm, newPassword: e.target.value})}
+                    className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-3 pl-4 pr-12 rounded-xl font-semibold outline-none focus:border-[hsl(var(--primary))] text-[hsl(var(--foreground))]" 
+                  />
+                  <button type="button" onClick={() => setShowNewPass(!showNewPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]">
+                    {showNewPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                
+                {/* Real vaqtda Parol xavfsizligi chizig'i */}
+                {editForm.newPassword && (
+                  <div className="mt-2 px-1">
+                    <div className="flex justify-between items-center mb-1 text-[10px] font-bold uppercase text-[hsl(var(--muted-foreground))]">
+                      <span>Xavfsizlik</span>
+                      <span className={strength.text === 'Oson' ? 'text-red-500' : strength.text === "O'rtacha" ? 'text-yellow-500' : strength.text === 'Kuchli' ? 'text-green-500' : ''}>{strength.text}</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-[hsl(var(--secondary))] rounded-full overflow-hidden flex">
+                      <div className={`h-full transition-all duration-300 ease-out ${strength.color}`} style={{ width: strength.width }}></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Parolni tasdiqlash */}
+              <div>
+                <label className="text-[11px] font-bold text-[hsl(var(--muted-foreground))] block mb-1">Yangi parolni tasdiqlang</label>
+                <div className="relative">
+                  <input 
+                    type={showConfirmPass ? "text" : "password"} placeholder="Parolni qayta yozing..." value={editForm.confirmPassword} onChange={(e) => setEditForm({...editForm, confirmPassword: e.target.value})}
+                    className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-3 pl-4 pr-12 rounded-xl font-semibold outline-none focus:border-[hsl(var(--primary))] text-[hsl(var(--foreground))]" 
+                  />
+                  <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]">
+                    {showConfirmPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+              
+              {editError && <p className="text-red-500 text-xs font-semibold text-center pt-2">{editError}</p>}
+            </div>
+
+            <button 
+              disabled={isSaving} onClick={handleSaveProfile}
+              className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all disabled:opacity-50"
+            >
+              {isSaving ? <Loader2 className="animate-spin" /> : 'Saqlash'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* TILLAR MODALI */}
       {isLangModalOpen && (
         <div className="fixed inset-0 z-[45] flex flex-col justify-end" style={{ height: '100dvh' }}>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsLangModalOpen(false)} />
@@ -261,7 +457,7 @@ export default function ProfilePage() {
                   <span className="text-2xl">🇬🇧</span>
                   <span className="text-base font-semibold text-[hsl(var(--foreground))]">English</span>
                 </div>
-                {lang === 'en' ? <CheckCircle2 size={24} className="text-[hsl(var(--accent))]" /> : <Circle size={24} className="text-[hsl(var(--muted-foreground))]" />}
+                {lang === 'en' ? <CheckCircle2 size={24} className="text-[hsl(var(--accent))]" /> : <Circle size={24} className="text-[hsl(var(--accent-foreground))]" />}
               </div>
             </div>
           </div>
