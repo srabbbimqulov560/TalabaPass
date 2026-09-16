@@ -1,41 +1,40 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { Users, Store, Ticket, QrCode, Loader2 } from 'lucide-react';
+import { Users, Store, Ticket, QrCode, Loader2, Clock } from 'lucide-react';
 import AdminLayout from './AdminLayout';
+import { Link } from 'wouter';
 
 export default function AdminDashboard() {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['adminDashboardStats'],
     queryFn: async () => {
-      // Bir vaqtning o'zida barcha jadvallardagi sonlarni (count) tortib olamiz
       const [
-        { count: studentsCount },
-        { count: merchantsCount },
+        { count: activeStudents },
+        { count: pendingStudents },
+        { count: activeMerchants },
+        { count: pendingMerchants },
         { count: discountsCount },
         { count: scansCount }
       ] = await Promise.all([
-        supabase.from('students').select('*', { count: 'exact', head: true }),
-        supabase.from('merchants').select('*', { count: 'exact', head: true }),
+        supabase.from('students').select('*', { count: 'exact', head: true }).eq('is_active', true),
+        supabase.from('students').select('*', { count: 'exact', head: true }).eq('is_active', false),
+        supabase.from('merchants').select('*', { count: 'exact', head: true }).eq('is_active', true),
+        supabase.from('merchants').select('*', { count: 'exact', head: true }).eq('is_active', false),
         supabase.from('discounts').select('*', { count: 'exact', head: true }),
         supabase.from('scan_history').select('*', { count: 'exact', head: true })
       ]);
 
       return {
-        students: studentsCount || 0,
-        merchants: merchantsCount || 0,
+        activeStudents: activeStudents || 0,
+        pendingStudents: pendingStudents || 0,
+        activeMerchants: activeMerchants || 0,
+        pendingMerchants: pendingMerchants || 0,
         discounts: discountsCount || 0,
         scans: scansCount || 0
       };
     },
-    refetchInterval: 1000 * 30 // Har 30 soniyada yangilanib turadi
+    refetchInterval: 1000 * 30
   });
-
-  const statCards = [
-    { title: "Jami Talabalar", value: stats?.students, icon: Users, color: "text-blue-500", bg: "bg-blue-500/10" },
-    { title: "Faol Do'konlar", value: stats?.merchants, icon: Store, color: "text-green-500", bg: "bg-green-500/10" },
-    { title: "Barcha Chegirmalar", value: stats?.discounts, icon: Ticket, color: "text-orange-500", bg: "bg-orange-500/10" },
-    { title: "Jami Skanerlashlar", value: stats?.scans, icon: QrCode, color: "text-purple-500", bg: "bg-purple-500/10" }
-  ];
 
   return (
     <AdminLayout title="Umumiy Statistika">
@@ -44,28 +43,60 @@ export default function AdminDashboard() {
         <div className="flex justify-center py-20"><Loader2 className="animate-spin text-[hsl(var(--accent))]" size={40} /></div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {statCards.map((stat, idx) => (
-              <div key={idx} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-6 rounded-[24px] shadow-sm flex flex-col">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${stat.bg} ${stat.color}`}>
-                  <stat.icon size={24} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            {/* TALABALAR KARTOCHKASI */}
+            <Link href="/admin/students-report">
+              <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] hover:border-blue-500 hover:shadow-md cursor-pointer transition-all p-6 rounded-[24px] shadow-sm flex flex-col h-full relative group">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-blue-500/10 text-blue-500 group-hover:scale-110 transition-transform">
+                  <Users size={24} />
                 </div>
-                <h3 className="text-3xl font-display font-bold text-[hsl(var(--foreground))] mb-1">{stat.value}</h3>
-                <p className="text-[12px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">{stat.title}</p>
+                <h3 className="text-3xl font-display font-bold text-[hsl(var(--foreground))] mb-1">{stats?.activeStudents}</h3>
+                <p className="text-[12px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Tasdiqlangan Talabalar</p>
+                {stats?.pendingStudents ? (
+                  <div className="absolute top-6 right-6 flex items-center gap-1 text-[11px] font-bold bg-orange-500/10 text-orange-500 px-2 py-1 rounded-lg">
+                    <Clock size={12} /> {stats?.pendingStudents} ta kutmoqda
+                  </div>
+                ) : null}
               </div>
-            ))}
-          </div>
+            </Link>
 
-          <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[24px] p-8 flex items-center gap-6">
-            <div className="w-16 h-16 rounded-full bg-[hsl(var(--primary)/.1)] text-[hsl(var(--primary))] flex items-center justify-center shrink-0">
-              <span className="text-2xl">👋</span>
+            {/* DO'KONLAR KARTOCHKASI */}
+            <Link href="/admin/merchants-report">
+              <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] hover:border-green-500 hover:shadow-md cursor-pointer transition-all p-6 rounded-[24px] shadow-sm flex flex-col h-full relative group">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-green-500/10 text-green-500 group-hover:scale-110 transition-transform">
+                  <Store size={24} />
+                </div>
+                <h3 className="text-3xl font-display font-bold text-[hsl(var(--foreground))] mb-1">{stats?.activeMerchants}</h3>
+                <p className="text-[12px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Faol Do'konlar</p>
+                {stats?.pendingMerchants ? (
+                  <div className="absolute top-6 right-6 flex items-center gap-1 text-[11px] font-bold bg-orange-500/10 text-orange-500 px-2 py-1 rounded-lg">
+                    <Clock size={12} /> {stats?.pendingMerchants} ta kutmoqda
+                  </div>
+                ) : null}
+              </div>
+            </Link>
+
+            {/* BARCHA CHEGIRMALAR */}
+            <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-6 rounded-[24px] shadow-sm flex flex-col h-full">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-orange-500/10 text-orange-500">
+                <Ticket size={24} />
+              </div>
+              <h3 className="text-3xl font-display font-bold text-[hsl(var(--foreground))] mb-1">{stats?.discounts}</h3>
+              <p className="text-[12px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Barcha Chegirmalar</p>
             </div>
-            <div>
-              <h2 className="font-display text-xl font-bold text-[hsl(var(--foreground))] mb-1">Tizim barqaror ishlamoqda!</h2>
-              <p className="text-sm font-medium text-[hsl(var(--muted-foreground))]">
-                Chap tarafdagi menyu orqali do'konlarni tasdiqlashingiz yoki talabalar ro'yxatini nazorat qilishingiz mumkin.
-              </p>
-            </div>
+
+            {/* SKANERLASHLAR KARTOCHKASI */}
+            <Link href="/admin/scans-report">
+              <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] hover:border-purple-500 hover:shadow-md cursor-pointer transition-all p-6 rounded-[24px] shadow-sm flex flex-col h-full group">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-purple-500/10 text-purple-500 group-hover:scale-110 transition-transform">
+                  <QrCode size={24} />
+                </div>
+                <h3 className="text-3xl font-display font-bold text-[hsl(var(--foreground))] mb-1">{stats?.scans}</h3>
+                <p className="text-[12px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Jami Skanerlashlar</p>
+              </div>
+            </Link>
+
           </div>
         </>
       )}

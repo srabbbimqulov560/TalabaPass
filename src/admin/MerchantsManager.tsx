@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Store, CheckCircle, XCircle, Trash2, Loader2, MapPin } from 'lucide-react';
 import AdminLayout from './AdminLayout';
+import { logAdminAction } from '@/lib/adminLogger';
 
 export default function MerchantsManager() {
   const queryClient = useQueryClient();
@@ -17,54 +18,45 @@ export default function MerchantsManager() {
     }
   });
 
-  // Tablarga qarab filtrlash
   const pendingMerchants = merchants?.filter(m => m.is_active === false) || [];
   const activeMerchants = merchants?.filter(m => m.is_active === true) || [];
-  
   const displayList = activeTab === 'pending' ? pendingMerchants : activeMerchants;
 
-  // Tasdiqlash funksiyasi
-  const handleApprove = async (id: string) => {
+  const handleApprove = async (id: string, name: string) => {
     try {
       await supabase.from('merchants').update({ is_active: true }).eq('id', id);
+      
+      // TIZIM TARIXIGA YOZISH
+      await logAdminAction('TASDIQLADI', "DO'KON", name);
+
       queryClient.invalidateQueries({ queryKey: ['adminMerchants'] });
     } catch (err) {
       alert("Xatolik yuz berdi");
     }
   };
 
-  // Rad etish / O'chirish funksiyasi
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`ROSTDAN HAM O'CHIRASIZMI?\n\n"${name}" do'koni tizimdan butunlay tozalanadi. Boshqa do'kon bu nom va login bilan qayta ro'yxatdan o'tishi mumkin bo'ladi.`)) return;
+    if (!confirm(`Rostdan ham "${name}" do'konini tizimdan butunlay o'chirmoqchimisiz?`)) return;
     try {
-      // Yangi xavfsiz RPC funksiyamizni chaqiramiz
       const { error } = await supabase.rpc('delete_user_by_admin', { target_user_id: id });
       if (error) throw error;
-      
+
+      // TIZIM TARIXIGA YOZISH
+      await logAdminAction("O'CHIRDI / RAD ETDI", "DO'KON", name);
+
       queryClient.invalidateQueries({ queryKey: ['adminMerchants'] });
     } catch (err) {
-      alert("O'chirishda xatolik yuz berdi");
+      alert("O'chirishda xatolik");
     }
   };
 
   return (
     <AdminLayout title="Do'konlar (Hamkorlar)">
-      
-      {/* TABS */}
       <div className="flex items-center gap-2 bg-[hsl(var(--card))] p-1.5 rounded-2xl border border-[hsl(var(--border))] w-fit mb-6">
-        <button 
-          onClick={() => setActiveTab('pending')}
-          className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${activeTab === 'pending' ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}
-        >
-          Kutayotganlar
-          {pendingMerchants.length > 0 && (
-            <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">{pendingMerchants.length}</span>
-          )}
+        <button onClick={() => setActiveTab('pending')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${activeTab === 'pending' ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}>
+          Kutayotganlar {pendingMerchants.length > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">{pendingMerchants.length}</span>}
         </button>
-        <button 
-          onClick={() => setActiveTab('active')}
-          className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'active' ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}
-        >
+        <button onClick={() => setActiveTab('active')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'active' ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}>
           Tasdiqlanganlar
         </button>
       </div>
@@ -93,9 +85,8 @@ export default function MerchantsManager() {
                 <button onClick={() => handleDelete(merchant.id, merchant.name)} className="px-4 py-2 rounded-xl text-sm font-bold text-red-500 bg-red-500/10 hover:bg-red-500/20 transition-colors flex items-center gap-1.5">
                   <Trash2 size={16} /> Rad etish
                 </button>
-                
                 {activeTab === 'pending' && (
-                  <button onClick={() => handleApprove(merchant.id)} className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-green-500 hover:bg-green-600 transition-colors flex items-center gap-1.5 shadow-md">
+                  <button onClick={() => handleApprove(merchant.id, merchant.name)} className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-green-500 hover:bg-green-600 transition-colors flex items-center gap-1.5 shadow-md">
                     <CheckCircle size={16} /> Tasdiqlash
                   </button>
                 )}
@@ -106,15 +97,9 @@ export default function MerchantsManager() {
       ) : (
         <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[24px] p-10 text-center">
           <CheckCircle className="mx-auto text-green-500 mb-4" size={48} />
-          <h3 className="font-display text-xl font-bold text-[hsl(var(--foreground))] mb-1">
-            {activeTab === 'pending' ? 'Kutayotgan arizalar yo\'q!' : 'Tasdiqlangan do\'konlar yo\'q'}
-          </h3>
-          <p className="text-[hsl(var(--muted-foreground))]">
-            {activeTab === 'pending' ? 'Hamma do\'konlar ko\'rib chiqilgan.' : 'Tizimda hali faol do\'konlar mavjud emas.'}
-          </p>
+          <h3 className="font-display text-xl font-bold text-[hsl(var(--foreground))] mb-1">{activeTab === 'pending' ? 'Kutayotgan arizalar yo\'q!' : 'Tasdiqlangan do\'konlar yo\'q'}</h3>
         </div>
       )}
-
     </AdminLayout>
   );
 }

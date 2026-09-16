@@ -7,14 +7,21 @@ import { LanguageProvider } from '@/lib/i18n';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { supabase } from '@/lib/supabase'; 
 import { Loader2 } from 'lucide-react';
+
+// --- ASOSIY SAHIFALAR ---
 import ForgotPassword from '@/pages/forgot-password';
 import NotificationsPage from '@/pages/notifications';
+import NotFound from '@/pages/not-found';
 
 // --- ADMIN UCHUN SAHIFALAR ---
 import AdminDashboard from '@/admin/AdminDashboard';
 import MerchantsManager from '@/admin/MerchantsManager';
 import StudentsManager from '@/admin/StudentsManager';
 import DiscountsManager from '@/admin/DiscountsManager';
+import StudentsReport from '@/admin/StudentsReport';
+import MerchantsReport from '@/admin/MerchantsReport';
+import ScansReport from '@/admin/ScansReport';
+import SystemLogs from '@/admin/SystemLogs'; // <--- TIZIM TARIXI QO'SHILDI
 
 // --- TALABALAR UCHUN SAHIFALAR ---
 import { AppShell } from '@/components/app-shell';
@@ -28,7 +35,6 @@ import LoginPage from '@/pages/login';
 import SignupPage from '@/pages/signup';
 import CashierPage from '@/pages/cashier';
 import DiscountDetailPage from '@/pages/discount-detail';
-import NotFound from '@/pages/not-found';
 
 // --- BIZNES (DO'KONLAR) UCHUN SAHIFALAR ---
 import { MerchantAppShell } from '@/merchantpass/app-shell';
@@ -70,7 +76,6 @@ function Router() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Ilova yuklanayotganda miltillash bo'lmasligi uchun
   if (isInitializing) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center bg-[hsl(var(--background))]">
@@ -95,7 +100,6 @@ function Router() {
           <Route path="/cashier" component={CashierPage} />
           <Route path="/forgot-password" component={ForgotPassword} />
           
-          {/* Ruxsatsiz yopiq sahifaga o'tishga urinsa loginga otib yuboradi */}
           <Route>
             <Redirect to={isMerchantRoute ? '/merchant/login' : '/login'} />
           </Route>
@@ -110,16 +114,21 @@ function Router() {
   return (
     <RoutedErrorBoundary>
       <Switch>
-        {/* Ro'yxatdan o'tish sahifalari */}
+        {/* Ro'yxatdan o'tish chala qolganlar uchun */}
         <Route path="/signup" component={SignupPage} />
         <Route path="/merchant/signup" component={MerchantSignup} />
 
-        {/* Tizimga kirib bo'lgan odam adashib loginga bossa, ichkariga qaytarib otamiz */}
+        {/* Ichkarida turib loginga kirishga urinsa orqaga qaytarish */}
         <Route path="/login"><Redirect to="/" /></Route>
         <Route path="/merchant/login"><Redirect to="/merchant" /></Route>
 
-        {/* 🌟 ADMIN PANEL MANZILI (QOBIQLARDAN TEPADA) */}
+        {/* 🌟 ADMIN PANEL MANZILLARI */}
         <Route path="/admin" component={AdminDashboard} />
+        <Route path="/admin/students-report" component={StudentsReport} /> 
+        <Route path="/admin/merchants-report" component={MerchantsReport} />
+        <Route path="/admin/scans-report" component={ScansReport} />
+        <Route path="/admin/logs" component={SystemLogs} /> {/* <--- TIZIM TARIXI SHU YERDA QO'SHILDI */}
+        
         <Route path="/admin/merchants" component={MerchantsManager} />
         <Route path="/admin/students" component={StudentsManager} /> 
         <Route path="/admin/discounts" component={DiscountsManager} />
@@ -139,7 +148,7 @@ function Router() {
               </Switch>
             </MerchantAppShell>
           ) : (
-            // TALABALAR UCHUN TEGISHLI SAHIFALAR (APP SHELL ICHIDA TO'G'RI JOYLASHTIRILDI)
+            // TALABALAR UCHUN TEGISHLI SAHIFALAR
             <AppShell>
               <Switch>
                 <Route path="/" component={HomePage} />
@@ -160,7 +169,6 @@ function Router() {
   );
 }
 
-// Xatoliklarni chiroyli ushlash uchun maxsus himoya komponenti
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;

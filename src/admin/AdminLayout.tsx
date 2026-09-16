@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, ReactNode } from 'react';
 import { useLocation, Link } from 'wouter';
 import { supabase } from '@/lib/supabase';
-import { LayoutDashboard, Users, Store, Ticket, LogOut, Menu, X, Loader2, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Users, Store, Ticket, LogOut, Menu, X, Loader2, ShieldCheck, History } from 'lucide-react';
 
 interface AdminLayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
   title: string;
 }
 
@@ -46,11 +46,13 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
   // Agar admin bo'lmasa, hech narsa ko'rsatmaymiz (zotan u bosh sahifaga otiladi)
   if (isAdmin === false) return null;
 
+  // 🌟 MENYULAR RO'YXATI (TARIX QO'SHILGAN HOLATDA)
   const menuItems = [
     { path: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/admin/merchants', icon: Store, label: "Do'konlar" },
     { path: '/admin/students', icon: Users, label: 'Talabalar' },
     { path: '/admin/discounts', icon: Ticket, label: 'Chegirmalar' },
+    { path: '/admin/logs', icon: History, label: 'Tarix (Logs)' },
   ];
 
   const handleLogout = async () => {
