@@ -67,11 +67,6 @@ const getPasswordStrength = (pass: string) => {
 };
 
 export default function SignupPage() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-const canvasRef = useRef<HTMLCanvasElement>(null);
-const [isCameraOpen, setIsCameraOpen] = useState(false);
-const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
-
   const { t, lang, setLang } = useLanguage();
   
   const [showPassword, setShowPassword] = useState(false);
@@ -82,32 +77,28 @@ const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
     fullName: '', studentId: '', university: '', password: '', confirmPassword: '' 
   });
   
+  // KAMERA VA HUJJAT STATELARI
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [documentPreview, setDocumentPreview] = useState<string | null>(null);
   
+  // AVATAR STATELARI
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isUniOpen, setIsUniOpen] = useState(false);
   const [uniSearch, setUniSearch] = useState('');
-  
-  const docInputRef = useRef<HTMLInputElement>(null);
-  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setError(''); 
-  };
-
-  const handleDocUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setDocumentFile(file);
-      setDocumentPreview(URL.createObjectURL(file));
-      setError('');
-    }
   };
 
   const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,55 +112,83 @@ const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const filteredUnis = UNIVERSITIES.filter(u => u.toLowerCase().includes(uniSearch.toLowerCase()));
   const strength = getPasswordStrength(formData.password);
 
-const startCamera = async () => {
-  setError('');
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ 
-      video: { facingMode: 'environment' } // Orqa kamerani ochishga harakat qiladi
-    });
-    setCameraStream(stream);
-    setIsCameraOpen(true);
-    if (videoRef.current) {
-      videoRef.current.srcObject = stream;
+  // ============================================
+  // KAMERANI BOSHQARISH (MUKAMMAL YECHIM)
+  // ============================================
+  const startCamera = async () => {
+    setError('');
+    setDocumentFile(null);
+    setDocumentPreview(null);
+    
+    // Brauzer qo'llab-quvvatlashini tekshirish
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setError("Brauzeringiz kamerani qo'llab-quvvatlamaydi. Xavfsiz ulanish (HTTPS) kerak bo'lishi mumkin.");
+      return;
     }
-  } catch (err) {
-    setError("Kameraga ruxsat berilmadi yoki qurilmada kamera yo'q.");
-  }
-};
-const stopCamera = useCallback(() => {
-  if (cameraStream) {
-    cameraStream.getTracks().forEach(track => track.stop());
-    setCameraStream(null);
-    setIsCameraOpen(false);
-  }
-}, [cameraStream]);
 
-const capturePhoto = () => {
-  if (videoRef.current && canvasRef.current) {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const file = new File([blob], "id_card_photo.jpg", { type: "image/jpeg" });
-          setDocumentFile(file);
-          setDocumentPreview(URL.createObjectURL(blob));
-          stopCamera();
-        }
-      }, 'image/jpeg', 0.9);
+    try {
+      // Birinchi orqa kamerani so'raymiz
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      setCameraStream(stream);
+      setIsCameraOpen(true);
+    } catch (err) {
+      try {
+        // Agar orqa kamera ochilmasa (yoki kompyuter bo'lsa), ixtiyoriy kamerani ochamiz
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        setCameraStream(stream);
+        setIsCameraOpen(true);
+      } catch (fallbackErr) {
+        setError("Kameraga ruxsat berilmadi yoki ushbu qurilmada kamera topilmadi.");
+      }
     }
-  }
-};
+  };
 
-// Agar boshqa qadamga o'tsa kamerani o'chirish (Memory leak oldini olish)
-useEffect(() => {
-  return () => stopCamera();
-}, [stopCamera]);
+  const stopCamera = useCallback(() => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+      setIsCameraOpen(false);
+    }
+  }, [cameraStream]);
 
+  // Video elementi tayyor bo'lganda unga streamni ulash (Eng ko'p xato beradigan joyning yechimi)
+  useEffect(() => {
+    if (isCameraOpen && videoRef.current && cameraStream) {
+      videoRef.current.srcObject = cameraStream;
+    }
+  }, [isCameraOpen, cameraStream]);
+
+  // Sahifadan chiqib ketganda kamerani o'chirish
+  useEffect(() => {
+    return () => stopCamera();
+  }, [stopCamera]);
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], "id_card_photo.jpg", { type: "image/jpeg" });
+            setDocumentFile(file);
+            setDocumentPreview(URL.createObjectURL(blob));
+            stopCamera();
+          }
+        }, 'image/jpeg', 0.9);
+      }
+    }
+  };
+
+  // ============================================
+  // QADAMLARNI BOSHQARISH VA BAZAGA YOZISH
+  // ============================================
   const nextStep = async () => {
     if (step === 1) { setStep(2); return; }
     
@@ -190,69 +209,75 @@ useEffect(() => {
 
       setIsLoading(true);
       setError('');
-
+      
       try {
-        const fakeEmail = `${formData.studentId.toLowerCase()}@talabapass.uz`;
-        const nameParts = formData.fullName.trim().split(' ');
-        const firstName = nameParts[0];
-        const lastName = nameParts.slice(1).join(' '); 
+        // DIQQAT: BU YERDA BAZAGA YOZMAYMIZ! 
+        // Faqat shunday ID bilan ro'yxatdan o'tilganmi yoki yo'qligini tekshiramiz xolos.
+        const { data } = await supabase.from('students').select('student_id').eq('student_id', formData.studentId).maybeSingle();
         
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: fakeEmail,
-          password: formData.password,
-        });
-
-        if (authError) {
-          if (authError.message.includes('already registered') || authError.status === 422) {
-            throw new Error("Bu Talaba ID allaqachon ro'yxatdan o'tgan!");
-          }
-          throw new Error("Xatolik yuz berdi: " + authError.message);
+        if (data) {
+          throw new Error("Bu Talaba ID allaqachon ro'yxatdan o'tgan!");
         }
-        if (!authData.user) throw new Error("Foydalanuvchini yaratib bo'lmadi.");
-
-        const { error: dbError } = await supabase
-          .from('students')
-          .insert([{
-            id: authData.user.id,
-            first_name: firstName,
-            last_name: lastName,
-            student_id: formData.studentId,
-            university: formData.university,
-            is_active: false,
-            avatar_url: null,
-            document_url: null
-          }]);
-
-        if (dbError) throw dbError;
+        
+        // Agar hammasi joyida bo'lsa, xotirjam 4-qadamga o'tkazamiz
         setStep(4);
       } catch (err: any) {
-        setError(err.message || "Ro'yxatdan o'tishda xatolik yuz berdi.");
+        setError(err.message);
       } finally {
         setIsLoading(false);
       }
     }
 
+    // 4-QADAMDA (HUJJAT YUKLANGACH) ASOSIY BAZAGA SAQLANADI!
     if (step === 4) {
       if (!documentFile) {
-        setError("Iltimos, talabalik guvohnomangiz yoki ID kartangizni yuklang!");
+        setError("Iltimos, avval talabalik guvohnomangiz yoki ID kartangizni suratga oling!");
         return;
       }
+      
       setIsLoading(true);
       setError('');
 
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Sessiya topilmadi");
+        // 1. SUPABASE AUTH DAN RO'YXATDAN O'TKAZISH
+        const fakeEmail = `${formData.studentId.toLowerCase()}@talabapass.uz`;
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: fakeEmail,
+          password: formData.password,
+        });
 
+        if (authError) throw new Error("Auth Xatolik: " + authError.message);
+        if (!authData.user) throw new Error("Foydalanuvchini yaratib bo'lmadi.");
+        
+        const userId = authData.user.id;
+
+        // 2. RASMNI STORAGE'GA YUKLASH
         const fileExt = documentFile.name.split('.').pop() || 'jpg';
-        const fileName = `doc-${user.id}-${Date.now()}.${fileExt}`;
+        const fileName = `doc-${userId}-${Date.now()}.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage.from('documents').upload(fileName, documentFile);
         if (uploadError) throw new Error("Hujjatni yuklashda xatolik");
 
         const { data: publicUrlData } = supabase.storage.from('documents').getPublicUrl(fileName);
-        await supabase.from('students').update({ document_url: publicUrlData.publicUrl }).eq('id', user.id);
+
+        // 3. ASOSIY DATABASE'GA (students jadvaliga) YOZISH
+        const nameParts = formData.fullName.trim().split(' ');
+        const { error: dbError } = await supabase
+          .from('students')
+          .insert([{
+            id: userId,
+            first_name: nameParts[0],
+            last_name: nameParts.slice(1).join(' '),
+            student_id: formData.studentId,
+            university: formData.university,
+            is_active: false,
+            avatar_url: null,
+            document_url: publicUrlData.publicUrl
+          }]);
+
+        if (dbError) throw dbError;
         
+        // Hammasi a'lo darajada o'tsa, 5-qadamga (Avatar) o'tadi
         setStep(5);
       } catch (err: any) {
         setError(err.message);
@@ -262,7 +287,11 @@ useEffect(() => {
     }
   };
 
-  const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
+  const prevStep = () => {
+    // Agar kamerada bo'lsa, orqaga qaytganda uni o'chiramiz
+    if (step === 4) stopCamera();
+    setStep((prev) => Math.max(prev - 1, 1));
+  };
 
   const handleFinish = async () => {
     setIsLoading(true);
@@ -270,7 +299,7 @@ useEffect(() => {
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Sessiya topilmadi, iltimos qaytadan kiring.");
+      if (!user) throw new Error("Sessiya topilmadi, iltimos logindan kiring.");
 
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop() || 'jpg';
@@ -444,7 +473,6 @@ useEffect(() => {
           </div>
         )}
 
-        {/* YANGI: 4-QADAM - JONLI KAMERA VA HUJJAT YUKLASH */}
         {step === 4 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col items-center justify-center relative">
             <div className="text-center mb-6 mt-4">
@@ -454,7 +482,6 @@ useEffect(() => {
               </p>
             </div>
 
-            {/* KAMERA EKRANI VA SHABLON */}
             <div className="relative w-full max-w-sm aspect-[4/3] bg-black rounded-[32px] overflow-hidden shadow-xl mb-6">
               
               {!documentPreview && !isCameraOpen && (
@@ -466,12 +493,10 @@ useEffect(() => {
                 </div>
               )}
 
-              {/* Jonli Video Feed */}
               {isCameraOpen && (
                 <>
                   <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
                   
-                  {/* ID KARTA SHABLONI (Qora shaffof fon va ochiq rom) */}
                   <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
                     <div className="w-[85%] h-[60%] border-[4px] border-white/70 rounded-xl relative shadow-[0_0_0_999px_rgba(0,0,0,0.6)]">
                       <div className="absolute inset-0 border-[2px] border-white/30 border-dashed rounded-xl m-1"></div>
@@ -479,8 +504,7 @@ useEffect(() => {
                     </div>
                   </div>
 
-                  {/* Rasmga olish tugmasi */}
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
                     <button onClick={capturePhoto} className="w-16 h-16 bg-white/30 backdrop-blur-md rounded-full border-[4px] border-white flex items-center justify-center active:scale-90 transition-all shadow-xl">
                       <div className="w-10 h-10 bg-white rounded-full"></div>
                     </button>
@@ -488,12 +512,11 @@ useEffect(() => {
                 </>
               )}
 
-              {/* Olingan rasm tayyor bo'lsa */}
               {documentPreview && (
                 <>
                   <img src={documentPreview} className="w-full h-full object-cover" alt="Hujjat" />
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                    <button onClick={() => { setDocumentPreview(null); setDocumentFile(null); startCamera(); }} className="bg-white text-black font-bold py-2 px-5 rounded-full shadow-lg">
+                    <button onClick={startCamera} className="bg-white text-black font-bold py-2 px-5 rounded-full shadow-lg">
                       Qaytadan olish
                     </button>
                   </div>
@@ -501,7 +524,6 @@ useEffect(() => {
               )}
             </div>
             
-            {/* Yozilmagan kanvas (orqada ishlaydi) */}
             <canvas ref={canvasRef} className="hidden" />
 
             {error && <p className="text-red-500 text-[13px] font-bold mb-4 text-center">{error}</p>}
@@ -516,7 +538,6 @@ useEffect(() => {
           </div>
         )}
 
-        {/* 5-QADAM - PROFIL RASMI */}
         {step === 5 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col items-center justify-center">
             <div className="text-center mb-10 mt-auto">
