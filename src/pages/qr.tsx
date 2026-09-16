@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, CheckCircle2, AlertTriangle, CalendarX } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import QRCode from 'react-qr-code';
 
@@ -7,8 +7,9 @@ export default function QrPage() {
   const [student, setStudent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   
-  // 30 soniyalik xavfsizlik kaliti (QR kod ichida)
+  // 30 soniyalik xavfsizlik va QR kod qiymati
   const [qrKey, setQrKey] = useState(Date.now()); 
+  const [timeLeft, setTimeLeft] = useState(30);
 
   useEffect(() => {
     async function fetchStudent() {
@@ -22,138 +23,70 @@ export default function QrPage() {
     fetchStudent();
   }, []);
 
-  // Har 30 soniyada QR kod tarkibini sezilarsiz yangilash (Skrinshotka qarshi)
+  // Timer va avtomatik yangilanish mantiqi
   useEffect(() => {
     if (!student) return;
     const timer = setInterval(() => {
-      setQrKey(Date.now()); 
-    }, 30000); 
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          setQrKey(Date.now()); // QR kod tarkibini o'zgartiradi
+          return 30; // Timerni yana 30 dan boshlaydi
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
     return () => clearInterval(timer);
   }, [student]);
-
-  // MUDDATNI TEKSHIRISH VA OGOHLANTIRISH
-  const isExpired = student?.expires_at ? new Date(student.expires_at) < new Date() : false;
-  const daysLeft = student?.expires_at ? Math.ceil((new Date(student.expires_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 999;
-
-  useEffect(() => {
-    async function checkWarnings() {
-      if (!student || !student.expires_at || isExpired) return;
-      
-      // Faqat 5, 3 yoki 1 kun qolganda xabar berish
-      if ([5, 3, 1].includes(daysLeft)) {
-        const title = "Diqqat: Muddat tugamoqda! ⏳";
-        
-        // Shu xabar aynan shu kun uchun yuborilganligini tekshiramiz
-        const { data } = await supabase.from('notifications')
-          .select('id').eq('user_id', student.id).eq('title', title).ilike('message', `%${daysLeft} kun%`);
-        
-        if (!data || data.length === 0) {
-          await supabase.from('notifications').insert([{
-            user_id: student.id,
-            title: title,
-            message: `Sizning Talaba ID kartangiz amal qilish muddati tugashiga ${daysLeft} kun qoldi. Iltimos, ma'lumotlaringizni yangilash uchun admin bilan bog'laning!`
-          }]);
-        }
-      }
-    }
-    checkWarnings();
-  }, [student, daysLeft, isExpired]);
 
   if (loading) {
     return <div className="flex justify-center pt-40"><Loader2 className="animate-spin text-[hsl(var(--accent))]" size={40}/></div>;
   }
 
-  if (!student) {
-    return (
-      <div className="page-enter py-20 text-center">
-        <AlertTriangle size={48} className="mx-auto text-red-500 mb-4" />
-        <h2 className="font-bold text-xl text-[hsl(var(--foreground))]">Talaba profili topilmadi</h2>
-      </div>
-    );
-  }
+  if (!student) return null;
 
-  // XAVFSIZLIK 1: ADMIN TOMONIDAN TASDIQLANMAGAN (KUTISH)
-  if (student && !student.is_active) {
-    return (
-      <div className="page-enter py-20 px-6 text-center flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="w-24 h-24 bg-orange-500/10 text-orange-500 rounded-full flex items-center justify-center mb-6 border-4 border-orange-500/20">
-          <Loader2 className="animate-spin" size={40} />
-        </div>
-        <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-3">
-          Arizangiz ko'rib chiqilmoqda
-        </h2>
-        <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed max-w-sm mx-auto">
-          Sizning Talaba ID ma'lumotlaringiz administratorlar tomonidan tekshirilmoqda. Tasdiqlangach, bu yerda chegirma olish uchun QR kodingiz paydo bo'ladi.
-        </p>
-      </div>
-    );
-  }
-
-  // XAVFSIZLIK 2: MUDDATI TUGAGAN (AUTO-BLOCK)
-  if (student && isExpired) {
-    return (
-      <div className="page-enter py-20 px-6 text-center flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="w-24 h-24 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mb-6 border-4 border-red-500/20">
-          <CalendarX size={48} />
-        </div>
-        <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-3">
-          Amal qilish muddati tugagan!
-        </h2>
-        <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed max-w-sm mx-auto">
-          Sizning Talaba ID kartangiz muddati ({student.expires_at.split('-').reverse().join('.')}) yakuniga yetgan. Chegirmalardan qayta foydalanish uchun uni yangilashingiz kerak.
-        </p>
-      </div>
-    );
-  }
-
-  // QR KOD QIYMATI: Talaba UUID'si va joriy vaqt (Skaner shuni o'qib tekshiradi)
+  // QR KOD QIYMATI: Talaba UUID'si va tasodifiy kalit (Skaner shuni o'qib tekshiradi)
   const qrValue = `${student.id}|${qrKey}`;
 
   return (
-    <div className="page-enter pb-20 flex flex-col items-center">
+    <div className="page-enter pb-20 flex flex-col items-center justify-center min-h-[70vh]">
       
       <div className="text-center mb-8">
-        <h1 className="font-display text-2xl font-bold text-[hsl(var(--foreground))]">Sizning QR Kodingiz</h1>
-        <p className="text-sm font-medium text-[hsl(var(--muted-foreground))] mt-1">
-          Chegirma olish uchun buni do'konga ko'rsating
+        <h1 className="font-display text-2xl font-bold text-[hsl(var(--foreground))]">Xarid uchun QR Kod</h1>
+        <p className="text-[13px] font-medium text-[hsl(var(--muted-foreground))] mt-1">
+          Buni do'konda kadrga tuting
         </p>
       </div>
 
-      <div className="w-full max-w-sm bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] rounded-[32px] shadow-lg p-8 flex flex-col items-center">
+      {/* MUKAMMAL, TOZA VA MINIMALIST QUTI */}
+      <div className="w-full max-w-[280px] bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] rounded-[32px] shadow-2xl p-6 flex flex-col items-center">
         
-        {/* TOZA OQ QR KOD (Skanerga qulay) */}
-        <div className="bg-white p-5 rounded-3xl mb-6 shadow-sm border border-[hsl(var(--border))] w-full aspect-square flex items-center justify-center">
+        {/* OQ QR KOD FON */}
+        <div className="bg-white p-3 rounded-2xl mb-6 shadow-sm border border-[hsl(var(--border))] w-full aspect-square flex items-center justify-center">
           <QRCode 
             value={qrValue} 
-            size={220} 
+            size={200} 
             style={{ height: "auto", maxWidth: "100%", width: "100%" }} 
           />
         </div>
         
-        {/* TASDIQLANGAN BADGI */}
-        <div className="flex items-center gap-2 bg-green-500/10 text-green-500 px-6 py-3 rounded-full font-bold text-[16px] mb-8 border border-green-500/20">
-          <CheckCircle2 size={22} /> Tasdiqlangan Talaba
-        </div>
-
-        {/* TALABA MA'LUMOTLARI */}
-        <div className="w-full text-center">
-          <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] leading-tight mb-1">
-            {student.first_name} {student.last_name}
-          </h2>
-          <p className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-4">
-            ID: {student.student_id}
-          </p>
-          <div className="inline-block bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] px-4 py-2 rounded-xl mb-3">
-            <p className="text-[13px] font-semibold text-[hsl(var(--foreground))]">
-              {student.university}
-            </p>
+        {/* VIZUAL TIMER PROGRESS BAR */}
+        <div className="w-full pb-1">
+          <div className="flex justify-between items-center mb-2 px-1">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[hsl(var(--muted-foreground))]">
+              Yangilanish vaqti
+            </span>
+            <span className="text-[11px] font-bold text-[hsl(var(--foreground))] font-mono">
+              00:{timeLeft < 10 ? `0${timeLeft}` : timeLeft}
+            </span>
           </div>
-          {student.expires_at && (
-            <p className="text-[11px] font-bold text-[hsl(var(--muted-foreground))] mt-2">
-              Muddati: {student.expires_at.split('-').reverse().join('.')}
-            </p>
-          )}
+          
+          <div className="w-full h-1.5 bg-[hsl(var(--secondary))] rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-[hsl(var(--primary))] transition-all duration-1000 ease-linear rounded-full"
+              style={{ width: `${(timeLeft / 30) * 100}%` }}
+            />
+          </div>
         </div>
         
       </div>
