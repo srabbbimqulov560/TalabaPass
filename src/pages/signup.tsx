@@ -77,7 +77,7 @@ export default function SignupPage() {
     fullName: '', studentId: '', university: '', password: '', confirmPassword: '' 
   });
   
-  // KAMERA VA HUJJAT STATELARI
+  // KAMERA STATELARI
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -113,34 +113,46 @@ export default function SignupPage() {
   const strength = getPasswordStrength(formData.password);
 
   // ============================================
-  // KAMERANI BOSHQARISH (MUKAMMAL YECHIM)
+  // KAMERANI BOSHQARISH VA QORA EKRAN YECHIMI
   // ============================================
   const startCamera = async () => {
     setError('');
     setDocumentFile(null);
     setDocumentPreview(null);
     
-    // Brauzer qo'llab-quvvatlashini tekshirish
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setError("Brauzeringiz kamerani qo'llab-quvvatlamaydi. Xavfsiz ulanish (HTTPS) kerak bo'lishi mumkin.");
+      setError("Qurilmangiz kamerani qabul qilmadi. Xavfsiz ulanish (HTTPS) talab qilinadi.");
       return;
     }
 
     try {
-      // Birinchi orqa kamerani so'raymiz
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { facingMode: 'environment' } 
       });
       setCameraStream(stream);
       setIsCameraOpen(true);
+      
+      // Kichik pauza bilan videoni ishga tushirish (Qora ekranni oldini oladi)
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(e => console.log("Video autoplay xatosi", e));
+        }
+      }, 100);
     } catch (err) {
       try {
-        // Agar orqa kamera ochilmasa (yoki kompyuter bo'lsa), ixtiyoriy kamerani ochamiz
+        // Agar orqa kamera ishlamasa, oddiy kameraga o'tish (Fallback)
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         setCameraStream(stream);
         setIsCameraOpen(true);
-      } catch (fallbackErr) {
-        setError("Kameraga ruxsat berilmadi yoki ushbu qurilmada kamera topilmadi.");
+        setTimeout(() => {
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play().catch(e => console.log(e));
+          }
+        }, 100);
+      } catch (err2) {
+        setError("Kameraga ruxsat berilmadi yoki qurilmada xatolik yuz berdi.");
       }
     }
   };
@@ -153,14 +165,6 @@ export default function SignupPage() {
     }
   }, [cameraStream]);
 
-  // Video elementi tayyor bo'lganda unga streamni ulash (Eng ko'p xato beradigan joyning yechimi)
-  useEffect(() => {
-    if (isCameraOpen && videoRef.current && cameraStream) {
-      videoRef.current.srcObject = cameraStream;
-    }
-  }, [isCameraOpen, cameraStream]);
-
-  // Sahifadan chiqib ketganda kamerani o'chirish
   useEffect(() => {
     return () => stopCamera();
   }, [stopCamera]);
@@ -169,6 +173,10 @@ export default function SignupPage() {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
+      
+      // Video to'liq yuklanganiga ishonch hosil qilish
+      if (video.videoWidth === 0) return;
+
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
@@ -195,7 +203,7 @@ export default function SignupPage() {
     if (step === 2) {
       const nameParts = formData.fullName.trim().split(' ');
       if (nameParts.length < 2) {
-        setError("Iltimos, ism va familiyangizni to'liq kiriting (Masalan: Shoxjaxon Rabimqulov)");
+        setError("Iltimos, ism va familiyangizni to'liq kiriting");
         return;
       }
       setStep(3); return;
@@ -211,15 +219,18 @@ export default function SignupPage() {
       setError('');
       
       try {
-        // DIQQAT: BU YERDA BAZAGA YOZMAYMIZ! 
-        // Faqat shunday ID bilan ro'yxatdan o'tilganmi yoki yo'qligini tekshiramiz xolos.
-        const { data } = await supabase.from('students').select('student_id').eq('student_id', formData.studentId).maybeSingle();
+        // DIQQAT: BU YERDA BAZAGA HECH NARSA YOZILMAYDI!
+        // Faqat ID ni o'zi band emasligini tekshiramiz.
+        const { data } = await supabase
+          .from('students')
+          .select('student_id')
+          .eq('student_id', formData.studentId)
+          .maybeSingle();
         
         if (data) {
           throw new Error("Bu Talaba ID allaqachon ro'yxatdan o'tgan!");
         }
         
-        // Agar hammasi joyida bo'lsa, xotirjam 4-qadamga o'tkazamiz
         setStep(4);
       } catch (err: any) {
         setError(err.message);
@@ -228,7 +239,7 @@ export default function SignupPage() {
       }
     }
 
-    // 4-QADAMDA (HUJJAT YUKLANGACH) ASOSIY BAZAGA SAQLANADI!
+    // 🔥 FAQAT RASM YUKLANGACH (4-QADAMDA) BAZAGA SAQLANADI!
     if (step === 4) {
       if (!documentFile) {
         setError("Iltimos, avval talabalik guvohnomangiz yoki ID kartangizni suratga oling!");
@@ -239,28 +250,34 @@ export default function SignupPage() {
       setError('');
 
       try {
-        // 1. SUPABASE AUTH DAN RO'YXATDAN O'TKAZISH
         const fakeEmail = `${formData.studentId.toLowerCase()}@talabapass.uz`;
+        
+        // 1. Yangi foydalanuvchi yaratish (SignUp)
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: fakeEmail,
           password: formData.password,
         });
 
-        if (authError) throw new Error("Auth Xatolik: " + authError.message);
-        if (!authData.user) throw new Error("Foydalanuvchini yaratib bo'lmadi.");
+        if (authError) {
+          if (authError.message.includes('already registered')) {
+            throw new Error("Siz avval ro'yxatdan o'tishga uringansiz, lekin oxiriga yetkazmagansiz. Admin tozalab yuborishini kuting yoki Login orqali kiring.");
+          }
+          throw new Error(authError.message);
+        }
         
+        if (!authData.user) throw new Error("Foydalanuvchini yaratib bo'lmadi.");
         const userId = authData.user.id;
 
-        // 2. RASMNI STORAGE'GA YUKLASH
+        // 2. Rasmni yuklash
         const fileExt = documentFile.name.split('.').pop() || 'jpg';
         const fileName = `doc-${userId}-${Date.now()}.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage.from('documents').upload(fileName, documentFile);
-        if (uploadError) throw new Error("Hujjatni yuklashda xatolik");
+        if (uploadError) throw new Error("Hujjatni yuklashda xatolik yuz berdi");
 
         const { data: publicUrlData } = supabase.storage.from('documents').getPublicUrl(fileName);
 
-        // 3. ASOSIY DATABASE'GA (students jadvaliga) YOZISH
+        // 3. Asosiy bazaga yozish (Admin endi ko'radi)
         const nameParts = formData.fullName.trim().split(' ');
         const { error: dbError } = await supabase
           .from('students')
@@ -277,7 +294,6 @@ export default function SignupPage() {
 
         if (dbError) throw dbError;
         
-        // Hammasi a'lo darajada o'tsa, 5-qadamga (Avatar) o'tadi
         setStep(5);
       } catch (err: any) {
         setError(err.message);
@@ -288,7 +304,6 @@ export default function SignupPage() {
   };
 
   const prevStep = () => {
-    // Agar kamerada bo'lsa, orqaga qaytganda uni o'chiramiz
     if (step === 4) stopCamera();
     setStep((prev) => Math.max(prev - 1, 1));
   };
@@ -473,6 +488,7 @@ export default function SignupPage() {
           </div>
         )}
 
+        {/* 4-QADAM - JONLI KAMERA VA XAVFSIZ SHABLON */}
         {step === 4 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col items-center justify-center relative">
             <div className="text-center mb-6 mt-4">
@@ -495,18 +511,20 @@ export default function SignupPage() {
 
               {isCameraOpen && (
                 <>
-                  <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                  <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover bg-black" />
                   
-                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
-                    <div className="w-[85%] h-[60%] border-[4px] border-white/70 rounded-xl relative shadow-[0_0_0_999px_rgba(0,0,0,0.6)]">
-                      <div className="absolute inset-0 border-[2px] border-white/30 border-dashed rounded-xl m-1"></div>
-                      <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap">Hujjatni shu romga kiriting</p>
+                  {/* TOZALANGAN, XAVFSIZ SHABLON (Qora ekran bermaydi) */}
+                  <div className="absolute inset-0 pointer-events-none z-10 border-[40px] border-black/60 flex items-center justify-center">
+                    <div className="w-full h-full border-2 border-dashed border-white/60 rounded-xl relative">
+                      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-white text-[10px] uppercase font-bold tracking-widest shadow-black drop-shadow-md">
+                        Hujjatni romga kiriting
+                      </div>
                     </div>
                   </div>
 
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
-                    <button onClick={capturePhoto} className="w-16 h-16 bg-white/30 backdrop-blur-md rounded-full border-[4px] border-white flex items-center justify-center active:scale-90 transition-all shadow-xl">
-                      <div className="w-10 h-10 bg-white rounded-full"></div>
+                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+                    <button onClick={capturePhoto} className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full border-[3px] border-white flex items-center justify-center active:scale-90 transition-all shadow-xl">
+                      <div className="w-12 h-12 bg-white rounded-full shadow-sm"></div>
                     </button>
                   </div>
                 </>
@@ -526,7 +544,7 @@ export default function SignupPage() {
             
             <canvas ref={canvasRef} className="hidden" />
 
-            {error && <p className="text-red-500 text-[13px] font-bold mb-4 text-center">{error}</p>}
+            {error && <p className="text-red-500 text-[13px] font-bold mb-4 text-center px-4">{error}</p>}
 
             <button 
               disabled={isLoading || !documentFile} 
@@ -538,6 +556,7 @@ export default function SignupPage() {
           </div>
         )}
 
+        {/* 5-QADAM - PROFIL RASMI */}
         {step === 5 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col items-center justify-center">
             <div className="text-center mb-10 mt-auto">
