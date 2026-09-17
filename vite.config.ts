@@ -13,26 +13,23 @@ export default defineConfig({
         name: 'TalabaPass - Chegirmalar',
         short_name: 'TalabaPass',
         description: 'Talabalar uchun raqamli ID va maxsus chegirmalar tizimi',
-        theme_color: '#0f172a', // Ilovaning tepa qismi (Status bar) rangi
+        theme_color: '#0f172a',
         background_color: '#ffffff',
-        display: 'standalone', // To'liq ekran, brauzer qismlarisiz
-        orientation: 'portrait', // Faqat tik holatda ishlashi uchun
+        display: 'standalone',
+        orientation: 'portrait',
         icons: [
           {
-            src: '/icon-192x192.png',
+            // Oxiridagi "?v=yangi" brauzer xotirasini aldaydi
+            src: 'https://cdn-icons-png.flaticon.com/512/5968/5968260.png?v=yangi',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           },
           {
-            src: '/icon-512x512.png',
-            sizes: '512x512',
-            type: 'image/png'
-          },
-          {
-            src: '/icon-512x512.png',
+            src: 'https://cdn-icons-png.flaticon.com/512/5968/5968260.png?v=yangi',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable' // Android'da ikonka chiroyli kesilishi uchun
+            purpose: 'any maskable'
           }
         ]
       }
