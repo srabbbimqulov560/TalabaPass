@@ -21,14 +21,13 @@ export default defineConfig({
         orientation: 'portrait',
         icons: [
           {
-            // O'zingizning public papkadagi rasmlaringiz (keshni aldash uchun ?v=2 qo'shildi)
-            src: '/icon-192x192.png?v=2',
+            src: '/pwa-logo-192.png', // 🌟 NOMLAR YANGILANDI
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any maskable'
           },
           {
-            src: '/icon-512x512.png?v=2',
+            src: '/pwa-logo-512.png', // 🌟 NOMLAR YANGILANDI
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
