@@ -1,11 +1,13 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
   plugins: [
     react(),
+    tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
@@ -19,14 +21,14 @@ export default defineConfig({
         orientation: 'portrait',
         icons: [
           {
-            // Oxiridagi "?v=yangi" brauzer xotirasini aldaydi
-            src: 'https://cdn-icons-png.flaticon.com/512/5968/5968260.png?v=yangi',
+            // O'zingizning public papkadagi rasmlaringiz (keshni aldash uchun ?v=2 qo'shildi)
+            src: '/icon-192x192.png?v=2',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any maskable'
           },
           {
-            src: 'https://cdn-icons-png.flaticon.com/512/5968/5968260.png?v=yangi',
+            src: '/icon-512x512.png?v=2',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
@@ -38,6 +40,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@workspace/api-client-react': path.resolve(__dirname, './src/lib/api-client.ts')
     },
   },
 });
