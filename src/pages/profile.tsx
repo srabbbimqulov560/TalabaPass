@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { 
   ShieldCheck, UserRound, ScanBarcode, Rotate3d, LogOut, Camera, 
-  LockKeyhole, ChevronRight, Globe, Moon, Shield, CircleHelp, CheckCircle2, Circle, Loader2, Edit3, X, Eye, EyeOff
+  LockKeyhole, ChevronRight, Globe, Moon, Shield, CircleHelp, CheckCircle2, Circle, Loader2, Edit3, X, Eye, EyeOff, Download
 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
@@ -13,7 +13,6 @@ function initials(firstName?: string, lastName?: string) {
   return 'SP'; 
 }
 
-// PAROL KUCHLILIGINI TEKSHIRISH FUNKSIYASI (Ro'yxatdan o'tishdagi kabi)
 const getPasswordStrength = (pass: string) => {
   if (!pass) return { score: 0, text: '', color: 'bg-transparent', width: '0%' };
   let score = 0;
@@ -43,7 +42,6 @@ export default function ProfilePage() {
   const [isPrivateAccount, setIsPrivateAccount] = useState(false);
   const [isLangModalOpen, setIsLangModalOpen] = useState(false);
   
-  // TAHRIRLASH MODALI UCHUN STATELAR
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState({ firstName: '', lastName: '', oldPassword: '', newPassword: '', confirmPassword: '' });
   const [showOldPass, setShowOldPass] = useState(false);
@@ -53,8 +51,13 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [editError, setEditError] = useState('');
 
+  // 🌟 PWA O'RNATISH (INSTALL) STATELARI
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // MAVZUNI O'ZGARTIRISH
   useEffect(() => {
     if (isDarkTheme) {
       document.documentElement.classList.add('dark');
@@ -65,6 +68,7 @@ export default function ProfilePage() {
     }
   }, [isDarkTheme]);
 
+  // TAHRIRLASH MODALINI TO'LDIRISH
   useEffect(() => {
     if (user && isEditModalOpen) {
       setEditForm({ 
@@ -77,6 +81,30 @@ export default function ProfilePage() {
       setEditError('');
     }
   }, [user, isEditModalOpen]);
+
+  // 🌟 PWA O'RNATISH HODISASINI KUTISH
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault(); // Brauzer avtomatik taklifini to'xtatamiz
+      setDeferredPrompt(e); // Hodisani saqlab qolamiz (o'zimizni tugma uchun)
+      setIsInstallable(true); // O'rnatish tugmasini ekranda chiqaramiz
+    };
+    
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  // 🌟 ILOVANI O'RNATISH TUGMASI BOSILGANDA
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+        setIsInstallable(false);
+      }
+    }
+  };
 
   const strength = getPasswordStrength(editForm.newPassword);
 
@@ -132,7 +160,6 @@ export default function ProfilePage() {
     setIsLangModalOpen(false);
   };
 
-  // SHAXSIY MA'LUMOTLAR VA PAROLNI TEKSHIRIB SAQLASH
   const handleSaveProfile = async () => {
     if (!user) return;
     setIsSaving(true);
@@ -143,7 +170,6 @@ export default function ProfilePage() {
         throw new Error("Ism va familiya bo'sh bo'lishi mumkin emas!");
       }
 
-      // 1. Ism va familiyani bazada yangilash
       const { error: dbError } = await supabase
         .from('students')
         .update({ first_name: editForm.firstName.trim(), last_name: editForm.lastName.trim() })
@@ -151,25 +177,20 @@ export default function ProfilePage() {
 
       if (dbError) throw dbError;
 
-      // 2. Agar foydalanuvchi parolni o'zgartirmoqchi bo'lsa
       if (editForm.oldPassword || editForm.newPassword || editForm.confirmPassword) {
         if (!editForm.oldPassword) throw new Error("Parolni o'zgartirish uchun eski parolni kiriting!");
         if (!editForm.newPassword) throw new Error("Yangi parolni kiriting!");
         if (editForm.newPassword !== editForm.confirmPassword) throw new Error("Yangi parollar bir xil emas!");
         if (strength.score < 5) throw new Error("Yangi parol yetarlicha kuchli emas (Yashil darajaga yetkazing)!");
 
-        // Eski parolni to'g'riligini tekshirish uchun joriy email bilan qayta sign-in qilamiz
         const fakeEmail = `${user.student_id.toLowerCase()}@talabapass.uz`;
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email: fakeEmail,
           password: editForm.oldPassword
         });
 
-        if (signInError) {
-          throw new Error("Eski parol xato kiritildi!");
-        }
+        if (signInError) throw new Error("Eski parol xato kiritildi!");
 
-        // Agar eski parol to'g'ri bo'lsa, yangi parolni yozamiz
         const { error: passwordError } = await supabase.auth.updateUser({ password: editForm.newPassword });
         if (passwordError) throw passwordError;
       }
@@ -186,7 +207,7 @@ export default function ProfilePage() {
   };
 
   const avatar = user?.avatar_url;
-  const fullName = user ? `${user.first_name} ${user.last_name}` : (isUserLoading ? 'Yuklanmoqda...' : 'Talaba');
+  const fullName = user ? `${user.first_name} ${user.last_name}` : '';
 
   return (
     <>
@@ -196,45 +217,67 @@ export default function ProfilePage() {
           
           <div className="absolute -top-14">
             <div className="relative group">
-              <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" disabled={isUploading} />
+              <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" disabled={isUploading || isUserLoading} />
+              
+              {/* 🌟 RASM SKELETONI */}
               <div 
-                onClick={() => !isUploading && fileInputRef.current?.click()} 
-                className={`grid h-28 w-28 cursor-pointer place-items-center overflow-hidden rounded-full bg-[hsl(var(--primary))] border-4 border-[hsl(var(--background))] font-display text-4xl font-bold text-[hsl(var(--primary-foreground))] shadow-md transition-all ${isUploading ? 'opacity-50' : 'group-hover:opacity-80'}`}
+                onClick={() => !isUploading && !isUserLoading && fileInputRef.current?.click()} 
+                className={`grid h-28 w-28 cursor-pointer place-items-center overflow-hidden rounded-full border-4 border-[hsl(var(--background))] shadow-md transition-all ${
+                  isUserLoading ? 'bg-[hsl(var(--muted))] animate-pulse cursor-default' : 
+                  isUploading ? 'bg-[hsl(var(--primary))] opacity-50' : 
+                  'bg-[hsl(var(--primary))] group-hover:opacity-80'
+                }`}
               >
-                {isUploading ? (
-                   <Loader2 className="animate-spin text-white" size={32} />
-                ) : avatar ? (
-                  <img src={avatar} alt="Profile" className="h-full w-full object-cover" />
-                ) : (
-                  initials(user?.first_name, user?.last_name)
+                {!isUserLoading && (
+                  isUploading ? (
+                     <Loader2 className="animate-spin text-white" size={32} />
+                  ) : avatar ? (
+                    <img src={avatar} alt="Profile" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="font-display text-4xl font-bold text-[hsl(var(--primary-foreground))]">
+                      {initials(user?.first_name, user?.last_name)}
+                    </span>
+                  )
                 )}
               </div>
-              <button 
-                onClick={() => !isUploading && fileInputRef.current?.click()} 
-                className="absolute bottom-0 right-0 grid h-8 w-8 place-items-center rounded-full border-[3px] border-[hsl(var(--background))] bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] shadow-sm"
-              >
-                <Camera size={14} />
-              </button>
+
+              {!isUserLoading && (
+                <button 
+                  onClick={() => !isUploading && fileInputRef.current?.click()} 
+                  className="absolute bottom-0 right-0 grid h-8 w-8 place-items-center rounded-full border-[3px] border-[hsl(var(--background))] bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] shadow-sm"
+                >
+                  <Camera size={14} />
+                </button>
+              )}
             </div>
           </div>
           
-          <div className="flex flex-col items-center mt-2 text-center">
-            <div className="flex items-center gap-2">
-              <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))]">{fullName}</h2>
-              {user?.is_verified && (
-                <span className="flex items-center gap-1 rounded-full bg-[hsl(var(--accent)/.15)] px-2 py-1 text-[10px] font-bold text-[hsl(var(--accent))]">
-                  <ShieldCheck size={12} /> {t('verified')}
-                </span>
-              )}
+          {/* 🌟 MATNLAR SKELETONI */}
+          {isUserLoading ? (
+            <div className="flex flex-col items-center mt-2 w-full text-center">
+              <div className="h-7 w-48 bg-[hsl(var(--muted))] rounded-lg animate-pulse mb-3"></div>
+              <div className="h-4 w-32 bg-[hsl(var(--muted))] rounded-md animate-pulse mb-4"></div>
+              <div className="h-8 w-36 bg-[hsl(var(--secondary))] rounded-full animate-pulse"></div>
             </div>
-            <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
-              {user?.university || 'Talaba'}
-            </p>
-            <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))] bg-[hsl(var(--secondary))] px-4 py-2 rounded-full">
-              <LockKeyhole size={14} /> {t('student_id')} 
-              <span className="font-mono font-bold text-[hsl(var(--foreground))] ml-1">{user?.student_id || '•••• ••••'}</span>
+          ) : (
+            <div className="flex flex-col items-center mt-2 text-center">
+              <div className="flex items-center gap-2">
+                <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))]">{fullName}</h2>
+                {user?.is_verified && (
+                  <span className="flex items-center gap-1 rounded-full bg-[hsl(var(--accent)/.15)] px-2 py-1 text-[10px] font-bold text-[hsl(var(--accent))]">
+                    <ShieldCheck size={12} /> {t('verified')}
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
+                {user?.university || 'Talaba'}
+              </p>
+              <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))] bg-[hsl(var(--secondary))] px-4 py-2 rounded-full">
+                <LockKeyhole size={14} /> {t('student_id')} 
+                <span className="font-mono font-bold text-[hsl(var(--foreground))] ml-1">{user?.student_id || '•••• ••••'}</span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="w-full max-w-[380px]">
@@ -257,12 +300,28 @@ export default function ProfilePage() {
         </div>
 
         {activeTab === 'id' ? (
-          <StudentCard user={user} avatar={avatar} t={t} fullName={fullName} />
+          <StudentCard user={user} avatar={avatar} t={t} fullName={fullName} isLoading={isUserLoading} />
         ) : (
           <div className="w-full max-w-[380px] flex flex-col page-enter pb-10">
             
             <div className="bg-[hsl(var(--card))] rounded-[24px] border border-[hsl(var(--card-border))] overflow-hidden flex flex-col shadow-soft">
               
+              {/* 🌟 PWA O'RNATISH TUGMASI (Faqat ilova brauzerdan ochilgandagina chiqadi) */}
+              {isInstallable && (
+                <div onClick={handleInstallClick} className="flex items-center justify-between p-4 cursor-pointer bg-[hsl(var(--primary)/.08)] hover:bg-[hsl(var(--primary)/.15)] transition-colors border-b border-[hsl(var(--primary)/.2)]">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] p-2 rounded-full">
+                      <Download size={18} />
+                    </div>
+                    <div>
+                      <span className="text-[15px] font-bold text-[hsl(var(--primary))] block">Ilovani o'rnatish</span>
+                      <span className="text-[11px] font-semibold text-[hsl(var(--primary))/70] block leading-tight">Tez va qulay ishlash uchun</span>
+                    </div>
+                  </div>
+                  <ChevronRight size={20} className="text-[hsl(var(--primary))]" />
+                </div>
+              )}
+
               <div onClick={() => setIsEditModalOpen(true)} className="flex items-center justify-between p-4 cursor-pointer hover:bg-[hsl(var(--secondary)/.5)] transition-colors border-b border-[hsl(var(--border))]">
                 <div className="flex items-center gap-3">
                   <Edit3 size={22} className="text-[hsl(var(--foreground))]" />
@@ -329,7 +388,7 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* 🌟 TAHRIRLASH MODALI (3 TA PAROL INPUTI BILAN) */}
+      {/* TAHRIRLASH MODALI */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overflow-y-auto">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !isSaving && setIsEditModalOpen(false)} />
@@ -361,7 +420,6 @@ export default function ProfilePage() {
               <hr className="border-t border-[hsl(var(--border))] my-4" />
               <p className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-2">Parolni o'zgartirish (ixtiyoriy)</p>
 
-              {/* Eski parol */}
               <div>
                 <label className="text-[11px] font-bold text-[hsl(var(--muted-foreground))] block mb-1">Eski parol</label>
                 <div className="relative">
@@ -375,7 +433,6 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Yangi parol */}
               <div>
                 <label className="text-[11px] font-bold text-[hsl(var(--muted-foreground))] block mb-1">Yangi parol</label>
                 <div className="relative">
@@ -388,7 +445,6 @@ export default function ProfilePage() {
                   </button>
                 </div>
                 
-                {/* Real vaqtda Parol xavfsizligi chizig'i */}
                 {editForm.newPassword && (
                   <div className="mt-2 px-1">
                     <div className="flex justify-between items-center mb-1 text-[10px] font-bold uppercase text-[hsl(var(--muted-foreground))]">
@@ -402,7 +458,6 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              {/* Parolni tasdiqlash */}
               <div>
                 <label className="text-[11px] font-bold text-[hsl(var(--muted-foreground))] block mb-1">Yangi parolni tasdiqlang</label>
                 <div className="relative">
@@ -457,7 +512,7 @@ export default function ProfilePage() {
                   <span className="text-2xl">🇬🇧</span>
                   <span className="text-base font-semibold text-[hsl(var(--foreground))]">English</span>
                 </div>
-                {lang === 'en' ? <CheckCircle2 size={24} className="text-[hsl(var(--accent))]" /> : <Circle size={24} className="text-[hsl(var(--accent-foreground))]" />}
+                {lang === 'en' ? <CheckCircle2 size={24} className="text-[hsl(var(--accent))]" /> : <Circle size={24} className="text-[hsl(var(--muted-foreground))]" />}
               </div>
             </div>
           </div>
@@ -467,8 +522,18 @@ export default function ProfilePage() {
   );
 }
 
-function StudentCard({ user, avatar, t, fullName }: any) {
+// 🌟 SKELETONLI ID KARTA
+function StudentCard({ user, avatar, t, fullName, isLoading }: any) {
   const [flipped, setFlipped] = useState(false);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center pb-10 page-enter w-full">
+        <div className="h-[220px] w-full max-w-[360px] rounded-2xl bg-[hsl(var(--muted))] animate-pulse border border-[hsl(var(--border))]"></div>
+        <div className="mt-8 h-10 w-32 rounded-full bg-[hsl(var(--muted))] animate-pulse"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center pb-10 page-enter w-full">
