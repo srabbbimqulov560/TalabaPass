@@ -19,14 +19,20 @@ export default defineConfig({
         orientation: 'portrait', // Faqat tik holatda ishlashi uchun
         icons: [
           {
-            src: 'https://cdn-icons-png.flaticon.com/512/5968/5968260.png',
+            src: '/icon-192x192.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: 'https://cdn-icons-png.flaticon.com/512/5968/5968260.png',
+            src: '/icon-512x512.png',
             sizes: '512x512',
             type: 'image/png'
+          },
+          {
+            src: '/icon-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable' // Android'da ikonka chiroyli kesilishi uchun
           }
         ]
       }
