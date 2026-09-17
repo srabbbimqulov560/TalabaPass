@@ -28,9 +28,8 @@ export default function SignupPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [step, setStep] = useState(1);
-  const [role, setRole] = useState<'student' | 'merchant'>('student'); // 🌟 ROL TANLASH
+  const [role, setRole] = useState<'student' | 'merchant'>('student');
   
-  // 🌟 FORMA MAYDONLARI KENGAYTIRILDI
   const [formData, setFormData] = useState({ 
     fullName: '', studentId: '', university: '', password: '', confirmPassword: '', 
     brandName: '', loginId: '' 
@@ -114,9 +113,6 @@ export default function SignupPage() {
     }
   };
 
-  // ============================================
-  // 🌟 KUTISH ZALI (TALABA VA BIZNES UCHUN UMUMIY)
-  // ============================================
   useEffect(() => {
     let interval: any;
     if (step === 5) {
@@ -165,9 +161,8 @@ export default function SignupPage() {
         if (role === 'student') {
           const { data } = await supabase.from('students').select('student_id').eq('student_id', formData.studentId).maybeSingle();
           if (data) throw new Error("Bu Talaba ID allaqachon ro'yxatdan o'tgan!");
-          setStep(4); // Talaba rasmga olish bosqichiga o'tadi
+          setStep(4);
         } else {
-          // 🌟 BIZNES RO'YXATDAN O'TISHI VA BAZAGA YOZILISHI
           const fakeEmail = `${formData.loginId.toLowerCase().replace(/\s+/g, '')}@merchant.uz`;
           const { data: authData, error: authError } = await supabase.auth.signUp({ email: fakeEmail, password: formData.password });
 
@@ -185,13 +180,12 @@ export default function SignupPage() {
           }]);
 
           if (dbError) throw dbError;
-          setStep(5); // Biznes kamerani tashlab o'tib to'g'ri kutish zaliga tushadi!
+          setStep(5);
         }
       } catch (err: any) { setError(err.message); } 
       finally { setIsLoading(false); }
     }
 
-    // TALABA HUJJATINI YUKLAB BAZAGA YOZISH
     if (step === 4 && role === 'student') {
       if (!documentFile) { setError("Iltimos, avval talabalik guvohnomangizni rasmga oling!"); return; }
       setIsLoading(true); setError('');
@@ -256,7 +250,6 @@ export default function SignupPage() {
         if (role === 'student') {
           await supabase.from('students').update({ avatar_url: publicUrlData.publicUrl }).eq('id', user.id);
         } else {
-          // Biznes uchun logotipni ham shu papkaga saqlab logo_url ga yozamiz
           await supabase.from('merchants').update({ logo_url: publicUrlData.publicUrl }).eq('id', user.id);
         }
       }
@@ -307,24 +300,15 @@ export default function SignupPage() {
            </div>
         )}
 
+        {/* 🌟 2-QADAM: SIZ SO'RAGAN DIZAYN QAYTARILDI */}
         {step === 2 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col">
              <div className="mt-4 mb-6"><h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">O'zingizni tanishtiring</h2></div>
              
-             {/* 🌟 ROL TANLASH (TALABA YOKI BIZNES) */}
-             <div className="flex bg-[hsl(var(--secondary))] rounded-full p-1.5 mb-6 shadow-sm">
-               <button onClick={() => setRole('student')} className={`flex-1 py-3 text-sm font-bold rounded-full transition-all ${role === 'student' ? 'bg-[hsl(var(--card))] text-[hsl(var(--foreground))] shadow-md' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}>
-                 🎓 Talaba
-               </button>
-               <button onClick={() => setRole('merchant')} className={`flex-1 py-3 text-sm font-bold rounded-full transition-all ${role === 'merchant' ? 'bg-[hsl(var(--card))] text-[hsl(var(--foreground))] shadow-md' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}>
-                 🏪 Biznes (Do'kon)
-               </button>
-             </div>
-
              <div className="space-y-4">
                <div>
                  <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">
-                   {role === 'student' ? "To'liq ismingiz (Ism va Familiya)" : "Rahbar ism-familiyasi"}
+                   To'liq ismingiz (Ism va Familiya)
                  </label>
                  <div className="relative">
                    <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
@@ -333,8 +317,28 @@ export default function SignupPage() {
                </div>
                {error && <p className="text-red-500 text-sm font-semibold ml-2">{error}</p>}
              </div>
+             
              <div className="mt-auto flex flex-col gap-3">
-               <button onClick={nextStep} className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all">
+               <div className="text-center mb-2">
+                 <p className="text-sm font-semibold text-[hsl(var(--muted-foreground))]">
+                   Allaqachon hisobingiz bormi?{' '}
+                   <Link href="/login">
+                     <span className="text-[hsl(var(--primary))] cursor-pointer hover:underline">Kirish</span>
+                   </Link>
+                 </p>
+               </div>
+               
+               <button 
+                 onClick={() => { setRole('merchant'); nextStep(); }} 
+                 className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--secondary))] py-4 text-base font-bold text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/.1)] hover:text-[hsl(var(--accent))] transition-all"
+               >
+                 <Store size={18} /> Biznes (Do'kon) sifatida ro'yxatdan o'tish
+               </button>
+
+               <button 
+                 onClick={() => { setRole('student'); nextStep(); }} 
+                 className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all"
+               >
                  Keyingisi <ArrowRight size={18} />
                </button>
              </div>
@@ -346,7 +350,6 @@ export default function SignupPage() {
              <div className="mt-4 mb-6"><h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">{role === 'student' ? "Talaba ma'lumotlari" : "Biznes ma'lumotlari"}</h2></div>
              <div className="space-y-4 mb-8">
                
-               {/* 🌟 TALABA UCHUN MAYDONLAR */}
                {role === 'student' ? (
                  <>
                    <div>
@@ -391,7 +394,6 @@ export default function SignupPage() {
                    </div>
                  </>
                ) : (
-                 /* 🌟 BIZNES UCHUN MAYDONLAR */
                  <>
                    <div>
                      <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Biznes Login (ID)</label>
@@ -530,7 +532,7 @@ export default function SignupPage() {
                 {role === 'student' ? 'Profil rasmi' : 'Biznes logotipi'}
               </h2>
               <p className="text-sm text-[hsl(var(--muted-foreground))]">
-                Dasturda chiroyli ko'rinishi uchun <br/> {role === 'student' ? '' : "dokoningiz logotipini yuklang."}
+                Dasturda chiroyli ko'rinishi uchun <br/> {role === 'student' ? 'yuzingiz koringan rasm yuklang.' : "dokoningiz logotipini yuklang."}
               </p>
             </div>
             <div className="relative group mb-auto">
