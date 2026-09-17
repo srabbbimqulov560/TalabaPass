@@ -27,9 +27,14 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  // QADAMLAR SONI ENDI 6 TA
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({ fullName: '', studentId: '', university: '', password: '', confirmPassword: '' });
+  const [role, setRole] = useState<'student' | 'merchant'>('student'); // 🌟 ROL TANLASH
+  
+  // 🌟 FORMA MAYDONLARI KENGAYTIRILDI
+  const [formData, setFormData] = useState({ 
+    fullName: '', studentId: '', university: '', password: '', confirmPassword: '', 
+    brandName: '', loginId: '' 
+  });
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -39,7 +44,6 @@ export default function SignupPage() {
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [documentPreview, setDocumentPreview] = useState<string | null>(null);
   
-  // 5-QADAM (KUTISH) STATELARI
   const [isApproved, setIsApproved] = useState(false);
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -64,7 +68,6 @@ export default function SignupPage() {
   const filteredUnis = UNIVERSITIES.filter(u => u.toLowerCase().includes(uniSearch.toLowerCase()));
   const strength = getPasswordStrength(formData.password);
 
-  // KAMERANI BOSHQARISH
   const startCamera = async () => {
     setError(''); setDocumentFile(null); setDocumentPreview(null);
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -112,7 +115,7 @@ export default function SignupPage() {
   };
 
   // ============================================
-  // 5-QADAM: BAZADAN AVTOMATIK TASDIQNI KUTISH
+  // 🌟 KUTISH ZALI (TALABA VA BIZNES UCHUN UMUMIY)
   // ============================================
   useEffect(() => {
     let interval: any;
@@ -120,12 +123,12 @@ export default function SignupPage() {
       const checkApprovalStatus = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data } = await supabase.from('students').select('is_active').eq('id', user.id).single();
+          const tableName = role === 'student' ? 'students' : 'merchants';
+          const { data } = await supabase.from(tableName).select('is_active').eq('id', user.id).single();
           
           if (data && data.is_active === true) {
             setIsApproved(true);
             clearInterval(interval);
-            // Tasdiqlanganini 2 soniya ko'rsatib keyin Rasm yuklash (Step 6) ga o'tkazamiz
             setTimeout(() => {
               setStep(6);
             }, 2000);
@@ -133,11 +136,10 @@ export default function SignupPage() {
         }
       };
       
-      // Har 5 soniyada admin tasdiqlaganini tekshirib turadi
       interval = setInterval(checkApprovalStatus, 5000);
     }
     return () => clearInterval(interval);
-  }, [step]);
+  }, [step, role]);
 
 
   const nextStep = async () => {
@@ -145,26 +147,52 @@ export default function SignupPage() {
     
     if (step === 2) {
       const nameParts = formData.fullName.trim().split(' ');
-      if (nameParts.length < 2) { setError("Iltimos, ism va familiyangizni to'liq kiriting"); return; }
+      if (nameParts.length < 2) { setError(role === 'student' ? "Iltimos, ism va familiyangizni to'liq kiriting" : "Iltimos, rahbarning ism-familiyasini kiriting"); return; }
       setStep(3); return;
     }
 
     if (step === 3) {
-      if (!formData.studentId || !formData.university) { setError("Barcha maydonlarni to'ldiring"); return; }
+      if (role === 'student') {
+        if (!formData.studentId || !formData.university) { setError("Barcha maydonlarni to'ldiring"); return; }
+      } else {
+        if (!formData.loginId || !formData.brandName) { setError("Barcha maydonlarni to'ldiring"); return; }
+      }
       if (strength.score < 5) { setError("Parol yetarlicha kuchli emas!"); return; }
       if (formData.password !== formData.confirmPassword) { setError("Parollar mos kelmadi!"); return; }
 
       setIsLoading(true); setError('');
       try {
-        const { data } = await supabase.from('students').select('student_id').eq('student_id', formData.studentId).maybeSingle();
-        if (data) throw new Error("Bu Talaba ID allaqachon ro'yxatdan o'tgan!");
-        setStep(4);
+        if (role === 'student') {
+          const { data } = await supabase.from('students').select('student_id').eq('student_id', formData.studentId).maybeSingle();
+          if (data) throw new Error("Bu Talaba ID allaqachon ro'yxatdan o'tgan!");
+          setStep(4); // Talaba rasmga olish bosqichiga o'tadi
+        } else {
+          // 🌟 BIZNES RO'YXATDAN O'TISHI VA BAZAGA YOZILISHI
+          const fakeEmail = `${formData.loginId.toLowerCase().replace(/\s+/g, '')}@merchant.uz`;
+          const { data: authData, error: authError } = await supabase.auth.signUp({ email: fakeEmail, password: formData.password });
+
+          if (authError) {
+            if (authError.message.includes('already registered')) throw new Error("Bu Biznes Login band yoki siz avval ro'yxatdan o'tgansiz.");
+            throw new Error(authError.message);
+          }
+          if (!authData.user) throw new Error("Foydalanuvchini yaratib bo'lmadi.");
+
+          const { error: dbError } = await supabase.from('merchants').insert([{
+            id: authData.user.id,
+            name: formData.brandName,
+            owner_name: formData.fullName,
+            is_active: false
+          }]);
+
+          if (dbError) throw dbError;
+          setStep(5); // Biznes kamerani tashlab o'tib to'g'ri kutish zaliga tushadi!
+        }
       } catch (err: any) { setError(err.message); } 
       finally { setIsLoading(false); }
     }
 
-    // HUJJAT YUKLANGACH BAZAGA YOZAMIZ VA KUTISH ZALIGA YUBORAMIZ (STEP 5)
-    if (step === 4) {
+    // TALABA HUJJATINI YUKLAB BAZAGA YOZISH
+    if (step === 4 && role === 'student') {
       if (!documentFile) { setError("Iltimos, avval talabalik guvohnomangizni rasmga oling!"); return; }
       setIsLoading(true); setError('');
 
@@ -199,7 +227,7 @@ export default function SignupPage() {
         }]);
 
         if (dbError) throw dbError;
-        setStep(5); // KUTISH ZALIGA O'TISH
+        setStep(5);
       } catch (err: any) { setError(err.message); } 
       finally { setIsLoading(false); }
     }
@@ -207,7 +235,7 @@ export default function SignupPage() {
 
   const prevStep = () => {
     if (step === 4) stopCamera();
-    if (step === 5 || step === 6) return; // Tasdiqlash kutilyotganda yoki o'tgach orqaga qaytolmaydi
+    if (step === 5 || step === 6) return;
     setStep((prev) => Math.max(prev - 1, 1));
   };
 
@@ -224,7 +252,13 @@ export default function SignupPage() {
         if (uploadError) throw new Error("Rasmni saqlashda xatolik");
 
         const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
-        await supabase.from('students').update({ avatar_url: publicUrlData.publicUrl }).eq('id', user.id);
+        
+        if (role === 'student') {
+          await supabase.from('students').update({ avatar_url: publicUrlData.publicUrl }).eq('id', user.id);
+        } else {
+          // Biznes uchun logotipni ham shu papkaga saqlab logo_url ga yozamiz
+          await supabase.from('merchants').update({ logo_url: publicUrlData.publicUrl }).eq('id', user.id);
+        }
       }
       window.location.href = '/'; 
     } catch (err: any) { setError(err.message); setIsLoading(false); }
@@ -251,7 +285,6 @@ export default function SignupPage() {
         
         {step === 1 && (
            <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col">
-             {/* SIZNING 1-QADAM KODINGIZ O'Z HOLICHA */}
              <div className="mt-4 mb-8">
                <h1 className="font-display text-4xl font-bold leading-[1.1] text-[hsl(var(--foreground))]">
                  {t('hero_title_1')} <br/><span className="text-[hsl(var(--accent))]">{t('hero_title_2')}</span>
@@ -276,11 +309,23 @@ export default function SignupPage() {
 
         {step === 2 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col">
-             {/* SIZNING 2-QADAM KODINGIZ O'Z HOLICHA */}
              <div className="mt-4 mb-6"><h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">O'zingizni tanishtiring</h2></div>
+             
+             {/* 🌟 ROL TANLASH (TALABA YOKI BIZNES) */}
+             <div className="flex bg-[hsl(var(--secondary))] rounded-full p-1.5 mb-6 shadow-sm">
+               <button onClick={() => setRole('student')} className={`flex-1 py-3 text-sm font-bold rounded-full transition-all ${role === 'student' ? 'bg-[hsl(var(--card))] text-[hsl(var(--foreground))] shadow-md' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}>
+                 🎓 Talaba
+               </button>
+               <button onClick={() => setRole('merchant')} className={`flex-1 py-3 text-sm font-bold rounded-full transition-all ${role === 'merchant' ? 'bg-[hsl(var(--card))] text-[hsl(var(--foreground))] shadow-md' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}>
+                 🏪 Biznes (Do'kon)
+               </button>
+             </div>
+
              <div className="space-y-4">
                <div>
-                 <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">To'liq ismingiz (Ism va Familiya)</label>
+                 <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">
+                   {role === 'student' ? "To'liq ismingiz (Ism va Familiya)" : "Rahbar ism-familiyasi"}
+                 </label>
                  <div className="relative">
                    <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
                    <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} placeholder="Masalan: Shoxjaxon Rabimqulov" required className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-4 pl-12 pr-4 rounded-2xl text-sm font-semibold outline-none focus:border-[hsl(var(--accent))] text-[hsl(var(--foreground))] transition-all" />
@@ -298,49 +343,73 @@ export default function SignupPage() {
 
         {step === 3 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col">
-             {/* SIZNING 3-QADAM KODINGIZ O'Z HOLICHA (universitet qidiruv bilan) */}
-             <div className="mt-4 mb-6"><h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">Talaba ma'lumotlari</h2></div>
+             <div className="mt-4 mb-6"><h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">{role === 'student' ? "Talaba ma'lumotlari" : "Biznes ma'lumotlari"}</h2></div>
              <div className="space-y-4 mb-8">
-               <div>
-                 <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Talaba ID</label>
-                 <div className="relative">
-                   <IdCard className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
-                   <input type="text" name="studentId" value={formData.studentId} onChange={handleChange} placeholder="ID raqamingizni kiriting" className="w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-4 font-mono font-bold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))]" />
-                 </div>
-               </div>
+               
+               {/* 🌟 TALABA UCHUN MAYDONLAR */}
+               {role === 'student' ? (
+                 <>
+                   <div>
+                     <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Talaba ID</label>
+                     <div className="relative">
+                       <IdCard className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
+                       <input type="text" name="studentId" value={formData.studentId} onChange={handleChange} placeholder="ID raqamingizni kiriting" className="w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-4 font-mono font-bold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))]" />
+                     </div>
+                   </div>
 
-               <div className="relative">
-                 <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Universitet</label>
-                 <div className="relative cursor-pointer" onClick={() => setIsUniOpen(!isUniOpen)}>
-                   <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
-                   <div className={`w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-10 font-semibold text-[hsl(var(--foreground))] outline-none transition-colors ${isUniOpen ? 'border-[hsl(var(--accent))]' : ''} ${!formData.university ? 'text-[hsl(var(--muted-foreground))]' : ''}`}>
-                     <span className="block truncate">{formData.university || "Universitetni tanlang..."}</span>
-                   </div>
-                   <ChevronDown className={`absolute right-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] transition-transform ${isUniOpen ? 'rotate-180' : ''}`} size={20} />
-                 </div>
-                 {isUniOpen && (
-                   <div className="absolute top-[100%] left-0 w-full mt-2 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl shadow-xl z-50 max-h-[250px] flex flex-col overflow-hidden">
-                     <div className="p-3 border-b border-[hsl(var(--border))] flex items-center gap-2 bg-[hsl(var(--secondary)/.5)]">
-                       <Search size={16} className="text-[hsl(var(--muted-foreground))]" />
-                       <input type="text" placeholder="Qidirish..." value={uniSearch} onChange={(e) => setUniSearch(e.target.value)} className="bg-transparent text-sm w-full outline-none text-[hsl(var(--foreground))]" autoFocus />
+                   <div className="relative">
+                     <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Universitet</label>
+                     <div className="relative cursor-pointer" onClick={() => setIsUniOpen(!isUniOpen)}>
+                       <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
+                       <div className={`w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-10 font-semibold text-[hsl(var(--foreground))] outline-none transition-colors ${isUniOpen ? 'border-[hsl(var(--accent))]' : ''} ${!formData.university ? 'text-[hsl(var(--muted-foreground))]' : ''}`}>
+                         <span className="block truncate">{formData.university || "Universitetni tanlang..."}</span>
+                       </div>
+                       <ChevronDown className={`absolute right-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] transition-transform ${isUniOpen ? 'rotate-180' : ''}`} size={20} />
                      </div>
-                     <div className="overflow-y-auto flex-1 p-2 space-y-1">
-                       {filteredUnis.length > 0 ? (
-                         filteredUnis.map((uni, idx) => (
-                           <div key={idx} onClick={() => { setFormData({ ...formData, university: uni }); setIsUniOpen(false); setUniSearch(''); }} className={`p-3 text-sm rounded-xl cursor-pointer transition-colors ${formData.university === uni ? 'bg-[hsl(var(--accent)/.1)] text-[hsl(var(--accent))] font-bold' : 'text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))]'}`}>{uni}</div>
-                         ))
-                       ) : (
-                         <div className="p-3 text-sm text-[hsl(var(--muted-foreground))] text-center">Topilmadi. O'zingiz kiriting:</div>
-                       )}
-                       {uniSearch && !filteredUnis.includes(uniSearch) && (
-                         <div onClick={() => { setFormData({ ...formData, university: uniSearch }); setIsUniOpen(false); setUniSearch(''); }} className="p-3 text-sm rounded-xl cursor-pointer bg-[hsl(var(--accent)/.1)] text-[hsl(var(--accent))] hover:bg-[hsl(var(--accent)/.2)] transition-colors font-semibold flex items-center justify-between">
-                           <span>"{uniSearch}" deb saqlash</span> <Check size={16} />
+                     {isUniOpen && (
+                       <div className="absolute top-[100%] left-0 w-full mt-2 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl shadow-xl z-50 max-h-[250px] flex flex-col overflow-hidden">
+                         <div className="p-3 border-b border-[hsl(var(--border))] flex items-center gap-2 bg-[hsl(var(--secondary)/.5)]">
+                           <Search size={16} className="text-[hsl(var(--muted-foreground))]" />
+                           <input type="text" placeholder="Qidirish..." value={uniSearch} onChange={(e) => setUniSearch(e.target.value)} className="bg-transparent text-sm w-full outline-none text-[hsl(var(--foreground))]" autoFocus />
                          </div>
-                       )}
+                         <div className="overflow-y-auto flex-1 p-2 space-y-1">
+                           {filteredUnis.length > 0 ? (
+                             filteredUnis.map((uni, idx) => (
+                               <div key={idx} onClick={() => { setFormData({ ...formData, university: uni }); setIsUniOpen(false); setUniSearch(''); }} className={`p-3 text-sm rounded-xl cursor-pointer transition-colors ${formData.university === uni ? 'bg-[hsl(var(--accent)/.1)] text-[hsl(var(--accent))] font-bold' : 'text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))]'}`}>{uni}</div>
+                             ))
+                           ) : (
+                             <div className="p-3 text-sm text-[hsl(var(--muted-foreground))] text-center">Topilmadi. O'zingiz kiriting:</div>
+                           )}
+                           {uniSearch && !filteredUnis.includes(uniSearch) && (
+                             <div onClick={() => { setFormData({ ...formData, university: uniSearch }); setIsUniOpen(false); setUniSearch(''); }} className="p-3 text-sm rounded-xl cursor-pointer bg-[hsl(var(--accent)/.1)] text-[hsl(var(--accent))] hover:bg-[hsl(var(--accent)/.2)] transition-colors font-semibold flex items-center justify-between">
+                               <span>"{uniSearch}" deb saqlash</span> <Check size={16} />
+                             </div>
+                           )}
+                         </div>
+                       </div>
+                     )}
+                   </div>
+                 </>
+               ) : (
+                 /* 🌟 BIZNES UCHUN MAYDONLAR */
+                 <>
+                   <div>
+                     <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Biznes Login (ID)</label>
+                     <div className="relative">
+                       <Store className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
+                       <input type="text" name="loginId" value={formData.loginId} onChange={handleChange} placeholder="Masalan: macbro_uz" className="w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-4 font-mono font-bold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))]" />
                      </div>
                    </div>
-                 )}
-               </div>
+
+                   <div>
+                     <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Biznes nomi (Brend)</label>
+                     <div className="relative">
+                       <Store className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
+                       <input type="text" name="brandName" value={formData.brandName} onChange={handleChange} placeholder="Masalan: MacBro" className="w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-4 font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))]" />
+                     </div>
+                   </div>
+                 </>
+               )}
 
                <div>
                  <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Murakkab Parol</label>
@@ -349,6 +418,17 @@ export default function SignupPage() {
                    <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange} placeholder="Pa$$w0rd!" className="w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-12 font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))]" />
                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors outline-none">{showPassword ? <EyeOff size={20} /> : <Eye size={20} />}</button>
                  </div>
+                 {formData.password && (
+                   <div className="mt-2 px-2">
+                     <div className="flex justify-between items-center mb-1 text-[10px] font-bold uppercase text-[hsl(var(--muted-foreground))]">
+                       <span>Xavfsizlik</span>
+                       <span className={strength.text === 'Oson' ? 'text-red-500' : strength.text === "O'rtacha" ? 'text-yellow-500' : strength.text === 'Kuchli' ? 'text-green-500' : ''}>{strength.text}</span>
+                     </div>
+                     <div className="h-1.5 w-full bg-[hsl(var(--secondary))] rounded-full overflow-hidden flex">
+                       <div className={`h-full transition-all duration-300 ease-out ${strength.color}`} style={{ width: strength.width }}></div>
+                     </div>
+                   </div>
+                 )}
                </div>
 
                <div>
@@ -413,11 +493,9 @@ export default function SignupPage() {
           </div>
         )}
 
-        {/* 🌟 YANGI QO'SHILDI: 5-QADAM (KUTISH ZALI) */}
         {step === 5 && (
           <div className="animate-in zoom-in-95 duration-500 flex-1 flex flex-col items-center justify-center text-center">
             {isApproved ? (
-              // TASDIQLANGANDA CHIQADIGAN OYNA
               <div className="animate-in fade-in zoom-in duration-300">
                 <div className="w-24 h-24 bg-green-500/10 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-green-500/20 shadow-[0_0_40px_rgba(34,197,94,0.3)]">
                   <CheckCircle2 size={48} strokeWidth={2.5} />
@@ -426,7 +504,6 @@ export default function SignupPage() {
                 <p className="text-sm font-medium text-[hsl(var(--muted-foreground))]">Ma'lumotlaringiz muvaffaqiyatli qabul qilindi.</p>
               </div>
             ) : (
-              // KUTAYOTGANDA CHIQADIGAN OYNA
               <>
                 <div className="relative mb-8">
                   <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full w-24 h-24 mx-auto animate-pulse"></div>
@@ -435,7 +512,7 @@ export default function SignupPage() {
                     <div className="absolute top-0 left-0 w-full h-full rounded-full border-t-2 border-blue-500 animate-spin"></div>
                   </div>
                 </div>
-                <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-3">Hujjat tekshirilmoqda</h2>
+                <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-3">Tekshirilmoqda</h2>
                 <p className="text-[13px] text-[hsl(var(--muted-foreground))] leading-relaxed max-w-[280px] mx-auto px-2">
                   Arizangiz administratorga yuborildi. Odatda tekshiruv jarayoni <b>10-30 daqiqa</b> vaqt oladi.
                   <br/><br/>
@@ -446,12 +523,15 @@ export default function SignupPage() {
           </div>
         )}
 
-        {/* 6-QADAM - PROFIL RASMI (Eski 5-qadam) */}
         {step === 6 && (
           <div className="animate-in slide-in-from-bottom-8 fade-in duration-500 flex-1 flex flex-col items-center justify-center">
             <div className="text-center mb-10 mt-auto">
-              <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))] mb-2">Profil rasmi</h2>
-              <p className="text-sm text-[hsl(var(--muted-foreground))]">Dasturda chiroyli ko'rinishi uchun <br/> yuzingiz ko'ringan rasm yuklang.</p>
+              <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))] mb-2">
+                {role === 'student' ? 'Profil rasmi' : 'Biznes logotipi'}
+              </h2>
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">
+                Dasturda chiroyli ko'rinishi uchun <br/> {role === 'student' ? '' : "dokoningiz logotipini yuklang."}
+              </p>
             </div>
             <div className="relative group mb-auto">
               <input type="file" ref={avatarInputRef} onChange={handleAvatarUpload} accept="image/*" className="hidden" />
