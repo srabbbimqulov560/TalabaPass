@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { PlusCircle, Tag as TagIcon, Loader2, Camera, Trash2, Clock, CalendarDays, X, Eye } from 'lucide-react';
+import { PlusCircle, Tag as TagIcon, Loader2, Camera, Trash2, Clock, CalendarDays, X, Eye, ShieldAlert } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -20,6 +20,19 @@ export default function MerchantDiscounts() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 🌟 1. DO'KON STATUSINI TEKSHIRISH
+  const { data: merchantStatus } = useQuery({
+    queryKey: ['merchantStatus'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data } = await supabase.from('merchants').select('is_active').eq('id', user.id).single();
+      return data;
+    }
+  });
+
+  const isActive = merchantStatus?.is_active === true;
 
   // BAZADAN CHEGIRMALAR VA ULARNING KO'RISHLAR SONINI (COUNT) TORTIB OLISH
   const { data: discounts, isLoading } = useQuery({
@@ -104,11 +117,30 @@ export default function MerchantDiscounts() {
 
   return (
     <div className="page-enter pb-10">
+      
+      {/* 🌟 2. TASDIQLANMAGAN BO'LSA OGOHLANTIRISH */}
+      {merchantStatus && !isActive && (
+        <div className="mb-6 bg-orange-500/10 border border-orange-500/30 p-4 rounded-2xl flex items-start gap-3">
+           <ShieldAlert className="text-orange-500 shrink-0 mt-0.5" size={20} />
+           <p className="text-sm font-medium text-orange-500 leading-relaxed">
+             Hisobingiz hali tasdiqlanmagan. Administrator tasdiqlamaguncha yangi chegirmalar qo'sha olmaysiz.
+           </p>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-6">
         <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))]">Chegirmalar</h2>
-        <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-1.5 text-sm font-bold bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-4 py-2.5 rounded-full shadow-float active:scale-95 transition-all">
-          <PlusCircle size={18}/> Yangi
-        </button>
+        
+        {/* 🌟 3. TUGMANI YASHIRISH */}
+        {isActive ? (
+          <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-1.5 text-sm font-bold bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-4 py-2.5 rounded-full shadow-float active:scale-95 transition-all">
+            <PlusCircle size={18}/> Yangi
+          </button>
+        ) : (
+          <span className="flex items-center gap-1.5 rounded-full bg-orange-500/10 px-3 py-1.5 text-[11px] font-bold text-orange-500 uppercase tracking-wider border border-orange-500/20">
+            <Clock size={14} /> Kutilmoqda
+          </span>
+        )}
       </div>
 
       {isLoading ? (
@@ -155,8 +187,8 @@ export default function MerchantDiscounts() {
         </div>
       )}
 
-      {/* MODAL (ESKI HOLIDA QOLDI) */}
-      {isModalOpen && (
+      {/* MODAL */}
+      {isModalOpen && isActive && (
         <div className="fixed inset-0 z-[60] flex flex-col justify-end" style={{ height: '100dvh' }}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !isSubmitting && setIsModalOpen(false)} />
           <div className="relative bg-[hsl(var(--card))] rounded-t-[32px] p-6 pb-[100px] animate-in slide-in-from-bottom-full duration-300 shadow-2xl h-[90vh] overflow-y-auto border-t border-[hsl(var(--border))]">

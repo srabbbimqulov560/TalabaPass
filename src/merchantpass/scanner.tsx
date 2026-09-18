@@ -1,34 +1,45 @@
 import { useState } from 'react';
-import { QrCode, CheckCircle2, XCircle, Loader2, User, RefreshCcw } from 'lucide-react';
+import { QrCode, CheckCircle2, XCircle, Loader2, User, RefreshCcw, ShieldAlert } from 'lucide-react';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { supabase } from '@/lib/supabase';
+import { useQuery } from '@tanstack/react-query';
 
 export default function MerchantScanner() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string; student?: any } | null>(null);
+
+  // 🌟 1. DO'KON STATUSINI TEKSHIRISH
+  const { data: merchantStatus, isLoading: isProfileLoading } = useQuery({
+    queryKey: ['merchantStatusCheck'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data } = await supabase.from('merchants').select('is_active').eq('id', user.id).single();
+      return data;
+    }
+  });
+
+  const isActive = merchantStatus?.is_active === true;
 
   const handleScan = async (text: string) => {
     if (loading || result) return; 
     setLoading(true);
 
     try {
-      let searchId = text; // Asl ID ni qidirish uchun
+      let searchId = text; 
 
-      // 1. XAVFSIZLIK: Dinamik 30 soniyalik QR kod mantig'i
       if (text.includes('|')) {
         const [scannedId, timestampStr] = text.split('|');
         const timestamp = parseInt(timestampStr, 10);
-        const timeDiff = Date.now() - timestamp; // Qancha vaqt o'tgani
+        const timeDiff = Date.now() - timestamp; 
 
-        // Agar 30 soniyadan (30000 ms) ko'p vaqt o'tgan bo'lsa - BLOKLASH!
         if (timeDiff > 30000 || timeDiff < 0) {
           throw new Error("QR kod muddati tugagan! Talabadan dasturga kirib kodni yangilashni so'rang (Skrinshot o'tmaydi).");
         }
         
-        searchId = scannedId; // Agar vaqt to'g'ri bo'lsa, ID ni olamiz
+        searchId = scannedId; 
       }
 
-      // 2. Bazadan talabani qidirish
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchId);
       const { data: student, error: studentError } = await supabase
         .from('students')
@@ -43,13 +54,11 @@ export default function MerchantScanner() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Do'kon akkauntiga kirilmagan!");
 
-      // 3. Skanerlash tarixiga yozamiz
       await supabase.from('scan_history').insert({
         merchant_id: user.id,
         student_id: student.id
       });
 
-      // 4. Tasdiqlandi
       setResult({
         success: true,
         message: "Tasdiqlandi!",
@@ -66,6 +75,31 @@ export default function MerchantScanner() {
     }
   };
 
+  if (isProfileLoading) {
+    return <div className="flex justify-center pt-40"><Loader2 className="animate-spin text-[hsl(var(--accent))]" size={40}/></div>;
+  }
+
+  // 🌟 2. TASDIQLANMAGAN BO'LSA BLOKLASH
+  if (!isActive) {
+    return (
+      <div className="page-enter pb-20 px-4 pt-10">
+        <div className="text-center mb-8">
+          <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))]">Skaner bloklangan</h2>
+        </div>
+        <div className="w-full max-w-sm mx-auto bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-8 rounded-[40px] text-center shadow-xl">
+          <div className="w-24 h-24 bg-orange-500/10 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-orange-500/20">
+            <ShieldAlert size={48} />
+          </div>
+          <h3 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-3">Tasdiqlanmagan</h3>
+          <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))] leading-relaxed px-2">
+            Hisobingiz administrator tomonidan tasdiqlanmaguncha skanerdan foydalana olmaysiz. Iltimos, kuting.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // AGAR TASDIQLANGAN BO'LSA ODATDAGIDEK ISHLAYDI
   return (
     <div className="page-enter pb-20">
       

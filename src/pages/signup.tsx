@@ -28,12 +28,7 @@ export default function SignupPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [step, setStep] = useState(1);
-  const [role, setRole] = useState<'student' | 'merchant'>('student');
-  
-  const [formData, setFormData] = useState({ 
-    fullName: '', studentId: '', university: '', password: '', confirmPassword: '', 
-    brandName: '', loginId: '' 
-  });
+  const [formData, setFormData] = useState({ fullName: '', studentId: '', university: '', password: '', confirmPassword: '' });
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -119,8 +114,7 @@ export default function SignupPage() {
       const checkApprovalStatus = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const tableName = role === 'student' ? 'students' : 'merchants';
-          const { data } = await supabase.from(tableName).select('is_active').eq('id', user.id).single();
+          const { data } = await supabase.from('students').select('is_active').eq('id', user.id).single();
           
           if (data && data.is_active === true) {
             setIsApproved(true);
@@ -135,7 +129,7 @@ export default function SignupPage() {
       interval = setInterval(checkApprovalStatus, 5000);
     }
     return () => clearInterval(interval);
-  }, [step, role]);
+  }, [step]);
 
 
   const nextStep = async () => {
@@ -143,50 +137,25 @@ export default function SignupPage() {
     
     if (step === 2) {
       const nameParts = formData.fullName.trim().split(' ');
-      if (nameParts.length < 2) { setError(role === 'student' ? "Iltimos, ism va familiyangizni to'liq kiriting" : "Iltimos, rahbarning ism-familiyasini kiriting"); return; }
+      if (nameParts.length < 2) { setError("Iltimos, ism va familiyangizni to'liq kiriting"); return; }
       setStep(3); return;
     }
 
     if (step === 3) {
-      if (role === 'student') {
-        if (!formData.studentId || !formData.university) { setError("Barcha maydonlarni to'ldiring"); return; }
-      } else {
-        if (!formData.loginId || !formData.brandName) { setError("Barcha maydonlarni to'ldiring"); return; }
-      }
+      if (!formData.studentId || !formData.university) { setError("Barcha maydonlarni to'ldiring"); return; }
       if (strength.score < 5) { setError("Parol yetarlicha kuchli emas!"); return; }
       if (formData.password !== formData.confirmPassword) { setError("Parollar mos kelmadi!"); return; }
 
       setIsLoading(true); setError('');
       try {
-        if (role === 'student') {
-          const { data } = await supabase.from('students').select('student_id').eq('student_id', formData.studentId).maybeSingle();
-          if (data) throw new Error("Bu Talaba ID allaqachon ro'yxatdan o'tgan!");
-          setStep(4);
-        } else {
-          const fakeEmail = `${formData.loginId.toLowerCase().replace(/\s+/g, '')}@merchant.uz`;
-          const { data: authData, error: authError } = await supabase.auth.signUp({ email: fakeEmail, password: formData.password });
-
-          if (authError) {
-            if (authError.message.includes('already registered')) throw new Error("Bu Biznes Login band yoki siz avval ro'yxatdan o'tgansiz.");
-            throw new Error(authError.message);
-          }
-          if (!authData.user) throw new Error("Foydalanuvchini yaratib bo'lmadi.");
-
-          const { error: dbError } = await supabase.from('merchants').insert([{
-            id: authData.user.id,
-            name: formData.brandName,
-            owner_name: formData.fullName,
-            is_active: false
-          }]);
-
-          if (dbError) throw dbError;
-          setStep(5);
-        }
+        const { data } = await supabase.from('students').select('student_id').eq('student_id', formData.studentId).maybeSingle();
+        if (data) throw new Error("Bu Talaba ID allaqachon ro'yxatdan o'tgan!");
+        setStep(4);
       } catch (err: any) { setError(err.message); } 
       finally { setIsLoading(false); }
     }
 
-    if (step === 4 && role === 'student') {
+    if (step === 4) {
       if (!documentFile) { setError("Iltimos, avval talabalik guvohnomangizni rasmga oling!"); return; }
       setIsLoading(true); setError('');
 
@@ -247,11 +216,7 @@ export default function SignupPage() {
 
         const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
         
-        if (role === 'student') {
-          await supabase.from('students').update({ avatar_url: publicUrlData.publicUrl }).eq('id', user.id);
-        } else {
-          await supabase.from('merchants').update({ logo_url: publicUrlData.publicUrl }).eq('id', user.id);
-        }
+        await supabase.from('students').update({ avatar_url: publicUrlData.publicUrl }).eq('id', user.id);
       }
       window.location.href = '/'; 
     } catch (err: any) { setError(err.message); setIsLoading(false); }
@@ -300,7 +265,6 @@ export default function SignupPage() {
            </div>
         )}
 
-        {/* 🌟 2-QADAM: SIZ SO'RAGAN DIZAYN QAYTARILDI */}
         {step === 2 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col">
              <div className="mt-4 mb-6"><h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">O'zingizni tanishtiring</h2></div>
@@ -328,15 +292,16 @@ export default function SignupPage() {
                  </p>
                </div>
                
-               <button 
-                 onClick={() => { setRole('merchant'); nextStep(); }} 
-                 className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--secondary))] py-4 text-base font-bold text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/.1)] hover:text-[hsl(var(--accent))] transition-all"
-               >
-                 <Store size={18} /> Biznes (Do'kon) sifatida ro'yxatdan o'tish
-               </button>
+               {/* 🚀 XATO TARTIBGA SOLINDI: Havola nomi /merchant/signup deb to'g'rilandi */}
+               <Link href="/merchant/signup">
+                 <div className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-[hsl(var(--secondary))] py-4 text-base font-bold text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/.1)] hover:text-[hsl(var(--accent))] transition-all shadow-sm">
+                   <Store size={18} /> Biznes sifatida ro'yxatdan o'tish
+                 </div>
+               </Link>
 
                <button 
-                 onClick={() => { setRole('student'); nextStep(); }} 
+                 type="button"
+                 onClick={nextStep} 
                  className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all"
                >
                  Keyingisi <ArrowRight size={18} />
@@ -347,71 +312,49 @@ export default function SignupPage() {
 
         {step === 3 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col">
-             <div className="mt-4 mb-6"><h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">{role === 'student' ? "Talaba ma'lumotlari" : "Biznes ma'lumotlari"}</h2></div>
+             <div className="mt-4 mb-6"><h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">Talaba ma'lumotlari</h2></div>
              <div className="space-y-4 mb-8">
                
-               {role === 'student' ? (
-                 <>
-                   <div>
-                     <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Talaba ID</label>
-                     <div className="relative">
-                       <IdCard className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
-                       <input type="text" name="studentId" value={formData.studentId} onChange={handleChange} placeholder="ID raqamingizni kiriting" className="w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-4 font-mono font-bold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))]" />
-                     </div>
-                   </div>
+               <div>
+                 <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Talaba ID</label>
+                 <div className="relative">
+                   <IdCard className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
+                   <input type="text" name="studentId" value={formData.studentId} onChange={handleChange} placeholder="ID raqamingizni kiriting" className="w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-4 font-mono font-bold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))]" />
+                 </div>
+               </div>
 
-                   <div className="relative">
-                     <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Universitet</label>
-                     <div className="relative cursor-pointer" onClick={() => setIsUniOpen(!isUniOpen)}>
-                       <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
-                       <div className={`w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-10 font-semibold text-[hsl(var(--foreground))] outline-none transition-colors ${isUniOpen ? 'border-[hsl(var(--accent))]' : ''} ${!formData.university ? 'text-[hsl(var(--muted-foreground))]' : ''}`}>
-                         <span className="block truncate">{formData.university || "Universitetni tanlang..."}</span>
-                       </div>
-                       <ChevronDown className={`absolute right-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] transition-transform ${isUniOpen ? 'rotate-180' : ''}`} size={20} />
+               <div className="relative">
+                 <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Universitet</label>
+                 <div className="relative cursor-pointer" onClick={() => setIsUniOpen(!isUniOpen)}>
+                   <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
+                   <div className={`w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-10 font-semibold text-[hsl(var(--foreground))] outline-none transition-colors ${isUniOpen ? 'border-[hsl(var(--accent))]' : ''} ${!formData.university ? 'text-[hsl(var(--muted-foreground))]' : ''}`}>
+                     <span className="block truncate">{formData.university || "Universitetni tanlang..."}</span>
+                   </div>
+                   <ChevronDown className={`absolute right-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] transition-transform ${isUniOpen ? 'rotate-180' : ''}`} size={20} />
+                 </div>
+                 {isUniOpen && (
+                   <div className="absolute top-[100%] left-0 w-full mt-2 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl shadow-xl z-50 max-h-[250px] flex flex-col overflow-hidden">
+                     <div className="p-3 border-b border-[hsl(var(--border))] flex items-center gap-2 bg-[hsl(var(--secondary)/.5)]">
+                       <Search size={16} className="text-[hsl(var(--muted-foreground))]" />
+                       <input type="text" placeholder="Qidirish..." value={uniSearch} onChange={(e) => setUniSearch(e.target.value)} className="bg-transparent text-sm w-full outline-none text-[hsl(var(--foreground))]" autoFocus />
                      </div>
-                     {isUniOpen && (
-                       <div className="absolute top-[100%] left-0 w-full mt-2 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl shadow-xl z-50 max-h-[250px] flex flex-col overflow-hidden">
-                         <div className="p-3 border-b border-[hsl(var(--border))] flex items-center gap-2 bg-[hsl(var(--secondary)/.5)]">
-                           <Search size={16} className="text-[hsl(var(--muted-foreground))]" />
-                           <input type="text" placeholder="Qidirish..." value={uniSearch} onChange={(e) => setUniSearch(e.target.value)} className="bg-transparent text-sm w-full outline-none text-[hsl(var(--foreground))]" autoFocus />
+                     <div className="overflow-y-auto flex-1 p-2 space-y-1">
+                       {filteredUnis.length > 0 ? (
+                         filteredUnis.map((uni, idx) => (
+                           <div key={idx} onClick={() => { setFormData({ ...formData, university: uni }); setIsUniOpen(false); setUniSearch(''); }} className={`p-3 text-sm rounded-xl cursor-pointer transition-colors ${formData.university === uni ? 'bg-[hsl(var(--accent)/.1)] text-[hsl(var(--accent))] font-bold' : 'text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))]'}`}>{uni}</div>
+                         ))
+                       ) : (
+                         <div className="p-3 text-sm text-[hsl(var(--muted-foreground))] text-center">Topilmadi. O'zingiz kiriting:</div>
+                       )}
+                       {uniSearch && !filteredUnis.includes(uniSearch) && (
+                         <div onClick={() => { setFormData({ ...formData, university: uniSearch }); setIsUniOpen(false); setUniSearch(''); }} className="p-3 text-sm rounded-xl cursor-pointer bg-[hsl(var(--accent)/.1)] text-[hsl(var(--accent))] hover:bg-[hsl(var(--accent)/.2)] transition-colors font-semibold flex items-center justify-between">
+                           <span>"{uniSearch}" deb saqlash</span> <Check size={16} />
                          </div>
-                         <div className="overflow-y-auto flex-1 p-2 space-y-1">
-                           {filteredUnis.length > 0 ? (
-                             filteredUnis.map((uni, idx) => (
-                               <div key={idx} onClick={() => { setFormData({ ...formData, university: uni }); setIsUniOpen(false); setUniSearch(''); }} className={`p-3 text-sm rounded-xl cursor-pointer transition-colors ${formData.university === uni ? 'bg-[hsl(var(--accent)/.1)] text-[hsl(var(--accent))] font-bold' : 'text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))]'}`}>{uni}</div>
-                             ))
-                           ) : (
-                             <div className="p-3 text-sm text-[hsl(var(--muted-foreground))] text-center">Topilmadi. O'zingiz kiriting:</div>
-                           )}
-                           {uniSearch && !filteredUnis.includes(uniSearch) && (
-                             <div onClick={() => { setFormData({ ...formData, university: uniSearch }); setIsUniOpen(false); setUniSearch(''); }} className="p-3 text-sm rounded-xl cursor-pointer bg-[hsl(var(--accent)/.1)] text-[hsl(var(--accent))] hover:bg-[hsl(var(--accent)/.2)] transition-colors font-semibold flex items-center justify-between">
-                               <span>"{uniSearch}" deb saqlash</span> <Check size={16} />
-                             </div>
-                           )}
-                         </div>
-                       </div>
-                     )}
-                   </div>
-                 </>
-               ) : (
-                 <>
-                   <div>
-                     <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Biznes Login (ID)</label>
-                     <div className="relative">
-                       <Store className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
-                       <input type="text" name="loginId" value={formData.loginId} onChange={handleChange} placeholder="Masalan: macbro_uz" className="w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-4 font-mono font-bold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))]" />
+                       )}
                      </div>
                    </div>
-
-                   <div>
-                     <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Biznes nomi (Brend)</label>
-                     <div className="relative">
-                       <Store className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
-                       <input type="text" name="brandName" value={formData.brandName} onChange={handleChange} placeholder="Masalan: MacBro" className="w-full rounded-2xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] py-4 pl-12 pr-4 font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))]" />
-                     </div>
-                   </div>
-                 </>
-               )}
+                 )}
+               </div>
 
                <div>
                  <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Murakkab Parol</label>
@@ -528,11 +471,9 @@ export default function SignupPage() {
         {step === 6 && (
           <div className="animate-in slide-in-from-bottom-8 fade-in duration-500 flex-1 flex flex-col items-center justify-center">
             <div className="text-center mb-10 mt-auto">
-              <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))] mb-2">
-                {role === 'student' ? 'Profil rasmi' : 'Biznes logotipi'}
-              </h2>
+              <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))] mb-2">Profil rasmi</h2>
               <p className="text-sm text-[hsl(var(--muted-foreground))]">
-                Dasturda chiroyli ko'rinishi uchun <br/> {role === 'student' ? 'yuzingiz koringan rasm yuklang.' : "dokoningiz logotipini yuklang."}
+                Dasturda chiroyli ko'rinishi uchun <br/> yuzingiz ko'ringan rasm yuklang.
               </p>
             </div>
             <div className="relative group mb-auto">
