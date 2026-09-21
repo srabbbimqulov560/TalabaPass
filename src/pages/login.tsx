@@ -38,7 +38,16 @@ export default function LoginPage() {
       window.location.href = '/'; 
 
     } catch (err: any) {
-      setError(err.message || "Xatolik yuz berdi. Internetni tekshiring.");
+      // 🌟 KIBER-HIMOYA: Agar Supabase limitdan oshgani uchun bloklasa
+      if (err.message.includes('rate limit') || err.message.includes('Too many requests') || err.status === 429) {
+        setError("Xavfsizlik tizimi blokladi! Siz juda ko'p marta xato parol kiritdingiz. Iltimos, 15 daqiqadan so'ng qayta urinib ko'ring.");
+      } 
+      else if (err.message.includes('Invalid login credentials')) {
+        setError("ID yoki parol noto'g'ri. Iltimos, qayta tekshirib kiriting.");
+      }
+      else {
+        setError(err.message || "Xatolik yuz berdi. Internetni tekshiring.");
+      }
     } finally {
       setIsLoading(false);
     }

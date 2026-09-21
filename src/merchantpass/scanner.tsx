@@ -8,7 +8,7 @@ export default function MerchantScanner() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string; student?: any } | null>(null);
 
-  // 🌟 1. DO'KON STATUSINI TEKSHIRISH
+  // 1. DO'KON STATUSINI TEKSHIRISH
   const { data: merchantStatus, isLoading: isProfileLoading } = useQuery({
     queryKey: ['merchantStatusCheck'],
     queryFn: async () => {
@@ -28,6 +28,7 @@ export default function MerchantScanner() {
     try {
       let searchId = text; 
 
+      // 🛡️ 1-HIMOYA: QR kod vaqtini tekshirish (30 soniya)
       if (text.includes('|')) {
         const [scannedId, timestampStr] = text.split('|');
         const timestamp = parseInt(timestampStr, 10);
@@ -36,10 +37,10 @@ export default function MerchantScanner() {
         if (timeDiff > 30000 || timeDiff < 0) {
           throw new Error("QR kod muddati tugagan! Talabadan dasturga kirib kodni yangilashni so'rang (Skrinshot o'tmaydi).");
         }
-        
         searchId = scannedId; 
       }
 
+      // Talabani bazadan qidirish
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchId);
       const { data: student, error: studentError } = await supabase
         .from('students')
@@ -54,6 +55,22 @@ export default function MerchantScanner() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Do'kon akkauntiga kirilmagan!");
 
+      // 🛡️ 2-HIMOYA: "REPLAY ATTACK" VA "DOUBLE SCAN" NI BLOKLASH (5 DAQIQA)
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      
+      const { data: recentScan } = await supabase
+        .from('scan_history')
+        .select('id')
+        .eq('merchant_id', user.id)
+        .eq('student_id', student.id)
+        .gte('created_at', fiveMinutesAgo)
+        .maybeSingle();
+
+      if (recentScan) {
+        throw new Error("Qalloblik aniqlandi! Bu talaba so'nggi 5 daqiqa ichida chegirma olib bo'lgan. Ketma-ket chegirma berish taqiqlanadi.");
+      }
+
+      // Hammasi toza bo'lsa, tarixga yozamiz
       await supabase.from('scan_history').insert({
         merchant_id: user.id,
         student_id: student.id
@@ -79,7 +96,7 @@ export default function MerchantScanner() {
     return <div className="flex justify-center pt-40"><Loader2 className="animate-spin text-[hsl(var(--accent))]" size={40}/></div>;
   }
 
-  // 🌟 2. TASDIQLANMAGAN BO'LSA BLOKLASH
+  // TASDIQLANMAGAN BO'LSA BLOKLASH
   if (!isActive) {
     return (
       <div className="page-enter pb-20 px-4 pt-10">
@@ -99,7 +116,6 @@ export default function MerchantScanner() {
     );
   }
 
-  // AGAR TASDIQLANGAN BO'LSA ODATDAGIDEK ISHLAYDI
   return (
     <div className="page-enter pb-20">
       
@@ -174,7 +190,7 @@ export default function MerchantScanner() {
               <div className="w-24 h-24 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-red-500/20">
                 <XCircle size={48} />
               </div>
-              <h3 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-2">Tasdiqlanmadi</h3>
+              <h3 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-2">Xatolik</h3>
               <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))] leading-relaxed px-4 text-red-500">{result.message}</p>
             </>
           )}
