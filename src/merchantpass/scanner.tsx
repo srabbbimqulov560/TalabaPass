@@ -205,4 +205,5 @@ export default function MerchantScanner() {
       )}
     </div>
   );
+  
 }
