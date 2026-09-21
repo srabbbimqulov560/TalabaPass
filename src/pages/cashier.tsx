@@ -1,11 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { supabase } from '@/lib/supabase';
+import { useLocation } from 'wouter';
+import { Loader2 } from 'lucide-react';
 
 export default function CashierPage() {
   const [code, setCode] = useState('');
   const [status, setStatus] = useState<'success' | 'error' | null>(null); 
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [, setLocation] = useLocation();
+
+  // 1. ZONA HİMOYASI: Kassir faqat tizimga kirgan bo'lishi shart
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        setLocation('/merchant/login');
+      }
+    });
+  }, [setLocation]);
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -15,13 +28,29 @@ export default function CashierPage() {
     setStatus(null);
     
     try {
-      const response = await axios.post('https://talabapass.onrender.com/verify-qr', { code });
+      // 2. TOKENNI OLISH: Backendga yuborish uchun raqamli pasport
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sessiya yaroqsiz! Qayta tizimga kiring.");
+
+      // 3. XAVFSIZ SO'ROV: Tokenni Header ichida yashirin jo'natamiz
+      const response = await axios.post(
+        'https://talabapass.onrender.com/verify-qr', 
+        { code },
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
       setStatus('success');
-      setMessage(response.data.message);
+      setMessage(response.data.message || "Muvaffaqiyatli tasdiqlandi!");
       setCode(''); 
     } catch (error: any) {
       setStatus('error');
-      setMessage(error.response?.data?.detail || "Tizimda xatolik yuz berdi");
+      // Backenddan aniq xato kelsa o'shani ko'rsatamiz, yo'qsa umumiy xato
+      setMessage(error.response?.data?.detail || error.message || "Tizimda xatolik yuz berdi");
     } finally {
       setIsLoading(false);
     }
@@ -45,6 +74,7 @@ export default function CashierPage() {
               type="text"
               value={code}
               placeholder="6 xonali kod"
+              maxLength={6}
               className="w-full px-5 py-5 rounded-2xl border-2 border-gray-700 bg-gray-900 text-white text-center text-3xl font-mono tracking-widest focus:outline-none focus:border-emerald-500 transition-colors uppercase"
               onChange={e => setCode(e.target.value)}
               autoComplete="off"
@@ -53,15 +83,15 @@ export default function CashierPage() {
           
           <button 
             type="submit" 
-            disabled={isLoading || !code}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xl py-4 rounded-xl transition-all active:scale-95 disabled:opacity-50"
+            disabled={isLoading || code.length < 6}
+            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xl py-4 rounded-xl transition-all active:scale-95 disabled:opacity-50 flex justify-center items-center gap-2"
           >
-            {isLoading ? "Tekshirilmoqda..." : "Tasdiqlash"}
+            {isLoading ? <><Loader2 className="animate-spin" size={24} /> Tekshirilmoqda...</> : "Tasdiqlash"}
           </button>
         </form>
 
         {status && (
-          <div className={`mt-8 p-5 rounded-2xl border ${status === 'success' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'bg-red-500/10 border-red-500/50 text-red-400'} text-center`}>
+          <div className={`mt-8 p-5 rounded-2xl border ${status === 'success' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'bg-red-500/10 border-red-500/50 text-red-400'} text-center animate-in zoom-in-95`}>
             <div className="text-4xl mb-2">{status === 'success' ? '✅' : '❌'}</div>
             <p className="font-bold text-lg">{message}</p>
           </div>

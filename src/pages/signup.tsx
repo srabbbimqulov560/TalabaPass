@@ -24,10 +24,28 @@ const getPasswordStrength = (pass: string) => {
 export default function SignupPage() {
   const { t, lang, setLang } = useLanguage();
   
+  // 🌟 MANTIQ: Qadamni xotiraga saqlash
+  const [step, setStep] = useState(() => {
+    const saved = localStorage.getItem('studentSignupStep');
+    return saved ? parseInt(saved) : 1;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('studentSignupStep', step.toString());
+  }, [step]);
+
+  // Tizimga allaqachon kirgan bo'lsa kutish zaliga otamiz
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session && step < 5) {
+        setStep(5);
+      }
+    });
+  }, []);
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({ fullName: '', studentId: '', university: '', password: '', confirmPassword: '' });
   
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -202,6 +220,11 @@ export default function SignupPage() {
     setStep((prev) => Math.max(prev - 1, 1));
   };
 
+  const finishSignup = () => {
+    localStorage.removeItem('studentSignupStep');
+    window.location.href = '/'; 
+  };
+
   const handleFinish = async () => {
     setIsLoading(true); setError('');
     try {
@@ -218,11 +241,9 @@ export default function SignupPage() {
         
         await supabase.from('students').update({ avatar_url: publicUrlData.publicUrl }).eq('id', user.id);
       }
-      window.location.href = '/'; 
+      finishSignup();
     } catch (err: any) { setError(err.message); setIsLoading(false); }
   };
-
-  const handleSkip = () => window.location.href = '/';
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-[hsl(var(--background))] relative overflow-hidden">
@@ -292,7 +313,6 @@ export default function SignupPage() {
                  </p>
                </div>
                
-               {/* 🚀 XATO TARTIBGA SOLINDI: Havola nomi /merchant/signup deb to'g'rilandi */}
                <Link href="/merchant/signup">
                  <div className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-[hsl(var(--secondary))] py-4 text-base font-bold text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/.1)] hover:text-[hsl(var(--accent))] transition-all shadow-sm">
                    <Store size={18} /> Biznes sifatida ro'yxatdan o'tish
@@ -493,7 +513,7 @@ export default function SignupPage() {
                   <button onClick={() => avatarInputRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all">
                     <Camera size={20} /> Rasm yuklash
                   </button>
-                  <button disabled={isLoading} onClick={handleSkip} className="py-3 text-sm font-bold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors disabled:opacity-50">
+                  <button disabled={isLoading} onClick={finishSignup} className="py-3 text-sm font-bold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors disabled:opacity-50">
                     {isLoading ? 'Ilovaga kirilmoqda...' : "Hozircha o'tkazib yuborish"}
                   </button>
                 </>

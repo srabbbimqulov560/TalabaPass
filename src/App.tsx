@@ -21,7 +21,7 @@ import DiscountsManager from '@/admin/DiscountsManager';
 import StudentsReport from '@/admin/StudentsReport';
 import MerchantsReport from '@/admin/MerchantsReport';
 import ScansReport from '@/admin/ScansReport';
-import SystemLogs from '@/admin/SystemLogs'; // <--- TIZIM TARIXI QO'SHILDI
+import SystemLogs from '@/admin/SystemLogs';
 
 // --- TALABALAR UCHUN SAHIFALAR ---
 import { AppShell } from '@/components/app-shell';
@@ -48,47 +48,95 @@ import MerchantProfile from '@/merchantpass/profile';
 
 const queryClient = new QueryClient();
 
-// Maxsus xavfsiz yo'naltiruvchi komponent
 function Redirect({ to }: { to: string }) {
   const [, setLocation] = useLocation();
-  useEffect(() => {
-    setLocation(to);
-  }, [to, setLocation]);
+  useEffect(() => { setLocation(to); }, [to, setLocation]);
   return null;
 }
 
 function Router() {
   const [location] = useLocation();
   const [session, setSession] = useState<any>(null);
+  const [userRole, setUserRole] = useState<'student' | 'merchant' | 'admin' | null>(null);
+  const [isActive, setIsActive] = useState<boolean>(false);
   const [isInitializing, setIsInitializing] = useState(true);
-  
-  // Supabase sessiyasini kuzatish
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setIsInitializing(false);
+    let mounted = true;
+
+    const checkRoleAndStatus = async (userId: string) => {
+      try {
+        const [adminRes, merchantRes, studentRes] = await Promise.all([
+          supabase.from('admins').select('id').eq('id', userId).maybeSingle(),
+          supabase.from('merchants').select('id, is_active').eq('id', userId).maybeSingle(),
+          supabase.from('students').select('id, is_active').eq('id', userId).maybeSingle()
+        ]);
+        if (adminRes.data) return { role: 'admin', active: true };
+        if (merchantRes.data) return { role: 'merchant', active: !!merchantRes.data.is_active };
+        if (studentRes.data) return { role: 'student', active: !!studentRes.data.is_active };
+        
+        if (window.location.pathname.includes('/merchant')) return { role: 'merchant', active: false };
+        return { role: 'student', active: false };
+      } catch (e) {
+        return { role: 'student', active: false };
+      }
+    };
+
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!mounted) return;
+
+      if (session) {
+        const { role, active } = await checkRoleAndStatus(session.user.id);
+        if (mounted) {
+          setSession(session);
+          setUserRole(role as any);
+          setIsActive(active);
+          setIsInitializing(false);
+        }
+      } else {
+        if (mounted) setIsInitializing(false);
+      }
+    };
+
+    initAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      if (!mounted) return;
+      if (newSession) {
+        // 🌟 XATO YECHIMI: Tizimga kirish paytida ekranni o'chirib-yoqishni (unmount) to'xtatamiz
+        const { role, active } = await checkRoleAndStatus(newSession.user.id);
+        if (mounted) {
+          setSession(newSession);
+          setUserRole(role as any);
+          setIsActive(active);
+          if (isInitializing) setIsInitializing(false);
+        }
+      } else {
+        setSession(null);
+        setUserRole(null);
+        setIsActive(false);
+        setIsInitializing(false);
+      }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   if (isInitializing) {
     return (
-      <div className="min-h-[100dvh] flex items-center justify-center bg-[hsl(var(--background))]">
-        <Loader2 className="animate-spin text-[hsl(var(--accent))]" size={40} />
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-[hsl(var(--background))]">
+        <Loader2 className="animate-spin text-[hsl(var(--accent))] mb-5" size={48} />
+        <p className="font-display font-bold text-[hsl(var(--foreground))] text-xl">Tekshirilmoqda...</p>
       </div>
     );
   }
 
   const isMerchantRoute = location.startsWith('/merchant');
 
-  // ==========================================
-  // 1-HOLAT: FOYDALANUVCHI TIZIMGA KIRMAGAN (SESSIYA YO'Q)
-  // ==========================================
   if (!session) {
     return (
       <RoutedErrorBoundary>
@@ -99,71 +147,86 @@ function Router() {
           <Route path="/merchant/signup" component={MerchantSignup} />
           <Route path="/cashier" component={CashierPage} />
           <Route path="/forgot-password" component={ForgotPassword} />
-          
-          <Route>
-            <Redirect to={isMerchantRoute ? '/merchant/login' : '/login'} />
-          </Route>
+          <Route><Redirect to={isMerchantRoute ? '/merchant/login' : '/login'} /></Route>
         </Switch>
       </RoutedErrorBoundary>
     );
   }
 
-  // ==========================================
-  // 2-HOLAT: FOYDALANUVCHI TIZIMDA BOR (SESSIYA MAVJUD)
-  // ==========================================
+  // KUTISH ZALI / QULFLASH
+  if (!isActive && userRole !== 'admin') {
+    if (userRole === 'merchant') {
+      return (
+        <Switch>
+          <Route path="/merchant/signup" component={MerchantSignup} />
+          <Route path="/merchant/login" component={MerchantLogin} />
+          <Route><Redirect to="/merchant/signup" /></Route>
+        </Switch>
+      );
+    }
+    if (userRole === 'student') {
+      return (
+        <Switch>
+          <Route path="/signup" component={SignupPage} />
+          <Route><Redirect to="/signup" /></Route>
+        </Switch>
+      );
+    }
+  }
+
   return (
     <RoutedErrorBoundary>
       <Switch>
-        {/* Ro'yxatdan o'tish chala qolganlar uchun */}
-        <Route path="/signup" component={SignupPage} />
-        <Route path="/merchant/signup" component={MerchantSignup} />
-
-        {/* Ichkarida turib loginga kirishga urinsa orqaga qaytarish */}
         <Route path="/login"><Redirect to="/" /></Route>
+        <Route path="/signup"><Redirect to="/" /></Route>
         <Route path="/merchant/login"><Redirect to="/merchant" /></Route>
+        <Route path="/merchant/signup"><Redirect to="/merchant" /></Route>
 
-        {/* 🌟 ADMIN PANEL MANZILLARI */}
-        <Route path="/admin" component={AdminDashboard} />
-        <Route path="/admin/students-report" component={StudentsReport} /> 
-        <Route path="/admin/merchants-report" component={MerchantsReport} />
-        <Route path="/admin/scans-report" component={ScansReport} />
-        <Route path="/admin/logs" component={SystemLogs} /> {/* <--- TIZIM TARIXI SHU YERDA QO'SHILDI */}
-        
-        <Route path="/admin/merchants" component={MerchantsManager} />
-        <Route path="/admin/students" component={StudentsManager} /> 
-        <Route path="/admin/discounts" component={DiscountsManager} />
+        {userRole === 'admin' && (
+          <Switch>
+            <Route path="/admin" component={AdminDashboard} />
+            <Route path="/admin/students-report" component={StudentsReport} /> 
+            <Route path="/admin/merchants-report" component={MerchantsReport} />
+            <Route path="/admin/scans-report" component={ScansReport} />
+            <Route path="/admin/logs" component={SystemLogs} />
+            <Route path="/admin/merchants" component={MerchantsManager} />
+            <Route path="/admin/students" component={StudentsManager} /> 
+            <Route path="/admin/discounts" component={DiscountsManager} />
+            <Route><Redirect to="/admin" /></Route>
+          </Switch>
+        )}
 
-        {/* BARCHA ASOSIY VA YOPIQ SAHIFALAR QOBIQ (SHELL) ICHIDA */}
-        <Route>
-          {isMerchantRoute ? (
-            // BIZNES (DO'KON) PANELIGA TEGISHLI SAHIFALAR
-            <MerchantAppShell>
-              <Switch>
-                <Route path="/merchant" component={MerchantHome} />
-                <Route path="/merchant/discounts" component={MerchantDiscounts} />
-                <Route path="/merchant/scanner" component={MerchantScanner} />
-                <Route path="/merchant/history" component={MerchantHistory} />
-                <Route path="/merchant/profile" component={MerchantProfile} />
-                <Route component={NotFound} />
-              </Switch>
-            </MerchantAppShell>
-          ) : (
-            // TALABALAR UCHUN TEGISHLI SAHIFALAR
-            <AppShell>
-              <Switch>
-                <Route path="/" component={HomePage} />
-                <Route path="/notifications" component={NotificationsPage} />
-                <Route path="/services" component={ServicesPage} />
-                <Route path="/store/:id" component={StoreDetailPage} />
-                <Route path="/saved" component={SavedPage} />
-                <Route path="/discount/:id" component={DiscountDetailPage} />
-                <Route path="/profile" component={ProfilePage} />
-                <Route path="/qr" component={QrPage} />
-                <Route component={NotFound} />
-              </Switch>
-            </AppShell>
-          )}
-        </Route>
+        {/* 🌟 QOTIB QOLISH (NAV LOCK) YECHIMI: Qafas (Route) ni olib tashladik */}
+        {userRole === 'merchant' && (
+          <MerchantAppShell>
+            <Switch>
+              <Route path="/merchant" component={MerchantHome} />
+              <Route path="/merchant/discounts" component={MerchantDiscounts} />
+              <Route path="/merchant/scanner" component={MerchantScanner} />
+              <Route path="/merchant/history" component={MerchantHistory} />
+              <Route path="/merchant/profile" component={MerchantProfile} />
+              <Route><Redirect to="/merchant" /></Route>
+            </Switch>
+          </MerchantAppShell>
+        )}
+
+        {userRole === 'student' && (
+          <AppShell>
+            <Switch>
+              <Route path="/" component={HomePage} />
+              <Route path="/notifications" component={NotificationsPage} />
+              <Route path="/services" component={ServicesPage} />
+              <Route path="/store/:id" component={StoreDetailPage} />
+              <Route path="/saved" component={SavedPage} />
+              <Route path="/discount/:id" component={DiscountDetailPage} />
+              <Route path="/profile" component={ProfilePage} />
+              <Route path="/qr" component={QrPage} />
+              <Route path="/merchant/*"><Redirect to="/" /></Route>
+              <Route path="/admin/*"><Redirect to="/" /></Route>
+              <Route component={NotFound} />
+            </Switch>
+          </AppShell>
+        )}
       </Switch>
     </RoutedErrorBoundary>
   );

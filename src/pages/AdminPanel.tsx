@@ -1,16 +1,30 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Store, MapPin } from 'lucide-react';
+import { CheckCircle, XCircle, Store, Loader2 } from 'lucide-react';
 import axios from 'axios';
+import { supabase } from '@/lib/supabase';
+import { useLocation } from 'wouter';
 
 const API_URL = 'https://talabapass.onrender.com';
 
 export default function AdminPanel() {
   const [merchants, setMerchants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [, setLocation] = useLocation();
+
+  // 1. TOKENNI OLIB KELUVCHI YORDAMCHI FUNKSIYA
+  const getAuthHeaders = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setLocation('/');
+      throw new Error("Sessiya topilmadi. Admin sifatida kiring!");
+    }
+    return { Authorization: `Bearer ${session.access_token}` };
+  };
 
   const fetchPendingMerchants = async () => {
     try {
-      const res = await axios.get(`${API_URL}/admin/pending-merchants`);
+      const headers = await getAuthHeaders();
+      const res = await axios.get(`${API_URL}/admin/pending-merchants`, { headers });
       setMerchants(res.data);
     } catch (error) {
       console.error("Xatolik:", error);
@@ -25,19 +39,21 @@ export default function AdminPanel() {
 
   const handleAction = async (id: number, action: 'approve' | 'reject') => {
     try {
+      const headers = await getAuthHeaders();
+      
       if (action === 'approve') {
-        await axios.put(`${API_URL}/admin/approve-merchant/${id}`);
+        await axios.put(`${API_URL}/admin/approve-merchant/${id}`, {}, { headers });
       } else {
-        await axios.delete(`${API_URL}/admin/reject-merchant/${id}`);
+        await axios.delete(`${API_URL}/admin/reject-merchant/${id}`, { headers });
       }
-      // Ro'yxatni yangilash
+      
       setMerchants(merchants.filter((m) => m.id !== id));
-    } catch (error) {
-      alert("Xatolik yuz berdi");
+    } catch (error: any) {
+      alert(error.message || "Xatolik yuz berdi");
     }
   };
 
-  if (loading) return <div className="p-10 text-center text-xl">Yuklanmoqda...</div>;
+  if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-blue-500" size={40}/></div>;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">

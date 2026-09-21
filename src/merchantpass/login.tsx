@@ -17,7 +17,6 @@ export default function MerchantLogin() {
     setError('');
 
     try {
-      // XATONING YECHIMI 1: Foydalanuvchi logindagi barcha bo'sh joylarni (probellarni) olib tashlaymiz
       const cleanUsername = username.trim().replace(/\s+/g, '').toLowerCase();
       const fakeEmail = `${cleanUsername}@merchant.talabapass.uz`;
 
@@ -29,15 +28,17 @@ export default function MerchantLogin() {
       if (authError) {
         if (authError.message.includes('Invalid login credentials')) {
           throw new Error("Login yoki parol noto'g'ri!");
-        } else if (authError.message.includes('Email not confirmed')) {
-          throw new Error("XATOLIK: Supabase panelidan 'Confirm Email' sozlamasini o'chirib qo'yishingiz kerak!");
         }
         throw new Error("Xatolik yuz berdi: " + authError.message);
       }
       
-      // XATONING YECHIMI 2: "is_active" ni tekshirib tizimdan chiqarib yuborish (signOut) kodini butunlay olib tashladik!
-      // Endi foydalanuvchi bemalol tizimga kiradi va Profilida "Kutilmoqda" statusini ko'radi.
-      // Bu sahifadan otib yuborish xatosini 100% hal qiladi.
+      // 🌟 YANGILIK: Tizimga kiritishdan oldin tasdiqlanganini tekshirish
+      const { data: merchantData } = await supabase.from('merchants').select('is_active').eq('id', data.session.user.id).single();
+      
+      if (merchantData && !merchantData.is_active) {
+        await supabase.auth.signOut(); // Ruxsati yo'q, chiqarib yuboramiz!
+        throw new Error("Hisobingiz hali tasdiqlanmagan. Iltimos, Administrator tasdiqlashini kuting.");
+      }
 
       localStorage.setItem('merchant_token', data.session.access_token);
       setLocation('/merchant'); 
@@ -93,10 +94,10 @@ export default function MerchantLogin() {
             />
           </div>
           <div className="text-right mt-2 mb-4 pr-1">
-  <Link href="/forgot-password" className="text-[12px] font-bold text-[hsl(var(--accent))] hover:underline cursor-pointer">
-    Parolni unutdingizmi?
-  </Link>
-</div>
+            <Link href="/forgot-password" className="text-[12px] font-bold text-[hsl(var(--accent))] hover:underline cursor-pointer">
+              Parolni unutdingizmi?
+            </Link>
+          </div>
 
           <button 
             type="submit" 
