@@ -3,6 +3,7 @@ import { Link } from 'wouter';
 import { ArrowRight, IdCard, LockKeyhole, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
+
 export default function LoginPage() {
   const [formData, setFormData] = useState({ studentId: '', password: '' });
   const [error, setError] = useState('');

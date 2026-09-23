@@ -76,13 +76,39 @@ export default function MerchantProfile() {
     setLocation('/merchant/login');
   };
 
+  // 🌟 YANGILANDI: YUKLANISH VAQTIDA CHIQADIGAN SKELETON SHABLONLARI
   if (loading && !merchant) {
-    return <div className="flex h-[50vh] items-center justify-center"><Loader2 className="animate-spin text-[hsl(var(--accent))]" size={40} /></div>;
+    return (
+      <div className="page-enter pb-10">
+        
+        {/* Profil Rasmi va Ismi Skeletoni */}
+        <div className="flex flex-col items-center mt-2 mb-8 animate-pulse">
+          <div className="h-32 w-32 rounded-full bg-[hsl(var(--muted))] shadow-xl mb-4 border-4 border-[hsl(var(--card))]"></div>
+          <div className="h-8 w-48 bg-[hsl(var(--muted))] rounded-md mt-2 mb-2"></div>
+          <div className="h-6 w-28 bg-[hsl(var(--muted))] rounded-full mt-2"></div>
+        </div>
+
+        <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-4">Sozlamalar</h2>
+        
+        {/* Sozlamalar Menyu Skeletoni */}
+        <div className="bg-[hsl(var(--card))] rounded-[24px] border border-[hsl(var(--border))] overflow-hidden flex flex-col shadow-soft animate-pulse">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center justify-between p-5 border-b border-[hsl(var(--border))]">
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 rounded-md bg-[hsl(var(--muted))]"></div>
+                <div className="h-4 w-32 bg-[hsl(var(--muted))] rounded-md"></div>
+              </div>
+              <div className="w-5 h-5 rounded-md bg-[hsl(var(--muted))]"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
     <>
-      <div className="page-enter animate-in fade-in duration-500">
+      <div className="page-enter animate-in fade-in duration-500 pb-10">
         
         {/* PROFIL RASMI QUTISI */}
         <div className="flex flex-col items-center mt-2 mb-8">

@@ -9,6 +9,7 @@ import { useUser } from '@/lib/useUser';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter'; // 🌟 QO'SHILDI: Admin panelga o'tish linki uchun
 
+
 function initials(firstName?: string, lastName?: string) { 
   if (firstName && lastName) return (firstName[0] + lastName[0]).toUpperCase();
   return 'SP'; 

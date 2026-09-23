@@ -1,4 +1,4 @@
-import { History as HistoryIcon, Clock, User, Loader2 } from 'lucide-react';
+import { History as HistoryIcon, Clock, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useQuery } from '@tanstack/react-query';
 
@@ -38,8 +38,30 @@ export default function MerchantHistory() {
         <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))]">Tarix</h2>
       </div>
 
+      {/* 🌟 YANGILANDI: YUKLANISH VAQTIDA CHIQADIGAN SKELETON SHABLONLARI */}
       {isLoading ? (
-        <div className="flex justify-center pt-20"><Loader2 className="animate-spin text-[hsl(var(--accent))]" size={32}/></div>
+        <div className="flex flex-col gap-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="bg-[hsl(var(--card))] p-4 rounded-[20px] border border-[hsl(var(--border))] shadow-sm flex items-center gap-4 animate-pulse">
+              
+              {/* Talaba Rasmi Skeletoni */}
+              <div className="w-12 h-12 rounded-full bg-[hsl(var(--muted))] shrink-0"></div>
+
+              {/* Ma'lumotlar Skeletoni */}
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-1/2"></div>
+                <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-3/4"></div>
+              </div>
+
+              {/* Vaqt va Tasdiq Badge Skeletoni */}
+              <div className="shrink-0 flex flex-col items-end gap-2">
+                <div className="w-16 h-5 bg-[hsl(var(--muted))] rounded-md"></div>
+                <div className="w-20 h-3 bg-[hsl(var(--muted))] rounded-md"></div>
+              </div>
+              
+            </div>
+          ))}
+        </div>
       ) : historyList && historyList.length > 0 ? (
         <div className="flex flex-col gap-3">
           {historyList.map((item: any) => (

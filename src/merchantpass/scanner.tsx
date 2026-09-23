@@ -92,8 +92,21 @@ export default function MerchantScanner() {
     }
   };
 
+  // 🌟 YANGILANDI: YUKLANISH VAQTIDA CHIQADIGAN SKANER SKELETONI
   if (isProfileLoading) {
-    return <div className="flex justify-center pt-40"><Loader2 className="animate-spin text-[hsl(var(--accent))]" size={40}/></div>;
+    return (
+      <div className="page-enter pb-20">
+        <div className="text-center mb-8 flex flex-col items-center animate-pulse">
+          <div className="h-8 bg-[hsl(var(--muted))] rounded-md w-48 mb-3"></div>
+          <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-64"></div>
+        </div>
+        
+        <div className="w-full aspect-[3/4] max-w-sm mx-auto overflow-hidden rounded-[40px] bg-[hsl(var(--muted))] animate-pulse shadow-2xl border-4 border-[hsl(var(--border))] flex items-center justify-center">
+           {/* Ichki ramka ko'rinishi uchun */}
+           <div className="w-3/4 h-1/2 border-4 border-[hsl(var(--background))/50] rounded-[32px]"></div>
+        </div>
+      </div>
+    );
   }
 
   // TASDIQLANMAGAN BO'LSA BLOKLASH

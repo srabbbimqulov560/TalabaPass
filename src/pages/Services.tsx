@@ -1,4 +1,4 @@
-import { Search, Loader2, Store, MapPin, ChevronRight } from 'lucide-react';
+import { Search, Store, MapPin, ChevronRight } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Link } from 'wouter';
 import { supabase } from '@/lib/supabase';
@@ -15,7 +15,7 @@ export default function ServicesPage() {
       const { data, error } = await supabase
         .from('merchants')
         .select('*')
-        .eq('is_active', true) // E'TIBOR BERING: Faqat admin tasdiqlagan do'konlar chiqadi!
+        .eq('is_active', true) // Faqat admin tasdiqlagan do'konlar chiqadi!
         .order('name', { ascending: true });
         
       if (error) throw error;
@@ -58,8 +58,29 @@ export default function ServicesPage() {
         </div>
       </ScrollReveal>
 
+      {/* 🌟 YANGILANDI: YUKLANAYOTGAN PAYTDA NOMA'LUM LOADER EMAS, MUKAMMAL SKELETON SHABLON CHIQADI */}
       {isLoading ? (
-        <div className="flex justify-center py-20"><Loader2 className="animate-spin text-[hsl(var(--accent))]" size={32}/></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-8">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div 
+              key={i} 
+              className="flex bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[24px] p-4 items-center gap-4 animate-pulse shadow-sm"
+            >
+              {/* Do'kon Logosi Skeletoni */}
+              <div className="w-16 h-16 rounded-full bg-[hsl(var(--muted))] shrink-0"></div>
+              
+              {/* Do'kon Ma'lumotlari Skeletoni */}
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-3/4"></div>
+                <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-1/3"></div>
+                <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-1/2"></div>
+              </div>
+
+              {/* O'ng tomondagi tugma Skeletoni */}
+              <div className="w-8 h-8 rounded-full bg-[hsl(var(--muted))] shrink-0 ml-auto"></div>
+            </div>
+          ))}
+        </div>
       ) : filteredMerchants && filteredMerchants.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-8">
           {filteredMerchants.map((merchant: any, idx: number) => (
@@ -92,7 +113,7 @@ export default function ServicesPage() {
                     </div>
                   </div>
 
-                  {/* O'ng tomondagi kursor qotirildi */}
+                  {/* O'ng tomondagi kursor */}
                   <div className="w-8 h-8 rounded-full bg-[hsl(var(--secondary))] flex items-center justify-center text-[hsl(var(--muted-foreground))] group-hover:bg-[hsl(var(--accent))] group-hover:text-white transition-colors shrink-0 ml-auto">
                     <ChevronRight size={18} />
                   </div>

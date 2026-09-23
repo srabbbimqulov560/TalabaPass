@@ -1,4 +1,4 @@
-import { Users, Tag, Eye, Loader2 } from 'lucide-react';
+import { Users, Tag, Eye } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useQuery } from '@tanstack/react-query';
 
@@ -40,9 +40,35 @@ export default function MerchantHome() {
   return (
     <div className="page-enter">
       <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-6">Xush kelibsiz!</h2>
-      
+
+      {/* 🌟 YANGILANDI: YUKLANISH VAQTIDA CHIQADIGAN SKELETON SHABLONLARI */}
       {isLoading ? (
-        <div className="flex justify-center pt-20"><Loader2 className="animate-spin text-[hsl(var(--accent))]" size={32}/></div>
+        <div className="grid grid-cols-2 gap-4">
+          
+          {/* Mijozlar qutisi Skeletoni */}
+          <div className="bg-[hsl(var(--card))] p-5 rounded-3xl border border-[hsl(var(--border))] shadow-sm animate-pulse">
+            <div className="w-10 h-10 rounded-full bg-[hsl(var(--muted))] mb-3"></div>
+            <div className="h-8 bg-[hsl(var(--muted))] rounded-md w-12 mb-2.5"></div>
+            <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-20"></div>
+          </div>
+          
+          {/* Faol chegirmalar qutisi Skeletoni */}
+          <div className="bg-[hsl(var(--card))] p-5 rounded-3xl border border-[hsl(var(--border))] shadow-sm animate-pulse">
+            <div className="w-10 h-10 rounded-full bg-[hsl(var(--muted))] mb-3"></div>
+            <div className="h-8 bg-[hsl(var(--muted))] rounded-md w-12 mb-2.5"></div>
+            <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-20"></div>
+          </div>
+          
+          {/* Ko'rishlar qutisi Skeletoni (To'liq kenglik) */}
+          <div className="col-span-2 bg-[hsl(var(--card))] p-5 rounded-3xl border border-[hsl(var(--border))] shadow-sm flex items-center justify-between animate-pulse">
+            <div className="flex flex-col gap-2">
+              <div className="h-9 bg-[hsl(var(--muted))] rounded-md w-16 mb-1"></div>
+              <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-32"></div>
+            </div>
+            <div className="w-14 h-14 rounded-full bg-[hsl(var(--muted))] shrink-0"></div>
+          </div>
+
+        </div>
       ) : (
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-[hsl(var(--card))] p-5 rounded-3xl border border-[hsl(var(--border))] shadow-sm">

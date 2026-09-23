@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import QRCode from 'react-qr-code';
+import { TalabaLoader } from '@/components/TalabaLoader';
 
 export default function QrPage() {
   const [student, setStudent] = useState<any>(null);
@@ -40,7 +41,9 @@ export default function QrPage() {
   }, [student]);
 
   if (loading) {
-    return <div className="flex justify-center pt-40"><Loader2 className="animate-spin text-[hsl(var(--accent))]" size={40}/></div>;
+    return <div className="py-10">
+    <TalabaLoader text="Ma'lumotlar yuklanmoqda..." />
+  </div>;
   }
 
   if (!student) return null;

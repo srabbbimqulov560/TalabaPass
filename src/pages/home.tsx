@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
-import { Search, X, Coffee, ShoppingBag, BookOpen, Monitor, LayoutGrid, Clock, Store, Sparkles, Loader2, Bookmark } from 'lucide-react';
+import { Search, X, Coffee, ShoppingBag, BookOpen, Monitor, LayoutGrid, Clock, Store, Sparkles, Bookmark } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { ScrollReveal } from '@/components/scroll-reveal';
 import { supabase } from '@/lib/supabase';
@@ -71,7 +71,7 @@ export default function HomePage() {
   return (
     <div className="page-enter pb-10">
       
-      {/* QIDIRUV QISMI (Xush kelibsiz olib tashlandi, to'g'ridan-to'g'ri qidiruv bilan boshlanadi) */}
+      {/* QIDIRUV QISMI */}
       <ScrollReveal>
         <div className="relative flex items-center bg-[hsl(var(--card))] rounded-2xl p-1.5 shadow-sm border border-[hsl(var(--border))] mb-6 mt-1">
           <Search size={20} className="ml-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
@@ -124,8 +124,35 @@ export default function HomePage() {
           )}
         </div>
 
+        {/* 🌟 YANGILANDI: YUKLANISH VAQTIDA CHIQADIGAN CHEGIRMA SHABLONLARI */}
         {isLoading ? (
-          <div className="flex justify-center py-10"><Loader2 className="animate-spin text-[hsl(var(--accent))]" size={32}/></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-8">
+            {[1, 2, 3, 4].map((i) => (
+              <div 
+                key={i} 
+                className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[20px] overflow-hidden shadow-sm flex flex-col h-full animate-pulse"
+              >
+                {/* Rasm Skeletoni */}
+                <div className="w-full aspect-video bg-[hsl(var(--muted))] relative">
+                  {/* Do'kon nomi mini-badge skeletoni */}
+                  <div className="absolute bottom-3 left-3 bg-[hsl(var(--background))/50] w-28 h-8 rounded-full border border-[hsl(var(--border))]"></div>
+                </div>
+
+                {/* Ma'lumotlar Skeletoni */}
+                <div className="p-4 flex-1 flex flex-col">
+                  {/* Sarlavha */}
+                  <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-3/4 mb-2"></div>
+                  <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-1/2"></div>
+                  
+                  {/* Pastki qism (Vaqt va Tugma) */}
+                  <div className="mt-auto pt-3 flex items-center justify-between">
+                    <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-24"></div>
+                    <div className="w-9 h-9 rounded-full bg-[hsl(var(--muted))]"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : filteredDiscounts && filteredDiscounts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-8">
             {filteredDiscounts.map((discount: any) => {

@@ -131,7 +131,7 @@ export default function MerchantDiscounts() {
       <div className="flex justify-between items-center mb-6">
         <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))]">Chegirmalar</h2>
         
-        {/* 🌟 3. TUGMANI YASHIRISH */}
+        {/* 🌟 3. TUGMANI YASHIRISH YOTI KUTILMOQDA STATUSI */}
         {isActive ? (
           <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-1.5 text-sm font-bold bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-4 py-2.5 rounded-full shadow-float active:scale-95 transition-all">
             <PlusCircle size={18}/> Yangi
@@ -143,8 +143,34 @@ export default function MerchantDiscounts() {
         )}
       </div>
 
+      {/* 🌟 YANGILANDI: YUKLANISH VAQTIDA CHIQADIGAN SKELETON SHABLONLARI */}
       {isLoading ? (
-        <div className="flex justify-center pt-20"><Loader2 className="animate-spin text-[hsl(var(--accent))]" size={32}/></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[20px] overflow-hidden shadow-sm relative flex flex-col animate-pulse">
+              {/* Badge Skeleton */}
+              <div className="absolute top-2 right-2 z-10 bg-[hsl(var(--muted))] w-14 h-8 rounded-xl shadow-md"></div>
+              
+              {/* Image Skeleton */}
+              <div className="w-full aspect-video bg-[hsl(var(--muted))]"></div>
+              
+              {/* Content Skeleton */}
+              <div className="p-4 flex-1 flex flex-col">
+                <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-3/4 mb-2"></div>
+                <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-1/2"></div>
+                
+                <div className="mt-4 flex items-center justify-between">
+                  <div className="flex flex-col gap-2 w-1/2">
+                    <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-full"></div>
+                    <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-4/5"></div>
+                  </div>
+                  {/* View count skeleton */}
+                  <div className="w-12 h-8 bg-[hsl(var(--muted))] rounded-xl"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : discounts && discounts.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {discounts.map((discount: any) => (

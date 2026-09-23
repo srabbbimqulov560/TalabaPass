@@ -2,6 +2,7 @@ import { ArrowLeft, MapPin, Store, Clock, Sparkles, Loader2 } from 'lucide-react
 import { Link, useLocation, useParams } from 'wouter';
 import { supabase } from '@/lib/supabase';
 import { useQuery } from '@tanstack/react-query';
+import { TalabaLoader } from '@/components/TalabaLoader';
 
 export default function StoreDetailPage() {
   const params = useParams<{ id: string }>();
@@ -31,7 +32,9 @@ export default function StoreDetailPage() {
   });
 
   if (isMerchantLoading) {
-    return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-[hsl(var(--accent))]" size={32}/></div>;
+    return <div className="py-10">
+    <TalabaLoader text="Ma'lumotlar yuklanmoqda..." />
+  </div>;
   }
 
   if (!merchant) {
@@ -81,7 +84,9 @@ export default function StoreDetailPage() {
 
       {/* CHEGIRMALAR RO'YXATI */}
       {isDiscountsLoading ? (
-        <div className="flex justify-center py-10"><Loader2 className="animate-spin text-[hsl(var(--accent))]" size={32}/></div>
+        <div className="py-10">
+    <TalabaLoader text="Ma'lumotlar yuklanmoqda..." />
+  </div>
       ) : discounts && discounts.length > 0 ? (
         <div className="grid grid-cols-2 gap-4 pb-8">
           {discounts.map((discount: any) => (

@@ -7,6 +7,7 @@ import { LanguageProvider } from '@/lib/i18n';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { supabase } from '@/lib/supabase'; 
 import { Loader2 } from 'lucide-react';
+import { TalabaLoader } from '@/components/TalabaLoader';
 
 // --- ASOSIY SAHIFALAR ---
 import ForgotPassword from '@/pages/forgot-password';
@@ -117,7 +118,8 @@ function Router() {
           setSession(newSession);
           setUserRole(role as any);
           setIsActive(active);
-          if (isInitializing) setIsInitializing(false);
+          // XATO SHU YERDA EDI, TO'G'RILANDI:
+          if (isInitializing) setIsInitializing(false); 
         }
       } else {
         setSession(null);
@@ -133,13 +135,9 @@ function Router() {
     };
   }, []);
 
+  // 🌟 HAQIQIY YUKLANISH SAHIFASI (XATO SHU YERDA EDI, TO'G'RILANDI)
   if (isInitializing) {
-    return (
-      <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-[hsl(var(--background))]">
-        <Loader2 className="animate-spin text-[hsl(var(--accent))] mb-5" size={48} />
-        <p className="font-display font-bold text-[hsl(var(--foreground))] text-xl">Tekshirilmoqda...</p>
-      </div>
-    );
+    return <TalabaLoader fullScreen={true} />;
   }
 
   const isMerchantRoute = location.startsWith('/merchant');

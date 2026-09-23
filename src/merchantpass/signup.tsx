@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Store, ArrowRight, ArrowLeft, CheckCircle2, LockKeyhole, UserRound, Loader2, Briefcase, MapPin, Clock, Camera, Eye, EyeOff, Navigation, GraduationCap } from 'lucide-react';
 import { Link } from 'wouter';
 import { supabase } from '@/lib/supabase';
+import { TalabaLoader } from '@/components/TalabaLoader';
 
 const CATEGORIES = [
   { id: 'education', name: "O'quv markazi", icon: '📚' },

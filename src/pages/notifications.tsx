@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Bell, Loader2, CheckCircle2, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { Link } from 'wouter';
+import { TalabaLoader } from '@/components/TalabaLoader';
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -39,7 +40,9 @@ export default function NotificationsPage() {
       </div>
 
       {loading ? (
-         <div className="flex justify-center pt-20"><Loader2 className="animate-spin text-[hsl(var(--accent))]" size={32}/></div>
+         <div className="py-10">
+    <TalabaLoader text="Ma'lumotlar yuklanmoqda..." />
+  </div>
       ) : notifications.length > 0 ? (
          <div className="space-y-3">
            {notifications.map(note => (
