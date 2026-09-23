@@ -7,6 +7,7 @@ import { useLanguage } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/lib/useUser'; 
 import { useQueryClient } from '@tanstack/react-query';
+import { Link } from 'wouter'; // 🌟 QO'SHILDI: Admin panelga o'tish linki uchun
 
 function initials(firstName?: string, lastName?: string) { 
   if (firstName && lastName) return (firstName[0] + lastName[0]).toUpperCase();
@@ -55,7 +56,23 @@ export default function ProfilePage() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
 
+  // 🌟 YANGI MANTIQ: Foydalanuvchi Admin ekanligini tekshirish
+  const [isAdmin, setIsAdmin] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 🌟 ADMIN TEKSHIRUVI (Faqat user yuklangandan so'ng)
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (user?.id) {
+        const { data } = await supabase.from('admins').select('id').eq('id', user.id).maybeSingle();
+        if (data) {
+          setIsAdmin(true);
+        }
+      }
+    };
+    checkAdmin();
+  }, [user?.id]);
 
   // MAVZUNI O'ZGARTIRISH
   useEffect(() => {
@@ -230,7 +247,7 @@ export default function ProfilePage() {
               >
                 {!isUserLoading && (
                   isUploading ? (
-                     <Loader2 className="animate-spin text-white" size={32} />
+                      <Loader2 className="animate-spin text-white" size={32} />
                   ) : avatar ? (
                     <img src={avatar} alt="Profile" className="h-full w-full object-cover" />
                   ) : (
@@ -375,6 +392,19 @@ export default function ProfilePage() {
                 </div>
                 <ChevronRight size={20} className="text-[hsl(var(--muted-foreground))]" />
               </div>
+
+              {/* 🌟 YANGILIK: FAQAT ADMIN UCHUN KO'RINADIGAN MAXSUS TUGMA */}
+              {isAdmin && (
+                <Link href="/admin">
+                  <div className="flex items-center justify-between p-4 cursor-pointer bg-indigo-500/5 hover:bg-indigo-500/15 transition-colors border-b border-[hsl(var(--border))]">
+                    <div className="flex items-center gap-3">
+                      <Shield size={22} className="text-indigo-500" />
+                      <span className="text-[15px] font-semibold text-indigo-500">Admin Panelga o'tish</span>
+                    </div>
+                    <ChevronRight size={20} className="text-indigo-500/70" />
+                  </div>
+                </Link>
+              )}
 
               <div onClick={handleLogout} className="flex items-center justify-between p-4 cursor-pointer hover:bg-red-500/10 transition-colors">
                 <div className="flex items-center gap-3">

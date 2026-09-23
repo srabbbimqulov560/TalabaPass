@@ -54,6 +54,14 @@ function Redirect({ to }: { to: string }) {
   return null;
 }
 
+function ForceLogoutRedirect({ to }: { to: string }) {
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    supabase.auth.signOut().then(() => setLocation(to));
+  }, [to, setLocation]);
+  return null;
+}
+
 function Router() {
   const [location] = useLocation();
   const [session, setSession] = useState<any>(null);
@@ -104,7 +112,6 @@ function Router() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       if (!mounted) return;
       if (newSession) {
-        // 🌟 XATO YECHIMI: Tizimga kirish paytida ekranni o'chirib-yoqishni (unmount) to'xtatamiz
         const { role, active } = await checkRoleAndStatus(newSession.user.id);
         if (mounted) {
           setSession(newSession);
@@ -153,7 +160,6 @@ function Router() {
     );
   }
 
-  // KUTISH ZALI / QULFLASH
   if (!isActive && userRole !== 'admin') {
     if (userRole === 'merchant') {
       return (
@@ -182,21 +188,7 @@ function Router() {
         <Route path="/merchant/login"><Redirect to="/merchant" /></Route>
         <Route path="/merchant/signup"><Redirect to="/merchant" /></Route>
 
-        {userRole === 'admin' && (
-          <Switch>
-            <Route path="/admin" component={AdminDashboard} />
-            <Route path="/admin/students-report" component={StudentsReport} /> 
-            <Route path="/admin/merchants-report" component={MerchantsReport} />
-            <Route path="/admin/scans-report" component={ScansReport} />
-            <Route path="/admin/logs" component={SystemLogs} />
-            <Route path="/admin/merchants" component={MerchantsManager} />
-            <Route path="/admin/students" component={StudentsManager} /> 
-            <Route path="/admin/discounts" component={DiscountsManager} />
-            <Route><Redirect to="/admin" /></Route>
-          </Switch>
-        )}
-
-        {/* 🌟 QOTIB QOLISH (NAV LOCK) YECHIMI: Qafas (Route) ni olib tashladik */}
+        {/* 🏪 B. BIZNES (DO'KON) HUDUDI */}
         {userRole === 'merchant' && (
           <MerchantAppShell>
             <Switch>
@@ -210,7 +202,25 @@ function Router() {
           </MerchantAppShell>
         )}
 
-        {userRole === 'student' && (
+        {/* 🛡️ A. ADMIN MAXSUS HUDUDI (Faqat /admin manzillari uchun) */}
+        {userRole === 'admin' && (
+          <Route path="/admin*">
+            <Switch>
+              <Route path="/admin" component={AdminDashboard} />
+              <Route path="/admin/students-report" component={StudentsReport} /> 
+              <Route path="/admin/merchants-report" component={MerchantsReport} />
+              <Route path="/admin/scans-report" component={ScansReport} />
+              <Route path="/admin/logs" component={SystemLogs} />
+              <Route path="/admin/merchants" component={MerchantsManager} />
+              <Route path="/admin/students" component={StudentsManager} /> 
+              <Route path="/admin/discounts" component={DiscountsManager} />
+              <Route><Redirect to="/admin" /></Route>
+            </Switch>
+          </Route>
+        )}
+
+        {/* 🎓 C. TALABALAR VA ADMIN HUDUDI (Admin ham talaba kabi kira oladi) */}
+        {(userRole === 'student' || userRole === 'admin') && (
           <AppShell>
             <Switch>
               <Route path="/" component={HomePage} />
@@ -221,8 +231,11 @@ function Router() {
               <Route path="/discount/:id" component={DiscountDetailPage} />
               <Route path="/profile" component={ProfilePage} />
               <Route path="/qr" component={QrPage} />
+              
               <Route path="/merchant/*"><Redirect to="/" /></Route>
-              <Route path="/admin/*"><Redirect to="/" /></Route>
+              {/* Admin o'z paneliga adashib AppShell orqali kirsa to'g'irlaymiz */}
+              <Route path="/admin/*"><Redirect to="/admin" /></Route>
+              
               <Route component={NotFound} />
             </Switch>
           </AppShell>
