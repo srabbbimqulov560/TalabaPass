@@ -75,9 +75,21 @@ export default function HomePage() {
       <ScrollReveal>
         <div className="relative flex items-center bg-[hsl(var(--card))] rounded-2xl p-1.5 shadow-sm border border-[hsl(var(--border))] mb-6 mt-1">
           <Search size={20} className="ml-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} type="search" placeholder="Qidirish (masalan: Burger, Najot Ta'lim...)" className="min-w-0 flex-1 bg-transparent px-3 py-3.5 text-sm font-medium text-[hsl(var(--foreground))] outline-none placeholder:text-[hsl(var(--muted-foreground))]" />
+          
+          {/* 🌟 YECHIM: type="text" va enterKeyHint="search" qo'shildi */}
+          <input 
+            value={search} 
+            onChange={(e) => setSearch(e.target.value)} 
+            type="text" 
+            enterKeyHint="search"
+            placeholder="Qidirish (masalan: Burger, Najot Ta'lim...)" 
+            className="min-w-0 flex-1 bg-transparent px-3 py-3.5 text-sm font-medium text-[hsl(var(--foreground))] outline-none placeholder:text-[hsl(var(--muted-foreground))]" 
+          />
+          
           {search && (
-            <button onClick={() => setSearch('')} className="p-2 text-[hsl(var(--muted-foreground))] hover:text-red-500 mr-1"><X size={18}/></button>
+            <button onClick={() => setSearch('')} className="p-2 text-[hsl(var(--muted-foreground))] hover:text-red-500 mr-1 cursor-pointer">
+              <X size={18}/>
+            </button>
           )}
         </div>
       </ScrollReveal>
@@ -124,7 +136,7 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* 🌟 YANGILANDI: YUKLANISH VAQTIDA CHIQADIGAN CHEGIRMA SHABLONLARI */}
+        {/* YUKLANISH VAQTIDA CHIQADIGAN CHEGIRMA SHABLONLARI */}
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-8">
             {[1, 2, 3, 4].map((i) => (
@@ -132,19 +144,14 @@ export default function HomePage() {
                 key={i} 
                 className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[20px] overflow-hidden shadow-sm flex flex-col h-full animate-pulse"
               >
-                {/* Rasm Skeletoni */}
                 <div className="w-full aspect-video bg-[hsl(var(--muted))] relative">
-                  {/* Do'kon nomi mini-badge skeletoni */}
                   <div className="absolute bottom-3 left-3 bg-[hsl(var(--background))/50] w-28 h-8 rounded-full border border-[hsl(var(--border))]"></div>
                 </div>
 
-                {/* Ma'lumotlar Skeletoni */}
                 <div className="p-4 flex-1 flex flex-col">
-                  {/* Sarlavha */}
                   <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-3/4 mb-2"></div>
                   <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-1/2"></div>
                   
-                  {/* Pastki qism (Vaqt va Tugma) */}
                   <div className="mt-auto pt-3 flex items-center justify-between">
                     <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-24"></div>
                     <div className="w-9 h-9 rounded-full bg-[hsl(var(--muted))]"></div>

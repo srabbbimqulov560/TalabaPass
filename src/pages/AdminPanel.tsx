@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Store, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Store } from 'lucide-react';
 import axios from 'axios';
 import { supabase } from '@/lib/supabase';
 import { useLocation } from 'wouter';
@@ -53,10 +53,37 @@ export default function AdminPanel() {
     }
   };
 
-  if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-blue-500" size={40}/></div>;
+  // 🌟 YUKLANISH VAQTIDA CHIQADIGAN SKELETON SHABLONLARI
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 page-enter">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Super-Admin Paneli</h1>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col animate-pulse">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
+                <div>
+                  <div className="h-5 w-32 bg-gray-200 rounded-md mb-2"></div>
+                  <div className="h-4 w-20 bg-gray-200 rounded-md"></div>
+                </div>
+              </div>
+              <div className="h-4 w-full bg-gray-200 rounded-md mb-2"></div>
+              <div className="h-4 w-4/5 bg-gray-200 rounded-md mb-4 flex-1"></div>
+              
+              <div className="flex gap-2 mt-auto pt-4 border-t border-gray-50">
+                <div className="flex-1 h-12 bg-gray-200 rounded-xl"></div>
+                <div className="flex-1 h-12 bg-gray-200 rounded-xl"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-6 page-enter">
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Super-Admin Paneli</h1>
       
       {merchants.length === 0 ? (
@@ -79,13 +106,13 @@ export default function AdminPanel() {
               <div className="flex gap-2 mt-auto pt-4 border-t border-gray-50">
                 <button 
                   onClick={() => handleAction(m.id, 'reject')}
-                  className="flex-1 py-3 text-red-600 bg-red-50 font-bold rounded-xl hover:bg-red-100 transition flex justify-center items-center gap-2"
+                  className="flex-1 py-3 text-red-600 bg-red-50 font-bold rounded-xl hover:bg-red-100 transition flex justify-center items-center gap-2 active:scale-95"
                 >
                   <XCircle size={18}/> Rad etish
                 </button>
                 <button 
                   onClick={() => handleAction(m.id, 'approve')}
-                  className="flex-1 py-3 text-white bg-green-500 font-bold rounded-xl hover:bg-green-600 transition flex justify-center items-center gap-2"
+                  className="flex-1 py-3 text-white bg-green-500 font-bold rounded-xl hover:bg-green-600 transition flex justify-center items-center gap-2 active:scale-95"
                 >
                   <CheckCircle size={18}/> Tasdiqlash
                 </button>

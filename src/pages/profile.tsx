@@ -7,8 +7,8 @@ import { useLanguage } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/lib/useUser'; 
 import { useQueryClient } from '@tanstack/react-query';
-import { Link } from 'wouter'; // 🌟 QO'SHILDI: Admin panelga o'tish linki uchun
-
+import { Link } from 'wouter'; 
+import Cropper from 'react-easy-crop'; 
 
 function initials(firstName?: string, lastName?: string) { 
   if (firstName && lastName) return (firstName[0] + lastName[0]).toUpperCase();
@@ -29,6 +29,14 @@ const getPasswordStrength = (pass: string) => {
   if (score === 5) return { score, text: 'Kuchli', color: 'bg-green-500', width: '100%' };
   return { score: 0, text: '', color: 'bg-transparent', width: '0%' };
 };
+
+const createImage = (url: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener('load', () => resolve(image));
+    image.addEventListener('error', (error) => reject(error));
+    image.src = url;
+  });
 
 export default function ProfilePage() {
   const { t, lang, setLang } = useLanguage();
@@ -53,29 +61,27 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [editError, setEditError] = useState('');
 
-  // 🌟 PWA O'RNATISH (INSTALL) STATELARI
+  // 🌟 CROP STATELARI
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
-
-  // 🌟 YANGI MANTIQ: Foydalanuvchi Admin ekanligini tekshirish
   const [isAdmin, setIsAdmin] = useState(false);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 🌟 ADMIN TEKSHIRUVI (Faqat user yuklangandan so'ng)
   useEffect(() => {
     const checkAdmin = async () => {
       if (user?.id) {
         const { data } = await supabase.from('admins').select('id').eq('id', user.id).maybeSingle();
-        if (data) {
-          setIsAdmin(true);
-        }
+        if (data) setIsAdmin(true);
       }
     };
     checkAdmin();
   }, [user?.id]);
 
-  // MAVZUNI O'ZGARTIRISH
   useEffect(() => {
     if (isDarkTheme) {
       document.documentElement.classList.add('dark');
@@ -86,7 +92,6 @@ export default function ProfilePage() {
     }
   }, [isDarkTheme]);
 
-  // TAHRIRLASH MODALINI TO'LDIRISH
   useEffect(() => {
     if (user && isEditModalOpen) {
       setEditForm({ 
@@ -100,19 +105,17 @@ export default function ProfilePage() {
     }
   }, [user, isEditModalOpen]);
 
-  // 🌟 PWA O'RNATISH HODISASINI KUTISH
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
-      e.preventDefault(); // Brauzer avtomatik taklifini to'xtatamiz
-      setDeferredPrompt(e); // Hodisani saqlab qolamiz (o'zimizni tugma uchun)
-      setIsInstallable(true); // O'rnatish tugmasini ekranda chiqaramiz
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
     };
     
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
-  // 🌟 ILOVANI O'RNATISH TUGMASI BOSILGANDA
   const handleInstallClick = async () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();
@@ -126,29 +129,64 @@ export default function ProfilePage() {
 
   const strength = getPasswordStrength(editForm.newPassword);
 
-  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !user) return; 
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.addEventListener('load', () => setSelectedImage(reader.result as string));
+      reader.readAsDataURL(file);
+      e.target.value = ''; 
+    }
+  };
 
+  const handleCropSave = async () => {
+    if (!selectedImage || !croppedAreaPixels || !user) return;
+    
     try {
       setIsUploading(true);
-      const localUrl = URL.createObjectURL(file);
+      const currentSelectedImage = selectedImage; 
+      setSelectedImage(null); 
+      
+      const image = await createImage(currentSelectedImage);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('No 2d context');
+
+      canvas.width = croppedAreaPixels.width;
+      canvas.height = croppedAreaPixels.height;
+
+      ctx.drawImage(
+        image,
+        croppedAreaPixels.x,
+        croppedAreaPixels.y,
+        croppedAreaPixels.width,
+        croppedAreaPixels.height,
+        0,
+        0,
+        croppedAreaPixels.width,
+        croppedAreaPixels.height
+      );
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((b) => {
+          if (b) resolve(b);
+          else reject(new Error('Canvas is empty'));
+        }, 'image/jpeg', 0.9);
+      });
+
+      const localUrl = URL.createObjectURL(blob);
       if (updateAvatar) updateAvatar(localUrl);
 
       const userId = user.id;
-      const fileExt = file.name.split('.').pop() || 'jpg';
-      const fileName = `${userId}-${Date.now()}.${fileExt}`; 
+      const fileName = `${userId}-${Date.now()}.jpg`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file, { upsert: true });
+        .upload(fileName, blob, { upsert: true, contentType: 'image/jpeg' });
 
       if (uploadError) throw uploadError;
 
-      const { data: publicUrlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
+      const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
       const newAvatarUrl = publicUrlData.publicUrl;
 
       const { error: updateError } = await supabase
@@ -235,9 +273,8 @@ export default function ProfilePage() {
           
           <div className="absolute -top-14">
             <div className="relative group">
-              <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" disabled={isUploading || isUserLoading} />
+              <input type="file" ref={fileInputRef} onChange={onFileChange} accept="image/*" className="hidden" disabled={isUploading || isUserLoading} />
               
-              {/* 🌟 RASM SKELETONI */}
               <div 
                 onClick={() => !isUploading && !isUserLoading && fileInputRef.current?.click()} 
                 className={`grid h-28 w-28 cursor-pointer place-items-center overflow-hidden rounded-full border-4 border-[hsl(var(--background))] shadow-md transition-all ${
@@ -270,7 +307,6 @@ export default function ProfilePage() {
             </div>
           </div>
           
-          {/* 🌟 MATNLAR SKELETONI */}
           {isUserLoading ? (
             <div className="flex flex-col items-center mt-2 w-full text-center">
               <div className="h-7 w-48 bg-[hsl(var(--muted))] rounded-lg animate-pulse mb-3"></div>
@@ -321,10 +357,8 @@ export default function ProfilePage() {
           <StudentCard user={user} avatar={avatar} t={t} fullName={fullName} isLoading={isUserLoading} />
         ) : (
           <div className="w-full max-w-[380px] flex flex-col page-enter pb-10">
-            
             <div className="bg-[hsl(var(--card))] rounded-[24px] border border-[hsl(var(--card-border))] overflow-hidden flex flex-col shadow-soft">
               
-              {/* 🌟 PWA O'RNATISH TUGMASI (Faqat ilova brauzerdan ochilgandagina chiqadi) */}
               {isInstallable && (
                 <div onClick={handleInstallClick} className="flex items-center justify-between p-4 cursor-pointer bg-[hsl(var(--primary)/.08)] hover:bg-[hsl(var(--primary)/.15)] transition-colors border-b border-[hsl(var(--primary)/.2)]">
                   <div className="flex items-center gap-3">
@@ -394,7 +428,6 @@ export default function ProfilePage() {
                 <ChevronRight size={20} className="text-[hsl(var(--muted-foreground))]" />
               </div>
 
-              {/* 🌟 YANGILIK: FAQAT ADMIN UCHUN KO'RINADIGAN MAXSUS TUGMA */}
               {isAdmin && (
                 <Link href="/admin">
                   <div className="flex items-center justify-between p-4 cursor-pointer bg-indigo-500/5 hover:bg-indigo-500/15 transition-colors border-b border-[hsl(var(--border))]">
@@ -418,6 +451,50 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+
+      {/* 🌟 YANGILANGAN: XATOSIZ RASM QIRQISH (CROP) MODALI */}
+      {selectedImage && (
+        <div className="fixed inset-0 z-[70] flex flex-col bg-black/95 backdrop-blur-md">
+          <div className="relative flex-1 w-full mt-10">
+            <Cropper
+              image={selectedImage}
+              crop={crop}
+              zoom={zoom}
+              aspect={1}
+              cropShape="round"
+              showGrid={false}
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onCropComplete={(croppedArea, pixels) => setCroppedAreaPixels(pixels)}
+            />
+          </div>
+          <div className="p-6 pb-12 bg-black flex flex-col gap-6 items-center">
+            <input
+              type="range"
+              value={zoom}
+              min={1}
+              max={3}
+              step={0.1}
+              onChange={(e) => setZoom(Number(e.target.value))}
+              className="w-full max-w-xs accent-[hsl(var(--primary))]"
+            />
+            <div className="flex w-full max-w-xs gap-4">
+              <button 
+                onClick={() => setSelectedImage(null)} 
+                className="flex-1 py-3.5 font-bold rounded-2xl text-white bg-white/20 hover:bg-white/30 transition-colors"
+              >
+                Bekor qilish
+              </button>
+              <button 
+                onClick={handleCropSave} 
+                className="flex-1 py-3.5 font-bold rounded-2xl text-[hsl(var(--primary-foreground))] bg-[hsl(var(--primary))] hover:brightness-110 transition-all flex justify-center items-center gap-2"
+              >
+                Saqlash
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* TAHRIRLASH MODALI */}
       {isEditModalOpen && (
@@ -553,7 +630,6 @@ export default function ProfilePage() {
   );
 }
 
-// 🌟 SKELETONLI ID KARTA
 function StudentCard({ user, avatar, t, fullName, isLoading }: any) {
   const [flipped, setFlipped] = useState(false);
 

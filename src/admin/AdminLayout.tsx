@@ -55,9 +55,9 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
     { path: '/admin/logs', icon: History, label: 'Tarix (Logs)' },
   ];
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setLocation('/');
+  // 🌟 MUAMMO HAL QILINDI: Endi akkauntdan to'liq chiqib ketmaydi, profilga qaytadi!
+  const handleLogout = () => {
+    setLocation('/profile');
   };
 
   return (
@@ -104,8 +104,9 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
           </nav>
 
           <div className="p-4 border-t border-[hsl(var(--border))]">
-            <button onClick={handleLogout} className="flex w-full items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-red-500 hover:bg-red-500/10 transition-colors">
-              <LogOut size={20} /> Tizimdan chiqish
+            {/* TUGMA YOZUVI HAM MANTIQAN O'ZGARTIRILDI */}
+            <button onClick={handleLogout} className="flex w-full items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer">
+              <LogOut size={20} /> Admindan chiqish
             </button>
           </div>
         </div>
