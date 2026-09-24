@@ -4,30 +4,27 @@ import { ArrowLeft } from 'lucide-react';
 export default function NotFound() {
   const [location] = useLocation();
 
-  // MANTIQ: Qaysi hududda ekanligimizni URL orqali aniqlaymiz
   const isMerchantZone = location.startsWith('/merchant');
   const isAdminZone = location.startsWith('/admin');
 
-  // Hududga mos ravishda orqaga qaytish manzili va matnini avtomatik tanlaymiz
   const returnUrl = isAdminZone ? '/admin' : isMerchantZone ? '/merchant' : '/';
   const returnText = isAdminZone ? "Admin panelga qaytish" : isMerchantZone ? "Biznes panelga qaytish" : "Asosiy sahifaga qaytish";
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] py-8 text-center page-enter px-4 max-w-2xl mx-auto w-full">
+    <div className="flex flex-col items-center justify-center min-h-[85vh] py-4 text-center page-enter w-full">
       
-      {/* 🌟 RAMKASIZ (BOXSIZ) TO'LIQ KENGLIKDAGI RASM */}
-      <div className="w-full mb-6 overflow-hidden">
+      {/* 🌟 TO'LIQ EKRAN KENGLIGI (FULL-WIDTH) */}
+      <div className="w-full mb-4 overflow-hidden">
         <img 
           src="/IMG_3994.PNG" 
           alt="404 Sahifa topilmadi" 
-          className="w-full h-auto object-contain mx-auto" 
+          className="w-full h-auto object-cover" 
         />
       </div>
       
-      {/* HUDUDGA MOSLASHTIRILGAN TUGMA */}
       <Link href={returnUrl}>
-        <button className="flex items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-6 py-3.5 text-[15px] font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all">
-          <ArrowLeft size={18} /> {returnText}
+        <button className="flex items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-6 py-3 text-[14px] font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all">
+          <ArrowLeft size={16} /> {returnText}
         </button>
       </Link>
 
