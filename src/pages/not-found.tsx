@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'wouter';
-import { FileQuestion, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 export default function NotFound() {
   const [location] = useLocation();
@@ -13,16 +13,20 @@ export default function NotFound() {
   const returnText = isAdminZone ? "Admin panelga qaytish" : isMerchantZone ? "Biznes panelga qaytish" : "Asosiy sahifaga qaytish";
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] py-20 text-center page-enter px-4">
+    <div className="flex flex-col items-center justify-center min-h-[70vh] py-12 text-center page-enter px-4 max-w-lg mx-auto">
       
-      {/* 🌟 VIZUAL DIZAYN: Quruq matn emas, professional ko'rinish */}
-      <div className="w-24 h-24 bg-[hsl(var(--secondary))] rounded-full flex items-center justify-center text-[hsl(var(--muted-foreground))] mb-6 border-4 border-[hsl(var(--card-border))] shadow-sm">
-        <FileQuestion size={48} />
+      {/* 🌟 VIZUAL ILLYUSTRATSIYA: Siz yuborgan 404 rasmi */}
+      <div className="w-full max-w-[380px] mb-6 overflow-hidden rounded-[28px] shadow-xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+        <img 
+          src="/IMG_3994.jpg" 
+          alt="404 Sahifa topilmadi" 
+          className="w-full h-auto object-cover hover:scale-105 transition-transform duration-500" 
+        />
       </div>
       
-      <h1 className="font-display text-5xl font-extrabold text-[hsl(var(--foreground))] mb-2">404</h1>
-      <p className="text-lg font-medium text-[hsl(var(--muted-foreground))] mb-8 max-w-xs leading-relaxed">
-        Kechirasiz, siz qidirayotgan sahifa topilmadi yoki tizimdan o'chirilgan.
+      <h1 className="font-display text-4xl font-extrabold text-[hsl(var(--foreground))] mb-2">404: Sahifa topilmadi</h1>
+      <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))] mb-8 max-w-xs leading-relaxed">
+        Kechirasiz, siz qidirayotgan sahifa mavjud emas yoki boshqa manzilga ko'chirilgan.
       </p>
       
       {/* HUDUDGA MOSLASHTIRILGAN TUGMA */}
