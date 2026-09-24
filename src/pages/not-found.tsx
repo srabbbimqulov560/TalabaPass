@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 export default function NotFound() {
   const [location] = useLocation();
 
-  // 🌟 MANTIQ: Qaysi hududda ekanligimizni URL orqali aniqlaymiz
+  // MANTIQ: Qaysi hududda ekanligimizni URL orqali aniqlaymiz
   const isMerchantZone = location.startsWith('/merchant');
   const isAdminZone = location.startsWith('/admin');
 
@@ -13,14 +13,14 @@ export default function NotFound() {
   const returnText = isAdminZone ? "Admin panelga qaytish" : isMerchantZone ? "Biznes panelga qaytish" : "Asosiy sahifaga qaytish";
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] py-12 text-center page-enter px-4 max-w-lg mx-auto">
+    <div className="flex flex-col items-center justify-center min-h-[80vh] py-8 text-center page-enter px-4 max-w-2xl mx-auto w-full">
       
-      {/* 🌟 VIZUAL ILLYUSTRATSIYA: Siz yuborgan 404 rasmi */}
-      <div className="w-full max-w-[380px] mb-6 overflow-hidden rounded-[28px] shadow-xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+      {/* 🌟 RAMKASIZ (BOXSIZ) TO'LIQ KENGLIKDAGI RASM */}
+      <div className="w-full mb-6 overflow-hidden">
         <img 
           src="/IMG_3994.PNG" 
           alt="404 Sahifa topilmadi" 
-          className="w-full h-auto object-cover hover:scale-105 transition-transform duration-500" 
+          className="w-full h-auto object-contain mx-auto" 
         />
       </div>
       
