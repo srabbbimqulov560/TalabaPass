@@ -6,7 +6,6 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { LanguageProvider } from '@/lib/i18n';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { supabase } from '@/lib/supabase'; 
-import { Loader2 } from 'lucide-react';
 import { TalabaLoader } from '@/components/TalabaLoader';
 
 // --- ASOSIY SAHIFALAR ---
@@ -118,7 +117,6 @@ function Router() {
           setSession(newSession);
           setUserRole(role as any);
           setIsActive(active);
-          // XATO SHU YERDA EDI, TO'G'RILANDI:
           if (isInitializing) setIsInitializing(false); 
         }
       } else {
@@ -135,7 +133,6 @@ function Router() {
     };
   }, []);
 
-  // 🌟 HAQIQIY YUKLANISH SAHIFASI (XATO SHU YERDA EDI, TO'G'RILANDI)
   if (isInitializing) {
     return <TalabaLoader fullScreen={true} />;
   }
@@ -186,7 +183,17 @@ function Router() {
         <Route path="/merchant/login"><Redirect to="/merchant" /></Route>
         <Route path="/merchant/signup"><Redirect to="/merchant" /></Route>
 
-        {/* 🏪 B. BIZNES (DO'KON) HUDUDI */}
+        {/* 🌟 1. YECHIM: ADMIN YO'NALISHLARI QAFASDAN CHIQARILIB ANIQLASHTIRILDI */}
+        {userRole === 'admin' && <Route path="/admin" component={AdminDashboard} />}
+        {userRole === 'admin' && <Route path="/admin/students-report" component={StudentsReport} />}
+        {userRole === 'admin' && <Route path="/admin/merchants-report" component={MerchantsReport} />}
+        {userRole === 'admin' && <Route path="/admin/scans-report" component={ScansReport} />}
+        {userRole === 'admin' && <Route path="/admin/logs" component={SystemLogs} />}
+        {userRole === 'admin' && <Route path="/admin/merchants" component={MerchantsManager} />}
+        {userRole === 'admin' && <Route path="/admin/students" component={StudentsManager} />}
+        {userRole === 'admin' && <Route path="/admin/discounts" component={DiscountsManager} />}
+
+        {/* 🏪 2. BIZNES (DO'KON) HUDUDI */}
         {userRole === 'merchant' && (
           <MerchantAppShell>
             <Switch>
@@ -200,24 +207,7 @@ function Router() {
           </MerchantAppShell>
         )}
 
-        {/* 🛡️ A. ADMIN MAXSUS HUDUDI (Faqat /admin manzillari uchun) */}
-        {userRole === 'admin' && (
-          <Route path="/admin*">
-            <Switch>
-              <Route path="/admin" component={AdminDashboard} />
-              <Route path="/admin/students-report" component={StudentsReport} /> 
-              <Route path="/admin/merchants-report" component={MerchantsReport} />
-              <Route path="/admin/scans-report" component={ScansReport} />
-              <Route path="/admin/logs" component={SystemLogs} />
-              <Route path="/admin/merchants" component={MerchantsManager} />
-              <Route path="/admin/students" component={StudentsManager} /> 
-              <Route path="/admin/discounts" component={DiscountsManager} />
-              <Route><Redirect to="/admin" /></Route>
-            </Switch>
-          </Route>
-        )}
-
-        {/* 🎓 C. TALABALAR VA ADMIN HUDUDI (Admin ham talaba kabi kira oladi) */}
+        {/* 🎓 3. TALABALAR VA ADMIN HUDUDI */}
         {(userRole === 'student' || userRole === 'admin') && (
           <AppShell>
             <Switch>
@@ -230,10 +220,7 @@ function Router() {
               <Route path="/profile" component={ProfilePage} />
               <Route path="/qr" component={QrPage} />
               
-              <Route path="/merchant/*"><Redirect to="/" /></Route>
-              {/* Admin o'z paneliga adashib AppShell orqali kirsa to'g'irlaymiz */}
-              <Route path="/admin/*"><Redirect to="/admin" /></Route>
-              
+              {/* O'chirilgan URL'lar uchun 404 sahifa chiqadi */}
               <Route component={NotFound} />
             </Switch>
           </AppShell>
