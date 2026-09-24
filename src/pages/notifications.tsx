@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Bell, Loader2, CheckCircle2, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { Bell, CheckCircle2, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { Link } from 'wouter';
-import { TalabaLoader } from '@/components/TalabaLoader';
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -39,10 +38,28 @@ export default function NotificationsPage() {
          <h1 className="font-display text-2xl font-bold text-[hsl(var(--foreground))]">Bildirishnomalar</h1>
       </div>
 
+      {/* 🌟 YANGILANDI: YUKLANISH VAQTIDA CHIQADIGAN SKELETON SHABLONLARI */}
       {loading ? (
-         <div className="py-10">
-    <TalabaLoader text="Ma'lumotlar yuklanmoqda..." />
-  </div>
+         <div className="space-y-3">
+           {[1, 2, 3, 4, 5].map((i) => (
+             <div key={i} className="p-4 rounded-[24px] border-2 bg-[hsl(var(--card))] border-[hsl(var(--border))] animate-pulse">
+                <div className="flex items-start gap-3">
+                  {/* Ikonka Skeletoni */}
+                  <div className="w-[22px] h-[22px] rounded-full bg-[hsl(var(--muted))] shrink-0 mt-0.5"></div>
+                  
+                  {/* Matnlar Skeletoni */}
+                  <div className="flex-1">
+                    <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-2/3 mb-2.5"></div>
+                    <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-full mb-1.5"></div>
+                    <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-5/6"></div>
+                    
+                    {/* Vaqt Skeletoni */}
+                    <div className="h-2.5 bg-[hsl(var(--muted))] rounded-md w-1/3 mt-4"></div>
+                  </div>
+                </div>
+             </div>
+           ))}
+         </div>
       ) : notifications.length > 0 ? (
          <div className="space-y-3">
            {notifications.map(note => (

@@ -1,8 +1,7 @@
-import { ArrowLeft, MapPin, Store, Clock, Sparkles, Loader2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Store, Clock, Sparkles } from 'lucide-react';
 import { Link, useLocation, useParams } from 'wouter';
 import { supabase } from '@/lib/supabase';
 import { useQuery } from '@tanstack/react-query';
-import { TalabaLoader } from '@/components/TalabaLoader';
 
 export default function StoreDetailPage() {
   const params = useParams<{ id: string }>();
@@ -31,10 +30,38 @@ export default function StoreDetailPage() {
     enabled: !!id
   });
 
+  // 🌟 YANGILANDI: DO'KON PROFILI YUKLANAYOTGANDA CHIQADIGAN SKELETON
   if (isMerchantLoading) {
-    return <div className="py-10">
-    <TalabaLoader text="Ma'lumotlar yuklanmoqda..." />
-  </div>;
+    return (
+      <div className="page-enter pb-10 flex flex-col min-h-[calc(100dvh-100px)]">
+        <div className="mb-4 w-32 h-5 bg-[hsl(var(--muted))] rounded-md animate-pulse"></div>
+        
+        {/* Profil Kartasi Skeletoni */}
+        <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[32px] p-6 shadow-sm mb-8 flex flex-col items-center text-center animate-pulse">
+          <div className="w-24 h-24 rounded-full bg-[hsl(var(--muted))] mb-4"></div>
+          <div className="h-7 w-48 bg-[hsl(var(--muted))] rounded-md mb-2"></div>
+          <div className="h-4 w-24 bg-[hsl(var(--muted))] rounded-md mb-4"></div>
+          <div className="w-full h-20 bg-[hsl(var(--muted))] rounded-2xl"></div>
+        </div>
+
+        <div className="mb-4 h-6 w-40 bg-[hsl(var(--muted))] rounded-md animate-pulse"></div>
+        
+        {/* Chegirmalar Grid Skeletoni */}
+        <div className="grid grid-cols-2 gap-4 pb-8">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[20px] overflow-hidden shadow-sm flex flex-col h-full animate-pulse">
+              <div className="w-full aspect-[4/5] bg-[hsl(var(--muted))] relative">
+                <div className="absolute top-2 right-2 w-10 h-6 bg-[hsl(var(--background))/50] rounded-xl"></div>
+              </div>
+              <div className="p-3 flex-1 flex flex-col gap-2">
+                <div className="h-3 w-full bg-[hsl(var(--muted))] rounded-md"></div>
+                <div className="h-3 w-2/3 bg-[hsl(var(--muted))] rounded-md mt-auto"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (!merchant) {
@@ -82,11 +109,21 @@ export default function StoreDetailPage() {
         </h2>
       </div>
 
-      {/* CHEGIRMALAR RO'YXATI */}
+      {/* CHEGIRMALAR RO'YXATI VA UNING SKELETONI */}
       {isDiscountsLoading ? (
-        <div className="py-10">
-    <TalabaLoader text="Ma'lumotlar yuklanmoqda..." />
-  </div>
+        <div className="grid grid-cols-2 gap-4 pb-8">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[20px] overflow-hidden shadow-sm flex flex-col h-full animate-pulse">
+              <div className="w-full aspect-[4/5] bg-[hsl(var(--muted))] relative">
+                <div className="absolute top-2 right-2 w-10 h-6 bg-[hsl(var(--background))/50] rounded-xl"></div>
+              </div>
+              <div className="p-3 flex-1 flex flex-col gap-2">
+                <div className="h-3 w-full bg-[hsl(var(--muted))] rounded-md"></div>
+                <div className="h-3 w-2/3 bg-[hsl(var(--muted))] rounded-md mt-auto"></div>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : discounts && discounts.length > 0 ? (
         <div className="grid grid-cols-2 gap-4 pb-8">
           {discounts.map((discount: any) => (

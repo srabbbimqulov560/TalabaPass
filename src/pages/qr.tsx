@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import QRCode from 'react-qr-code';
-import { TalabaLoader } from '@/components/TalabaLoader';
 
 export default function QrPage() {
   const [student, setStudent] = useState<any>(null);
@@ -40,10 +38,33 @@ export default function QrPage() {
     return () => clearInterval(timer);
   }, [student]);
 
+  // 🌟 YANGILANDI: YUKLANISH VAQTIDA CHIQADIGAN QR SKELETON
   if (loading) {
-    return <div className="py-10">
-    <TalabaLoader text="Ma'lumotlar yuklanmoqda..." />
-  </div>;
+    return (
+      <div className="page-enter pb-20 flex flex-col items-center justify-center min-h-[70vh]">
+        
+        <div className="text-center mb-8 flex flex-col items-center animate-pulse">
+          <div className="h-7 bg-[hsl(var(--muted))] rounded-md w-48 mb-3"></div>
+          <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-36"></div>
+        </div>
+
+        <div className="w-full max-w-[280px] bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] rounded-[32px] shadow-2xl p-6 flex flex-col items-center animate-pulse">
+          
+          {/* QR O'rni Skeletoni */}
+          <div className="bg-[hsl(var(--muted))] rounded-2xl mb-6 w-full aspect-square border border-[hsl(var(--border))]"></div>
+          
+          {/* Timer Skeletoni */}
+          <div className="w-full pb-1">
+            <div className="flex justify-between items-center mb-2 px-1">
+              <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-24"></div>
+              <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-8"></div>
+            </div>
+            <div className="w-full h-1.5 bg-[hsl(var(--muted))] rounded-full"></div>
+          </div>
+          
+        </div>
+      </div>
+    );
   }
 
   if (!student) return null;
