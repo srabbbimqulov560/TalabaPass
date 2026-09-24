@@ -3,7 +3,7 @@ import { Search, X, Coffee, ShoppingBag, BookOpen, Monitor, LayoutGrid, Clock, S
 import { useLocation } from 'wouter';
 import { ScrollReveal } from '@/components/scroll-reveal';
 import { supabase } from '@/lib/supabase';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query'; // 🌟 QO'SHILDI: useQueryClient
 import { useFavorites } from '@/lib/useFavorites';
 
 const BANNERS = [
@@ -15,6 +15,7 @@ const BANNERS = [
 
 export default function HomePage() {
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient(); // 🌟 KESHNI TOZALASH UCHUN
   
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
@@ -22,7 +23,6 @@ export default function HomePage() {
   
   const { savedIds, toggleFavorite } = useFavorites();
 
-  // BAZADAN HAQIQIY CHEGIRMALAR
   const { data: allDiscounts, isLoading } = useQuery({
     queryKey: ['allDiscounts'],
     queryFn: async () => {
@@ -75,8 +75,6 @@ export default function HomePage() {
       <ScrollReveal>
         <div className="relative flex items-center bg-[hsl(var(--card))] rounded-2xl p-1.5 shadow-sm border border-[hsl(var(--border))] mb-6 mt-1">
           <Search size={20} className="ml-3 shrink-0 text-[hsl(var(--muted-foreground))]" />
-          
-          {/* 🌟 YECHIM: type="text" va enterKeyHint="search" qo'shildi */}
           <input 
             value={search} 
             onChange={(e) => setSearch(e.target.value)} 
@@ -85,7 +83,6 @@ export default function HomePage() {
             placeholder="Qidirish (masalan: Burger, Najot Ta'lim...)" 
             className="min-w-0 flex-1 bg-transparent px-3 py-3.5 text-sm font-medium text-[hsl(var(--foreground))] outline-none placeholder:text-[hsl(var(--muted-foreground))]" 
           />
-          
           {search && (
             <button onClick={() => setSearch('')} className="p-2 text-[hsl(var(--muted-foreground))] hover:text-red-500 mr-1 cursor-pointer">
               <X size={18}/>
@@ -136,7 +133,6 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* YUKLANISH VAQTIDA CHIQADIGAN CHEGIRMA SHABLONLARI */}
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-8">
             {[1, 2, 3, 4].map((i) => (
@@ -199,10 +195,15 @@ export default function HomePage() {
                       </div>
                       
                       <button 
-                        onClick={(e) => {
+                        type="button" // 🌟 MUHIM
+                        onClick={async (e) => {
                           e.preventDefault(); 
                           e.stopPropagation(); 
-                          toggleFavorite(String(discount.id));
+                          await toggleFavorite(String(discount.id));
+                          // 🌟 YECHIM: Saqlanganda Saved sahifasi tezkor yangilanishi uchun keshni yangilaymiz
+                          setTimeout(() => {
+                             queryClient.invalidateQueries({ queryKey: ['savedDiscounts'] });
+                          }, 100);
                         }}
                         className={`p-2 rounded-full transition-all active:scale-90 ${
                           isSaved 

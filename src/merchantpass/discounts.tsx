@@ -21,20 +21,20 @@ export default function MerchantDiscounts() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 🌟 1. DO'KON STATUSINI TEKSHIRISH
+  // 1. DO'KON STATUSINI TEKSHIRISH
   const { data: merchantStatus } = useQuery({
     queryKey: ['merchantStatus'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
-      const { data } = await supabase.from('merchants').select('is_active').eq('id', user.id).single();
+      const { data } = await supabase.from('merchants').select('is_active, name').eq('id', user.id).single();
       return data;
     }
   });
 
   const isActive = merchantStatus?.is_active === true;
 
-  // BAZADAN CHEGIRMALAR VA ULARNING KO'RISHLAR SONINI (COUNT) TORTIB OLISH
+  // BAZADAN CHEGIRMALAR
   const { data: discounts, isLoading } = useQuery({
     queryKey: ['merchantDiscounts'],
     queryFn: async () => {
@@ -88,6 +88,7 @@ export default function MerchantDiscounts() {
       
       const { data: publicUrlData } = supabase.storage.from('discounts').getPublicUrl(fileName);
 
+      // YANGI CHEGIRMANI YARATISH
       const { error: dbError } = await supabase.from('discounts').insert([{
         merchant_id: user.id, product_name: finalProductName, discount_percent: parseInt(discountPercent),
         start_date: startDate, end_date: endDate, start_time: startTime, end_time: endTime, image_url: publicUrlData.publicUrl
@@ -95,9 +96,43 @@ export default function MerchantDiscounts() {
 
       if (dbError) throw new Error(dbError.message);
 
+      // 🌟 YECHIM: DO'KONNING AVVALGI CHEGIRMALARINI SAQLAGAN (FAVORITE) TALABALARGA XABAR YUBORISH
+      // 1. Shu do'kon id'siga tegishli saqlangan (favorites) foydalanuvchilarini topish
+      const { data: savedDiscounts } = await supabase
+        .from('discounts')
+        .select('id')
+        .eq('merchant_id', user.id);
+
+      if (savedDiscounts && savedDiscounts.length > 0) {
+        const discountIds = savedDiscounts.map(d => String(d.id));
+
+        const { data: favUsers } = await supabase
+          .from('favorites')
+          .select('user_id')
+          .in('discount_id', discountIds);
+
+        // 2. Takrorlanmas (Unique) talabalar ro'yxatini ajratib olish
+        if (favUsers && favUsers.length > 0) {
+           const uniqueUserIds = [...new Set(favUsers.map(u => u.user_id))];
+
+           // 3. Ularning barchasiga "notifications" tablitsasiga xabar yozish
+           const notificationsData = uniqueUserIds.map(userId => ({
+              user_id: userId,
+              title: `${merchantStatus?.name || "Do'kon"} - yangi chegirma!`,
+              message: `Siz kuzatayotgan do'kon: ${finalProductName} (-${discountPercent}%) e'lon qildi! Kirib ko'ring.`,
+              is_read: false
+           }));
+
+           await supabase.from('notifications').insert(notificationsData);
+        }
+      }
+
       setIsModalOpen(false); setImageFile(null); setImagePreview(null); setTags([]); setInputValue(''); 
       setDiscountPercent(''); setStartDate(''); setEndDate('');
       queryClient.invalidateQueries({ queryKey: ['merchantDiscounts'] });
+      // Shuningdek yangi chegirmalar ro'yxatini umumiy tizim uchun ham yangilaymiz
+      queryClient.invalidateQueries({ queryKey: ['allDiscounts'] }); 
+      
     } catch (error: any) {
       alert("XATOLIK YUZ BERDI:\n" + error.message);
     } finally {
@@ -118,7 +153,6 @@ export default function MerchantDiscounts() {
   return (
     <div className="page-enter pb-10">
       
-      {/* 🌟 2. TASDIQLANMAGAN BO'LSA OGOHLANTIRISH */}
       {merchantStatus && !isActive && (
         <div className="mb-6 bg-orange-500/10 border border-orange-500/30 p-4 rounded-2xl flex items-start gap-3">
            <ShieldAlert className="text-orange-500 shrink-0 mt-0.5" size={20} />
@@ -131,7 +165,6 @@ export default function MerchantDiscounts() {
       <div className="flex justify-between items-center mb-6">
         <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))]">Chegirmalar</h2>
         
-        {/* 🌟 3. TUGMANI YASHIRISH YOTI KUTILMOQDA STATUSI */}
         {isActive ? (
           <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-1.5 text-sm font-bold bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-4 py-2.5 rounded-full shadow-float active:scale-95 transition-all">
             <PlusCircle size={18}/> Yangi
@@ -143,18 +176,14 @@ export default function MerchantDiscounts() {
         )}
       </div>
 
-      {/* 🌟 YANGILANDI: YUKLANISH VAQTIDA CHIQADIGAN SKELETON SHABLONLARI */}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[20px] overflow-hidden shadow-sm relative flex flex-col animate-pulse">
-              {/* Badge Skeleton */}
               <div className="absolute top-2 right-2 z-10 bg-[hsl(var(--muted))] w-14 h-8 rounded-xl shadow-md"></div>
               
-              {/* Image Skeleton */}
               <div className="w-full aspect-video bg-[hsl(var(--muted))]"></div>
               
-              {/* Content Skeleton */}
               <div className="p-4 flex-1 flex flex-col">
                 <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-3/4 mb-2"></div>
                 <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-1/2"></div>
@@ -164,7 +193,6 @@ export default function MerchantDiscounts() {
                     <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-full"></div>
                     <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-4/5"></div>
                   </div>
-                  {/* View count skeleton */}
                   <div className="w-12 h-8 bg-[hsl(var(--muted))] rounded-xl"></div>
                 </div>
               </div>
@@ -175,7 +203,7 @@ export default function MerchantDiscounts() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {discounts.map((discount: any) => (
             <div key={discount.id} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[20px] overflow-hidden shadow-sm relative group flex flex-col">
-              <button onClick={() => handleDelete(discount.id, discount.image_url)} className="absolute top-2 left-2 z-10 bg-red-500/90 text-white p-2 rounded-full backdrop-blur-md opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+              <button onClick={() => handleDelete(discount.id, discount.image_url)} className="absolute top-2 left-2 z-10 bg-red-500/90 text-white p-2 rounded-full backdrop-blur-md opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity cursor-pointer">
                 <Trash2 size={16} />
               </button>
               <div className="absolute top-2 right-2 z-10 bg-red-500 text-white text-[13px] font-extrabold px-3 py-1.5 rounded-xl shadow-md">
@@ -196,7 +224,6 @@ export default function MerchantDiscounts() {
                     <span className="flex items-center gap-1.5"><Clock size={14} className="text-[hsl(var(--accent))]"/> {discount.start_time.slice(0, 5)} - {discount.end_time.slice(0, 5)}</span>
                   </div>
                   
-                  {/* KO'RISHLAR SONI - O'NG BURCHAKDA */}
                   <div className="ml-auto flex items-center gap-1.5 bg-[hsl(var(--secondary))] text-[hsl(var(--foreground))] px-3 py-1.5 rounded-xl border border-[hsl(var(--border))]">
                     <Eye size={14} className="text-[hsl(var(--muted-foreground))]" />
                     <span className="font-extrabold">{discount.discount_views?.[0]?.count || 0}</span>
@@ -236,7 +263,7 @@ export default function MerchantDiscounts() {
                 <div className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-2 px-3 rounded-2xl min-h-[54px] flex flex-wrap items-center gap-2 focus-within:border-[hsl(var(--accent))] transition-all cursor-text" onClick={() => document.getElementById('tag-input')?.focus()}>
                   {tags.map(tag => (
                     <span key={tag} className="flex items-center gap-1.5 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm">
-                      {tag} <button type="button" onClick={() => removeTag(tag)} className="hover:text-red-300"><X size={14} /></button>
+                      {tag} <button type="button" onClick={() => removeTag(tag)} className="hover:text-red-300 cursor-pointer"><X size={14} /></button>
                     </span>
                   ))}
                   <input id="tag-input" type="text" value={inputValue} onChange={handleTagInput} onKeyDown={(e) => { if (e.key === 'Backspace' && inputValue === '' && tags.length > 0) removeTag(tags[tags.length - 1]); }} placeholder={tags.length === 0 ? "Masalan: Burger (2 ta probel bosing)" : "Yana qo'shish..."} className="flex-1 bg-transparent outline-none text-sm font-semibold min-w-[150px] text-[hsl(var(--foreground))]" />
@@ -255,7 +282,7 @@ export default function MerchantDiscounts() {
                 <div><label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Vaqt (gacha)</label><input type="time" required value={endTime} onChange={(e)=>setEndTime(e.target.value)} className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-2xl text-sm font-bold outline-none focus:border-[hsl(var(--accent))]" /></div>
               </div>
 
-              <button type="submit" disabled={isSubmitting || !imageFile} className="w-full py-4 mt-4 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-bold rounded-2xl shadow-float active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-70">
+              <button type="submit" disabled={isSubmitting || !imageFile} className="w-full py-4 mt-4 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-bold rounded-2xl shadow-float active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-70 cursor-pointer">
                 {isSubmitting ? <Loader2 className="animate-spin" size={20}/> : "Saqlash"}
               </button>
             </form>
