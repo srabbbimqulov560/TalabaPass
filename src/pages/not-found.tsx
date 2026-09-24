@@ -18,16 +18,11 @@ export default function NotFound() {
       {/* 🌟 VIZUAL ILLYUSTRATSIYA: Siz yuborgan 404 rasmi */}
       <div className="w-full max-w-[380px] mb-6 overflow-hidden rounded-[28px] shadow-xl border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))]">
         <img 
-          src="/IMG_3994.jpg" 
+          src="/IMG_3994.PNG" 
           alt="404 Sahifa topilmadi" 
           className="w-full h-auto object-cover hover:scale-105 transition-transform duration-500" 
         />
       </div>
-      
-      <h1 className="font-display text-4xl font-extrabold text-[hsl(var(--foreground))] mb-2">404: Sahifa topilmadi</h1>
-      <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))] mb-8 max-w-xs leading-relaxed">
-        Kechirasiz, siz qidirayotgan sahifa mavjud emas yoki boshqa manzilga ko'chirilgan.
-      </p>
       
       {/* HUDUDGA MOSLASHTIRILGAN TUGMA */}
       <Link href={returnUrl}>
