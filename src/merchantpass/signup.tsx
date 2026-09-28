@@ -3,6 +3,7 @@ import { Store, ArrowRight, ArrowLeft, CheckCircle2, LockKeyhole, UserRound, Loa
 import { Link } from 'wouter';
 import { supabase } from '@/lib/supabase';
 import { TalabaLoader } from '@/components/TalabaLoader';
+import Cropper from 'react-easy-crop';
 
 const CATEGORIES = [
   { id: 'education', name: "O'quv markazi", icon: '📚' },
@@ -28,8 +29,15 @@ const getPasswordStrength = (pass: string) => {
   return { score: 0, text: '', color: 'bg-transparent', width: '0%' };
 };
 
+const createImage = (url: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener('load', () => resolve(image));
+    image.addEventListener('error', (error) => reject(error));
+    image.src = url;
+  });
+
 export default function MerchantSignup() {
-  // 🌟 MANTIQ: Qadamni xotiraga saqlash
   const [step, setStep] = useState(() => {
     const saved = localStorage.getItem('merchantSignupStep');
     return saved ? parseInt(saved) : 1;
@@ -39,7 +47,6 @@ export default function MerchantSignup() {
     localStorage.setItem('merchantSignupStep', step.toString());
   }, [step]);
 
-  // Agar allaqachon tizimga kirgan bo'lsa (sessiya bo'lsa) to'g'ridan-to'g'ri logotip qo'yish yoki kutish zaliga otamiz
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session && step < 6) {
@@ -61,6 +68,12 @@ export default function MerchantSignup() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Crop states
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+
   const [formData, setFormData] = useState({
     category: '', name: '', location: '', openTime: '09:00', closeTime: '22:00', username: '', password: '', confirmPassword: '',
   });
@@ -75,7 +88,56 @@ export default function MerchantSignup() {
 
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) { setLogoFile(file); setLogoPreview(URL.createObjectURL(file)); }
+    if (file) {
+      const reader = new FileReader();
+      reader.addEventListener('load', () => setSelectedImage(reader.result as string));
+      reader.readAsDataURL(file);
+      event.target.value = ''; 
+    }
+  };
+
+  const handleCropSave = async () => {
+    if (!selectedImage || !croppedAreaPixels) return;
+    
+    try {
+      const currentSelectedImage = selectedImage; 
+      setSelectedImage(null); 
+      
+      const image = await createImage(currentSelectedImage);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('No 2d context');
+
+      canvas.width = croppedAreaPixels.width;
+      canvas.height = croppedAreaPixels.height;
+
+      ctx.drawImage(
+        image,
+        croppedAreaPixels.x,
+        croppedAreaPixels.y,
+        croppedAreaPixels.width,
+        croppedAreaPixels.height,
+        0,
+        0,
+        croppedAreaPixels.width,
+        croppedAreaPixels.height
+      );
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((b) => {
+          if (b) resolve(b);
+          else reject(new Error('Canvas is empty'));
+        }, 'image/jpeg', 0.9);
+      });
+
+      const file = new File([blob], 'merchant_logo.jpg', { type: 'image/jpeg' });
+      setLogoFile(file);
+      setLogoPreview(URL.createObjectURL(blob));
+
+    } catch (error) {
+      console.error("Rasm qirqishda xatolik:", error);
+      setError("Rasmni qayta ishlashda xatolik yuz berdi.");
+    }
   };
 
   const handleMapPick = () => {
@@ -173,7 +235,6 @@ export default function MerchantSignup() {
           if (data && data.is_active === true) {
             setIsApproved(true);
             clearInterval(interval);
-            // 🌟 MANTIQ: Xotirani tozalash va Panelga kiritish
             localStorage.removeItem('merchantSignupStep');
             setTimeout(() => {
               window.location.href = '/merchant'; 
@@ -290,7 +351,7 @@ export default function MerchantSignup() {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                placeholder="Masalan: Najot Ta'lim"
+                placeholder=""
                 className={`w-full bg-[hsl(var(--card))] border-2 rounded-2xl py-4 pl-12 pr-12 text-sm font-semibold outline-none transition-all text-[hsl(var(--foreground))] ${
                   nameAvailable === true ? 'border-green-500 focus:border-green-500' : 
                   nameAvailable === false ? 'border-red-500 focus:border-red-500' : 
@@ -485,8 +546,51 @@ export default function MerchantSignup() {
             )}
           </div>
         )}
-
       </div>
+
+      {selectedImage && (
+        <div className="fixed inset-0 z-[70] flex flex-col bg-black/95 backdrop-blur-md">
+          <div className="relative flex-1 w-full mt-10">
+            <Cropper
+              image={selectedImage}
+              crop={crop}
+              zoom={zoom}
+              aspect={1}
+              cropShape="round"
+              showGrid={false}
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onCropComplete={(croppedArea, pixels) => setCroppedAreaPixels(pixels)}
+            />
+          </div>
+          <div className="p-6 pb-12 bg-black flex flex-col gap-6 items-center">
+            <input
+              type="range"
+              value={zoom}
+              min={1}
+              max={3}
+              step={0.1}
+              onChange={(e) => setZoom(Number(e.target.value))}
+              className="w-full max-w-xs accent-[hsl(var(--primary))]"
+            />
+            <div className="flex w-full max-w-xs gap-4">
+              <button 
+                onClick={() => setSelectedImage(null)} 
+                className="flex-1 py-3.5 font-bold rounded-2xl text-white bg-white/20 hover:bg-white/30 transition-colors"
+              >
+                Bekor qilish
+              </button>
+              <button 
+                onClick={handleCropSave} 
+                className="flex-1 py-3.5 font-bold rounded-2xl text-[hsl(var(--primary-foreground))] bg-[hsl(var(--primary))] hover:brightness-110 transition-all flex justify-center items-center gap-2"
+              >
+                Saqlash
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

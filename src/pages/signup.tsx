@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'wouter';
-import { ArrowLeft, ArrowRight, Camera, LockKeyhole, UserRound, IdCard, CheckCircle2, Circle, Loader2, GraduationCap, ChevronDown, Search, Check, Store, Eye, EyeOff, FileImage, Clock } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Camera, LockKeyhole, UserRound, IdCard, CheckCircle2, Circle, Loader2, GraduationCap, ChevronDown, Search, Check, Store, Eye, EyeOff, FileImage, Clock, X } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
+import Cropper from 'react-easy-crop'; // 🌟 QO'SHILDI
 
 const UNIVERSITIES = [ "O'zbekiston milliy universiteti (O'zMU)", "Toshkent davlat texnika universiteti (TDTU)", "Toshkent davlat iqtisodiyot universiteti (TDIU)", "Toshkent moliya instituti (TMI)", "Jahon iqtisodiyoti va diplomatiya universiteti (JIDU)", "O'zbekiston davlat jahon tillari universiteti (O'zDJTU)", "Toshkent pediatriya tibbiyot instituti (ToshPTI)", "Toshkent tibbiyot akademiyasi (TTA)", "Toshkent davlat yuridik universiteti (TDYU)", "Toshkent axborot texnologiyalari universiteti (TATU)", "Toshkent davlat pedagogika universiteti (TDPU)", "Toshkent davlat sharqshunoslik universiteti (TDShU)", "Toshkent arxitektura-qurilish universiteti (TAQU)", "O'zbekiston davlat san'at va madaniyat instituti (O'zDSMI)", "Toshkent davlat agrar universiteti (TDAU)", "Toshkent kimyo-texnologiya instituti (TKTI)", "Toshkent davlat transport universiteti (TDTU)", "Toshkent davlat stomatologiya instituti (TDSI)", "O'zbekiston davlat jismoniy tarbiya va sport universiteti (O'zDJTSU)", "O'zbekiston jurnalistika va ommaviy kommunikatsiyalar universiteti (O'zJOKU)", "Toshkent to'qimachilik va yengil sanoat instituti (TTESI)", "Toshkent farmatsevtika instituti (ToshFarI)", "O'zbekiston xalqaro islom akademiyasi", "Jamoat xavfsizligi universiteti", "Bojxona instituti", "Westminster xalqaro universiteti (WIUT)", "Inha universiteti (IUT)", "Amity universiteti", "Webster universiteti", "Akfa universiteti (AKFA)", "Toshkent shahridagi Turin politexnika universiteti (TTPU)", "Kimyo xalqaro universiteti (KIUT - sobiq Yeoju)", "Singapur menejmentni rivojlantirish instituti (MDIS)", "Puchon universiteti (Bucheon)", "Toshkent shahridagi Yodju texnika instituti", "British Management University (BMU)", "TEAM universiteti", "TMC instituti", "Alfraganus universiteti", "Renessans ta'lim universiteti", "Toshkent xalqaro ta'lim universiteti (TIUE)", "Stars International University", "Jahon tillari va biznes instituti", "Profi universiteti", "Toshkent amaliy fanlar universiteti (UTAS)", "Diplomat universiteti", "Cambridge xalqaro universiteti", "Samarqand davlat universiteti (SamDU)", "Samarqand davlat tibbiyot universiteti (SamDTU)", "Samarqand iqtisodiyot va servis instituti (SamISI)", "Samarqand davlat arxitektura-qurilish universiteti (SamDAQU)", "Samarqand davlat chet tillar instituti (SamDChTI)", "Samarqand davlat veterinariya meditsinasi", "Silk Road xalqaro turizm va madaniy meros universiteti", "Samarqand xalqaro texnologiya universiteti (SIUT)", "Buxoro davlat universiteti (BuxDU)", "Buxoro davlat tibbiyot instituti (BuxDTI)", "Buxoro muhandislik-texnologiya instituti (BuxMTI)", "Buxoro davlat pedagogika instituti", "Navoiy davlat konchilik va texnologiyalar universiteti (NDKTU)", "Navoiy davlat pedagogika instituti (NavDPI)", "Urganch davlat universiteti (UrDU)", "Farg'ona davlat universiteti (FarDU)", "Farg'ona politexnika instituti (FarPI)", "Farg'ona jamoat salomatligi tibbiyot instituti", "Andijon davlat universiteti (ADU)", "Andijon davlat tibbiyot instituti (ADTI)", "Andijon mashinasozlik instituti (AndMI)", "Namangan davlat universiteti (NamDU)", "Namangan muhandislik-qurilish instituti (NamMQI)", "Qarshi davlat universiteti (QarDU)", "Qarshi muhandislik-iqtisodiyot instituti (QarMII)", "Termiz davlat universiteti (TerDU)", "Jizzax davlat pedagogika universiteti (JDPU)", "Jizzax politexnika instituti (JizPI)", "Guliston davlat universiteti (GulDU)", "Qoraqalpoq davlat universiteti (QDU)", "Nukus davlat pedagogika instituti (NDPI)", "Boshqa (O'zim kiritaman)" ];
 
@@ -21,16 +22,23 @@ const getPasswordStrength = (pass: string) => {
   return { score: 0, text: '', color: 'bg-transparent', width: '0%' };
 };
 
+// 🌟 QO'SHILDI: Rasmni qirqib olish uchun yordamchi funksiya
+const createImage = (url: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener('load', () => resolve(image));
+    image.addEventListener('error', (error) => reject(error));
+    image.src = url;
+  });
+
 export default function SignupPage() {
   const { t, lang, setLang } = useLanguage();
   
-  // Qadamni xotirada saqlash
   const [step, setStep] = useState(() => {
     const saved = localStorage.getItem('studentSignupStep');
     return saved ? parseInt(saved) : 1;
   });
 
-  // 🌟 YECHIM 1: Ma'lumotlarni ham (Parol yo'qolib qolmasligi uchun) xotirada saqlash
   const [formData, setFormData] = useState(() => {
     const savedData = localStorage.getItem('studentSignupData');
     return savedData ? JSON.parse(savedData) : { fullName: '', studentId: '', university: '', password: '', confirmPassword: '' };
@@ -44,7 +52,6 @@ export default function SignupPage() {
     localStorage.setItem('studentSignupData', JSON.stringify(formData));
   }, [formData]);
 
-  // Tizimga allaqachon kirgan bo'lsa kutish zaliga otamiz
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session && step < 5) {
@@ -58,6 +65,8 @@ export default function SignupPage() {
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
+  
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   
@@ -70,6 +79,12 @@ export default function SignupPage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   
+  // 🌟 QO'SHILDI: CROP (Rasm qirqish) state'lari
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isUniOpen, setIsUniOpen] = useState(false);
@@ -80,9 +95,70 @@ export default function SignupPage() {
     setError(''); 
   };
 
+  // 🌟 YANGILANDI: Rasm yuklanganda to'g'ridan-to'g'ri qo'ymasdan Crop oynasini ochamiz
   const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) { setAvatarFile(file); setAvatarPreview(URL.createObjectURL(file)); }
+    if (file) {
+      const reader = new FileReader();
+      reader.addEventListener('load', () => setSelectedImage(reader.result as string));
+      reader.readAsDataURL(file);
+      event.target.value = ''; // Qayta yuklash uchun tozalash
+    }
+  };
+
+  // 🌟 QO'SHILDI: Qirqilgan rasmni saqlash
+  const handleCropSave = async () => {
+    if (!selectedImage || !croppedAreaPixels) return;
+    
+    try {
+      const currentSelectedImage = selectedImage; 
+      setSelectedImage(null); // Oynani darhol yopish
+      
+      const image = await createImage(currentSelectedImage);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('No 2d context');
+
+      canvas.width = croppedAreaPixels.width;
+      canvas.height = croppedAreaPixels.height;
+
+      ctx.drawImage(
+        image,
+        croppedAreaPixels.x,
+        croppedAreaPixels.y,
+        croppedAreaPixels.width,
+        croppedAreaPixels.height,
+        0,
+        0,
+        croppedAreaPixels.width,
+        croppedAreaPixels.height
+      );
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((b) => {
+          if (b) resolve(b);
+          else reject(new Error('Canvas is empty'));
+        }, 'image/jpeg', 0.9);
+      });
+
+      // Blob ni File ob'yektiga o'tkazish
+      const file = new File([blob], 'avatar_photo.jpg', { type: 'image/jpeg' });
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(blob));
+
+    } catch (error) {
+      console.error("Rasm qirqishda xatolik:", error);
+      setError("Rasmni qayta ishlashda xatolik yuz berdi.");
+    }
+  };
+
+  const handleDocumentUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setDocumentFile(file);
+      setDocumentPreview(URL.createObjectURL(file));
+      if (isCameraOpen) stopCamera(); 
+    }
   };
 
   const filteredUnis = UNIVERSITIES.filter(u => u.toLowerCase().includes(uniSearch.toLowerCase()));
@@ -157,7 +233,6 @@ export default function SignupPage() {
     return () => clearInterval(interval);
   }, [step]);
 
-
   const nextStep = async () => {
     if (step === 1) { setStep(2); return; }
     
@@ -182,9 +257,8 @@ export default function SignupPage() {
     }
 
     if (step === 4) {
-      if (!documentFile) { setError("Iltimos, avval talabalik guvohnomangizni rasmga oling!"); return; }
+      if (!documentFile) { setError("Iltimos, avval talabalik guvohnomangizni yuklang yoki rasmga oling!"); return; }
       
-      // 🌟 YECHIM 2: Agar sahifa avtomatik yangilanib ma'lumot qisman uchib ketgan bo'lsa, xato berish o'rniga ortga qaytarish
       if (!formData.password || !formData.studentId) {
         setError("Ma'lumotlar yo'qolgan (Kamera ishga tushganda brauzer sahifani yangilagan). Iltimos oldingi qadamga qaytib parolingizni kiritib o'ting.");
         return;
@@ -237,7 +311,7 @@ export default function SignupPage() {
 
   const finishSignup = () => {
     localStorage.removeItem('studentSignupStep');
-    localStorage.removeItem('studentSignupData'); // Xotirani tozalash
+    localStorage.removeItem('studentSignupData');
     window.location.href = '/'; 
   };
 
@@ -313,7 +387,7 @@ export default function SignupPage() {
                  </label>
                  <div className="relative">
                    <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
-                   <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} placeholder="Masalan: Shoxjaxon Rabimqulov" required className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-4 pl-12 pr-4 rounded-2xl text-sm font-semibold outline-none focus:border-[hsl(var(--accent))] text-[hsl(var(--foreground))] transition-all" />
+                   <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} placeholder="" required className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-4 pl-12 pr-4 rounded-2xl text-sm font-semibold outline-none focus:border-[hsl(var(--accent))] text-[hsl(var(--foreground))] transition-all" />
                  </div>
                </div>
                {error && <p className="text-red-500 text-sm font-semibold ml-2">{error}</p>}
@@ -432,19 +506,36 @@ export default function SignupPage() {
         {step === 4 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col items-center justify-center relative">
              <div className="text-center mb-6 mt-4">
-               <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))] mb-2">Hujjatni tasvirga oling</h2>
-               <p className="text-sm text-[hsl(var(--muted-foreground))] px-4">Talabalik guvohnomasi yoki ID kartangizni rom ichiga kiritib suratga oling.</p>
+               <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))] mb-2">Talaba ID yoki Guvohnoma</h2>
+               <p className="text-sm text-[hsl(var(--muted-foreground))] px-4">Talabalik guvohnomangizni rasmga oling yoki elektron versiyasini (screenshot) yuklang.</p>
              </div>
+
+             <input type="file" ref={documentInputRef} onChange={handleDocumentUpload} accept="image/*" className="hidden" />
+
              <div className="relative w-full max-w-sm aspect-[4/3] bg-black rounded-[32px] overflow-hidden shadow-xl mb-6">
+               
                {!documentPreview && !isCameraOpen && (
                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-[hsl(var(--secondary))] border-4 border-dashed border-[hsl(var(--border))]">
-                   <FileImage size={48} className="opacity-50 mb-4 text-[hsl(var(--muted-foreground))]" />
-                   <button onClick={startCamera} className="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-bold py-3 px-6 rounded-full shadow-lg active:scale-95 transition-all">Kamerani yoqish</button>
+                   <IdCard size={48} className="opacity-50 mb-6 text-[hsl(var(--muted-foreground))]" />
+                   <div className="flex flex-col gap-3 w-full px-8">
+                     <button onClick={startCamera} className="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-bold py-3 px-6 rounded-full shadow-lg active:scale-95 transition-all w-full flex items-center justify-center gap-2">
+                       <Camera size={20} /> Kamerani yoqish
+                     </button>
+                     <button onClick={() => documentInputRef.current?.click()} className="bg-[hsl(var(--card))] text-[hsl(var(--foreground))] border-2 border-[hsl(var(--border))] font-bold py-3 px-6 rounded-full shadow-sm active:scale-95 transition-all w-full flex items-center justify-center gap-2">
+                       <FileImage size={20} /> Galeriyadan yuklash
+                     </button>
+                   </div>
                  </div>
                )}
+               
                {isCameraOpen && (
                  <>
                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover bg-black" />
+                   
+                   <button onClick={stopCamera} className="absolute top-4 right-4 z-30 bg-black/40 backdrop-blur-md text-white p-2 rounded-full hover:bg-black/60 transition-colors">
+                     <X size={20} />
+                   </button>
+
                    <div className="absolute inset-0 pointer-events-none z-10 border-[40px] border-black/60 flex items-center justify-center">
                      <div className="w-full h-full border-2 border-dashed border-white/60 rounded-xl relative">
                        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-white text-[10px] uppercase font-bold tracking-widest shadow-black drop-shadow-md">Hujjatni romga kiriting</div>
@@ -457,11 +548,17 @@ export default function SignupPage() {
                    </div>
                  </>
                )}
+               
                {documentPreview && (
                  <>
                    <img src={documentPreview} className="w-full h-full object-cover" alt="Hujjat" />
-                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                     <button onClick={startCamera} className="bg-white text-black font-bold py-2 px-5 rounded-full shadow-lg">Qaytadan olish</button>
+                   <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3 opacity-0 hover:opacity-100 transition-opacity">
+                     <button onClick={startCamera} className="bg-white text-black font-bold py-2.5 px-6 rounded-full shadow-lg text-sm flex items-center gap-2">
+                       <Camera size={16} /> Kamera orqali
+                     </button>
+                     <button onClick={() => documentInputRef.current?.click()} className="bg-white/20 text-white border border-white/50 backdrop-blur-sm font-bold py-2.5 px-6 rounded-full shadow-lg text-sm flex items-center gap-2">
+                       <FileImage size={16} /> Boshqa rasm yuklash
+                     </button>
                    </div>
                  </>
                )}
@@ -504,6 +601,7 @@ export default function SignupPage() {
           </div>
         )}
 
+        {/* 🌟 YANGILANGAN 6-QADAM */}
         {step === 6 && (
           <div className="animate-in slide-in-from-bottom-8 fade-in duration-500 flex-1 flex flex-col items-center justify-center">
             <div className="text-center mb-10 mt-auto">
@@ -514,7 +612,7 @@ export default function SignupPage() {
             </div>
             <div className="relative group mb-auto">
               <input type="file" ref={avatarInputRef} onChange={handleAvatarUpload} accept="image/*" className="hidden" />
-              <div onClick={() => avatarInputRef.current?.click()} className="grid h-40 w-40 cursor-pointer place-items-center overflow-hidden rounded-[40px] bg-[hsl(var(--secondary))] border-4 border-dashed border-[hsl(var(--border))] hover:border-[hsl(var(--accent))] transition-all">
+              <div onClick={() => avatarInputRef.current?.click()} className="grid h-40 w-40 cursor-pointer place-items-center overflow-hidden rounded-full bg-[hsl(var(--secondary))] border-4 border-dashed border-[hsl(var(--border))] hover:border-[hsl(var(--accent))] transition-all">
                 {avatarPreview ? <img src={avatarPreview} alt="Profile" className="h-full w-full object-cover" /> : <Camera size={44} className="opacity-50 text-[hsl(var(--muted-foreground))]" />}
               </div>
             </div>
@@ -539,6 +637,51 @@ export default function SignupPage() {
         )}
 
       </div>
+      
+      {/* 🌟 QO'SHILDI: RASMNI QIRQISH UCHUN MAXSUS MODAL OYNA */}
+      {selectedImage && (
+        <div className="fixed inset-0 z-[70] flex flex-col bg-black/95 backdrop-blur-md">
+          <div className="relative flex-1 w-full mt-10">
+            <Cropper
+              image={selectedImage}
+              crop={crop}
+              zoom={zoom}
+              aspect={1}
+              cropShape="round"
+              showGrid={false}
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onCropComplete={(croppedArea, pixels) => setCroppedAreaPixels(pixels)}
+            />
+          </div>
+          <div className="p-6 pb-12 bg-black flex flex-col gap-6 items-center">
+            <input
+              type="range"
+              value={zoom}
+              min={1}
+              max={3}
+              step={0.1}
+              onChange={(e) => setZoom(Number(e.target.value))}
+              className="w-full max-w-xs accent-[hsl(var(--primary))]"
+            />
+            <div className="flex w-full max-w-xs gap-4">
+              <button 
+                onClick={() => setSelectedImage(null)} 
+                className="flex-1 py-3.5 font-bold rounded-2xl text-white bg-white/20 hover:bg-white/30 transition-colors"
+              >
+                Bekor qilish
+              </button>
+              <button 
+                onClick={handleCropSave} 
+                className="flex-1 py-3.5 font-bold rounded-2xl text-[hsl(var(--primary-foreground))] bg-[hsl(var(--primary))] hover:brightness-110 transition-all flex justify-center items-center gap-2"
+              >
+                Saqlash
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

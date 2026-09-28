@@ -4,19 +4,22 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/lib/i18n';
 import { useFavorites } from '@/lib/useFavorites';
+import { useMemo } from 'react';
 
 export default function SavedPage() {
   const { t } = useLanguage();
   const [, setLocation] = useLocation();
   const { savedIds, toggleFavorite, isLoading: favLoading } = useFavorites();
 
-  // 🌟 YECHIM 1: String ID'larni Number formatiga o'tkazish (Supabase xatosini oldini olish)
-  const validIds = Array.isArray(savedIds) 
-    ? savedIds.map(id => Number(id)).filter(id => !isNaN(id))
-    : [];
+  // 🌟 YECHIM: Number() ga o'tkazish olib tashlandi. 
+  // UUID (matnli) id'lar buzilib ketmasligi uchun shunchaki bo'sh qiymatlarni tozalaymiz.
+  const validIds = useMemo(() => {
+    return Array.isArray(savedIds) 
+      ? savedIds.filter(id => id !== null && id !== undefined && String(id).trim() !== '')
+      : [];
+  }, [savedIds]);
 
   const { data: savedOffers, isLoading: isOffersLoading } = useQuery({
-    // 🌟 YECHIM 2: Keshni avtomatik tozalash uchun queryKey ga validIds qo'shildi
     queryKey: ['savedDiscounts', validIds],
     queryFn: async () => {
       if (validIds.length === 0) return [];
@@ -70,7 +73,6 @@ export default function SavedPage() {
       ) : savedOffers && savedOffers.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-8">
           {savedOffers.map((discount: any) => {
-            const isSaved = true; // Bu sahifada hammasi on-default saqlangan
             return (
               <div 
                 key={discount.id} 

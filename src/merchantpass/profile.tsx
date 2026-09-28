@@ -4,6 +4,15 @@ import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/lib/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
+import Cropper from 'react-easy-crop';
+
+const createImage = (url: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener('load', () => resolve(image));
+    image.addEventListener('error', (error) => reject(error));
+    image.src = url;
+  });
 
 export default function MerchantProfile() {
   const { lang, setLang } = useLanguage();
@@ -16,7 +25,12 @@ export default function MerchantProfile() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // XATONING YECHIMI: Kesh (Cache) yaratamiz, shu orqali sahifa har safar yuklanmaydi!
+  // Crop states
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+
   const { data: merchant, isLoading: loading } = useQuery({
     queryKey: ['merchantProfile'],
     queryFn: async () => {
@@ -25,7 +39,7 @@ export default function MerchantProfile() {
       const { data } = await supabase.from('merchants').select('*').eq('id', user.id).single();
       return data;
     },
-    staleTime: 1000 * 60 * 5, // 5 daqiqa davomida xotirada ushlab turadi
+    staleTime: 1000 * 60 * 5, 
   });
 
   useEffect(() => {
@@ -43,16 +57,55 @@ export default function MerchantProfile() {
     setIsLangModalOpen(false);
   };
 
-  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    try {
-      const file = event.target.files?.[0];
-      if (!file || !merchant) return;
+  const handleLogoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.addEventListener('load', () => setSelectedImage(reader.result as string));
+      reader.readAsDataURL(file);
+      event.target.value = ''; 
+    }
+  };
 
+  const handleCropSave = async () => {
+    if (!selectedImage || !croppedAreaPixels || !merchant) return;
+    
+    try {
       setIsUploading(true);
-      const fileExt = file.name.split('.').pop() || 'jpg';
+      const currentSelectedImage = selectedImage; 
+      setSelectedImage(null); 
+      
+      const image = await createImage(currentSelectedImage);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('No 2d context');
+
+      canvas.width = croppedAreaPixels.width;
+      canvas.height = croppedAreaPixels.height;
+
+      ctx.drawImage(
+        image,
+        croppedAreaPixels.x,
+        croppedAreaPixels.y,
+        croppedAreaPixels.width,
+        croppedAreaPixels.height,
+        0,
+        0,
+        croppedAreaPixels.width,
+        croppedAreaPixels.height
+      );
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((b) => {
+          if (b) resolve(b);
+          else reject(new Error('Canvas is empty'));
+        }, 'image/jpeg', 0.9);
+      });
+
+      const fileExt = 'jpg';
       const fileName = `merchant-${merchant.id}-${Date.now()}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { upsert: true });
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, blob, { upsert: true });
       if (uploadError) throw new Error("Yuklashda xatolik");
 
       const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
@@ -61,7 +114,6 @@ export default function MerchantProfile() {
       const { error: updateError } = await supabase.from('merchants').update({ logo_url: avatarUrl }).eq('id', merchant.id);
       if (updateError) throw updateError;
 
-      // Xotirani o'sha zahotiyoq yangilaymiz
       queryClient.setQueryData(['merchantProfile'], { ...merchant, logo_url: avatarUrl });
     } catch (error: any) {
       alert("Xatolik yuz berdi");
@@ -72,16 +124,13 @@ export default function MerchantProfile() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    queryClient.clear(); // Chiqish paytida kesh xotira tozalanadi
+    queryClient.clear(); 
     setLocation('/merchant/login');
   };
 
-  // 🌟 YANGILANDI: YUKLANISH VAQTIDA CHIQADIGAN SKELETON SHABLONLARI
   if (loading && !merchant) {
     return (
       <div className="page-enter pb-10">
-        
-        {/* Profil Rasmi va Ismi Skeletoni */}
         <div className="flex flex-col items-center mt-2 mb-8 animate-pulse">
           <div className="h-32 w-32 rounded-full bg-[hsl(var(--muted))] shadow-xl mb-4 border-4 border-[hsl(var(--card))]"></div>
           <div className="h-8 w-48 bg-[hsl(var(--muted))] rounded-md mt-2 mb-2"></div>
@@ -90,7 +139,6 @@ export default function MerchantProfile() {
 
         <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-4">Sozlamalar</h2>
         
-        {/* Sozlamalar Menyu Skeletoni */}
         <div className="bg-[hsl(var(--card))] rounded-[24px] border border-[hsl(var(--border))] overflow-hidden flex flex-col shadow-soft animate-pulse">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="flex items-center justify-between p-5 border-b border-[hsl(var(--border))]">
@@ -110,10 +158,9 @@ export default function MerchantProfile() {
     <>
       <div className="page-enter animate-in fade-in duration-500 pb-10">
         
-        {/* PROFIL RASMI QUTISI */}
         <div className="flex flex-col items-center mt-2 mb-8">
           <div className="relative mb-4 group">
-            <input type="file" ref={fileInputRef} onChange={handleLogoUpload} accept="image/*" className="hidden" />
+            <input type="file" ref={fileInputRef} onChange={handleLogoSelect} accept="image/*" className="hidden" />
             <div onClick={() => !isUploading && fileInputRef.current?.click()} className="grid h-32 w-32 cursor-pointer place-items-center overflow-hidden rounded-full bg-[hsl(var(--secondary))] border-4 border-[hsl(var(--card))] shadow-xl transition-all hover:border-[hsl(var(--accent))]">
               {isUploading ? (
                 <Loader2 className="animate-spin text-[hsl(var(--accent))]" size={32} />
@@ -132,7 +179,6 @@ export default function MerchantProfile() {
             {merchant?.name || "Do'kon nomi"}
           </h2>
           
-          {/* STATUS BADGE */}
           <div className="mt-2 flex items-center justify-center">
             {merchant?.is_active ? (
               <span className="flex items-center gap-1.5 rounded-full bg-green-500/15 px-3 py-1.5 text-[11px] font-bold text-green-500 uppercase tracking-wider border border-green-500/20">
@@ -150,7 +196,6 @@ export default function MerchantProfile() {
         
         <div className="bg-[hsl(var(--card))] rounded-[24px] border border-[hsl(var(--border))] overflow-hidden flex flex-col shadow-soft">
           
-          {/* TIL TANLASH (bosilganda oyna ochiladi) */}
           <div onClick={() => setIsLangModalOpen(true)} className="flex items-center justify-between p-5 border-b border-[hsl(var(--border))] cursor-pointer hover:bg-[hsl(var(--secondary)/.5)] transition-colors">
             <div className="flex items-center gap-3">
               <Globe size={22} className="text-[hsl(var(--foreground))]" />
@@ -191,7 +236,6 @@ export default function MerchantProfile() {
         </div>
       </div>
 
-      {/* TIL TANLASH OYNASI (MODAL) */}
       {isLangModalOpen && (
         <div className="fixed inset-0 z-[60] flex flex-col justify-end" style={{ height: '100dvh' }}>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsLangModalOpen(false)} />
@@ -225,6 +269,50 @@ export default function MerchantProfile() {
           </div>
         </div>
       )}
+
+      {selectedImage && (
+        <div className="fixed inset-0 z-[70] flex flex-col bg-black/95 backdrop-blur-md">
+          <div className="relative flex-1 w-full mt-10">
+            <Cropper
+              image={selectedImage}
+              crop={crop}
+              zoom={zoom}
+              aspect={1}
+              cropShape="round"
+              showGrid={false}
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onCropComplete={(croppedArea, pixels) => setCroppedAreaPixels(pixels)}
+            />
+          </div>
+          <div className="p-6 pb-12 bg-black flex flex-col gap-6 items-center">
+            <input
+              type="range"
+              value={zoom}
+              min={1}
+              max={3}
+              step={0.1}
+              onChange={(e) => setZoom(Number(e.target.value))}
+              className="w-full max-w-xs accent-[hsl(var(--primary))]"
+            />
+            <div className="flex w-full max-w-xs gap-4">
+              <button 
+                onClick={() => setSelectedImage(null)} 
+                className="flex-1 py-3.5 font-bold rounded-2xl text-white bg-white/20 hover:bg-white/30 transition-colors"
+              >
+                Bekor qilish
+              </button>
+              <button 
+                onClick={handleCropSave} 
+                className="flex-1 py-3.5 font-bold rounded-2xl text-[hsl(var(--primary-foreground))] bg-[hsl(var(--primary))] hover:brightness-110 transition-all flex justify-center items-center gap-2"
+              >
+                Saqlash
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </>
   );
 }
