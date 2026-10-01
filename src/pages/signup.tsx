@@ -3,7 +3,7 @@ import { Link } from 'wouter';
 import { ArrowLeft, ArrowRight, Camera, LockKeyhole, UserRound, IdCard, CheckCircle2, Circle, Loader2, GraduationCap, ChevronDown, Search, Check, Store, Eye, EyeOff, FileImage, Clock, X } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
-import Cropper from 'react-easy-crop'; // 🌟 QO'SHILDI
+import Cropper from 'react-easy-crop';
 
 const UNIVERSITIES = [ "O'zbekiston milliy universiteti (O'zMU)", "Toshkent davlat texnika universiteti (TDTU)", "Toshkent davlat iqtisodiyot universiteti (TDIU)", "Toshkent moliya instituti (TMI)", "Jahon iqtisodiyoti va diplomatiya universiteti (JIDU)", "O'zbekiston davlat jahon tillari universiteti (O'zDJTU)", "Toshkent pediatriya tibbiyot instituti (ToshPTI)", "Toshkent tibbiyot akademiyasi (TTA)", "Toshkent davlat yuridik universiteti (TDYU)", "Toshkent axborot texnologiyalari universiteti (TATU)", "Toshkent davlat pedagogika universiteti (TDPU)", "Toshkent davlat sharqshunoslik universiteti (TDShU)", "Toshkent arxitektura-qurilish universiteti (TAQU)", "O'zbekiston davlat san'at va madaniyat instituti (O'zDSMI)", "Toshkent davlat agrar universiteti (TDAU)", "Toshkent kimyo-texnologiya instituti (TKTI)", "Toshkent davlat transport universiteti (TDTU)", "Toshkent davlat stomatologiya instituti (TDSI)", "O'zbekiston davlat jismoniy tarbiya va sport universiteti (O'zDJTSU)", "O'zbekiston jurnalistika va ommaviy kommunikatsiyalar universiteti (O'zJOKU)", "Toshkent to'qimachilik va yengil sanoat instituti (TTESI)", "Toshkent farmatsevtika instituti (ToshFarI)", "O'zbekiston xalqaro islom akademiyasi", "Jamoat xavfsizligi universiteti", "Bojxona instituti", "Westminster xalqaro universiteti (WIUT)", "Inha universiteti (IUT)", "Amity universiteti", "Webster universiteti", "Akfa universiteti (AKFA)", "Toshkent shahridagi Turin politexnika universiteti (TTPU)", "Kimyo xalqaro universiteti (KIUT - sobiq Yeoju)", "Singapur menejmentni rivojlantirish instituti (MDIS)", "Puchon universiteti (Bucheon)", "Toshkent shahridagi Yodju texnika instituti", "British Management University (BMU)", "TEAM universiteti", "TMC instituti", "Alfraganus universiteti", "Renessans ta'lim universiteti", "Toshkent xalqaro ta'lim universiteti (TIUE)", "Stars International University", "Jahon tillari va biznes instituti", "Profi universiteti", "Toshkent amaliy fanlar universiteti (UTAS)", "Diplomat universiteti", "Cambridge xalqaro universiteti", "Samarqand davlat universiteti (SamDU)", "Samarqand davlat tibbiyot universiteti (SamDTU)", "Samarqand iqtisodiyot va servis instituti (SamISI)", "Samarqand davlat arxitektura-qurilish universiteti (SamDAQU)", "Samarqand davlat chet tillar instituti (SamDChTI)", "Samarqand davlat veterinariya meditsinasi", "Silk Road xalqaro turizm va madaniy meros universiteti", "Samarqand xalqaro texnologiya universiteti (SIUT)", "Buxoro davlat universiteti (BuxDU)", "Buxoro davlat tibbiyot instituti (BuxDTI)", "Buxoro muhandislik-texnologiya instituti (BuxMTI)", "Buxoro davlat pedagogika instituti", "Navoiy davlat konchilik va texnologiyalar universiteti (NDKTU)", "Navoiy davlat pedagogika instituti (NavDPI)", "Urganch davlat universiteti (UrDU)", "Farg'ona davlat universiteti (FarDU)", "Farg'ona politexnika instituti (FarPI)", "Farg'ona jamoat salomatligi tibbiyot instituti", "Andijon davlat universiteti (ADU)", "Andijon davlat tibbiyot instituti (ADTI)", "Andijon mashinasozlik instituti (AndMI)", "Namangan davlat universiteti (NamDU)", "Namangan muhandislik-qurilish instituti (NamMQI)", "Qarshi davlat universiteti (QarDU)", "Qarshi muhandislik-iqtisodiyot instituti (QarMII)", "Termiz davlat universiteti (TerDU)", "Jizzax davlat pedagogika universiteti (JDPU)", "Jizzax politexnika instituti (JizPI)", "Guliston davlat universiteti (GulDU)", "Qoraqalpoq davlat universiteti (QDU)", "Nukus davlat pedagogika instituti (NDPI)", "Boshqa (O'zim kiritaman)" ];
 
@@ -22,7 +22,6 @@ const getPasswordStrength = (pass: string) => {
   return { score: 0, text: '', color: 'bg-transparent', width: '0%' };
 };
 
-// 🌟 QO'SHILDI: Rasmni qirqib olish uchun yordamchi funksiya
 const createImage = (url: string): Promise<HTMLImageElement> =>
   new Promise((resolve, reject) => {
     const image = new Image();
@@ -30,6 +29,78 @@ const createImage = (url: string): Promise<HTMLImageElement> =>
     image.addEventListener('error', (error) => reject(error));
     image.src = url;
   });
+
+// 🌟 QO'SHILDI: Maxfiylik siyosati matni
+const PrivacyPolicyText = () => (
+  <div className="space-y-4">
+    <p className="font-bold">Amal qilish sanasi: [01.10.2026]<br/>Oxirgi yangilanish: [01.10.2026]</p>
+    <p>TalabaPass ("TalabaPass", "biz", "bizning") foydalanuvchilarning shaxsiy ma'lumotlarini himoya qilishga jiddiy yondashadi. Ushbu Maxfiylik siyosati TalabaPass mobil ilovasi, veb-sayti va ular bilan bog'liq xizmatlardan foydalanish jarayonida foydalanuvchilarning shaxsga doir ma'lumotlari qanday yig'ilishi, ishlatilishi, saqlanishi va himoya qilinishini tushuntiradi. TalabaPass ushbu siyosatni O'zbekiston Respublikasining amaldagi qonunchiligi, shu jumladan "Shaxsga doir ma'lumotlar to'g'risida"gi Qonun talablarini hisobga olgan holda qo'llaydi.</p>
+    
+    <h4 className="font-bold text-[hsl(var(--foreground))] text-base">1. Biz haqimizda</h4>
+    <p>TalabaPass xizmatining operatori:<br/>Yuridik nomi: [TALABAPASS MCHJning to'liq nomi]<br/>STIR: [STIR]<br/>Yuridik manzil: [yuridik manzil]<br/>Elektron pochta: [email]<br/>Telefon: [telefon raqami]<br/>Ushbu hujjatda ushbu tashkilot "TalabaPass" yoki "Operator" deb yuritiladi.</p>
+    
+    <h4 className="font-bold text-[hsl(var(--foreground))] text-base">2. Qanday ma'lumotlarni yig'ishimiz mumkin?</h4>
+    <p className="font-semibold text-[hsl(var(--foreground))]">2.1. Foydalanuvchi taqdim etadigan ma'lumotlar</p>
+    <p>Ro'yxatdan o'tish yoki xizmatlardan foydalanish vaqtida:</p>
+    <ul className="list-disc pl-5 space-y-1">
+      <li>ism va familiya;</li>
+      <li>telefon raqami;</li>
+      <li>elektron pochta manzili;</li>
+      <li>tug'ilgan sana yoki yosh;</li>
+      <li>ta'lim muassasasi;</li>
+      <li>talabalik maqomini tasdiqlovchi ma'lumotlar;</li>
+      <li>profil rasmi, agar foydalanuvchi uni o'zi yuklasa;</li>
+      <li>foydalanuvchi tomonidan ixtiyoriy ravishda kiritilgan boshqa ma'lumotlar.</li>
+    </ul>
+    
+    <p className="font-semibold text-[hsl(var(--foreground))] mt-2">2.2. Avtomatik ravishda olinadigan ma'lumotlar</p>
+    <p>Ilova yoki veb-saytdan foydalanilganda texnik ma'lumotlarning ayrimlari avtomatik ravishda qayd etilishi mumkin (qurilma turi, IP manzil, operatsion tizim va h.k.).</p>
+
+    <h4 className="font-bold text-[hsl(var(--foreground))] text-base">3. Ma'lumotlardan foydalanish maqsadlari</h4>
+    <ul className="list-disc pl-5 space-y-1">
+      <li>foydalanuvchi akkauntini yaratish va boshqarish;</li>
+      <li>foydalanuvchini identifikatsiya qilish;</li>
+      <li>talabalik maqomini tekshirish va chegirmalar taqdim etish;</li>
+      <li>firibgarlik va noqonuniy harakatlarning oldini olish.</li>
+    </ul>
+
+    <h4 className="font-bold text-[hsl(var(--foreground))] text-base">4. Shaxsiy ma'lumotlarni uchinchi shaxslarga berish</h4>
+    <p>TalabaPass foydalanuvchining shaxsiy ma'lumotlarini uning roziligisiz yoki qonuniy asos bo'lmagan holda uchinchi shaxslarga sotmaydi. Faqatgina chegirma xizmatini ko'rsatuvchi hamkorlarga tegishli chegirma taqdim etish uchungina kerakli ma'lumotlar uzatiladi.</p>
+
+    <h4 className="font-bold text-[hsl(var(--foreground))] text-base">5. Foydalanuvchining huquqlari va akkauntni o'chirish</h4>
+    <p>Foydalanuvchi amaldagi qonunchilikka muvofiq o'z ma'lumotlarini o'chirish, aniqlashtirish va yangilash huquqiga ega. Akkaunt o'chirilganda ma'lumotlar tizimdan butunlay olib tashlanadi (qonun talab qiladigan hollar bundan mustasno).</p>
+    <br/><br/>
+  </div>
+);
+
+// 🌟 QO'SHILDI: Foydalanish shartlari matni
+const TermsOfUseText = () => (
+  <div className="space-y-4">
+    <p className="font-bold">Amal qilish sanasi: [01.10.2026]<br/>Oxirgi yangilanish: [01.10.2026]</p>
+    <p>TalabaPass mobil ilovasi, veb-sayti va boshqa raqamli xizmatlaridan foydalanishdan oldin ushbu Foydalanish shartlarini diqqat bilan o'qib chiqing. TalabaPass xizmatlaridan foydalanish orqali foydalanuvchi ushbu Shartlarni qabul qilgan hisoblanadi.</p>
+
+    <h4 className="font-bold text-[hsl(var(--foreground))] text-base">1. Umumiy qoidalar</h4>
+    <p>TalabaPass — talabalar uchun turli tashkilot va bizneslar tomonidan taqdim etiladigan chegirmalar, maxsus takliflar va boshqa imtiyozlarni bir joyda topish va ulardan foydalanishga yordam beruvchi raqamli platforma.</p>
+
+    <h4 className="font-bold text-[hsl(var(--foreground))] text-base">2. Ro'yxatdan o'tish va Talabalikni tasdiqlash</h4>
+    <p>TalabaPass'dan foydalanish uchun foydalanuvchidan akkaunt yaratish va haqiqiy ma'lumotlarni kiritish talab qilinadi. Talabalikni tasdiqlash uchun yolg'on, soxta yoki boshqa shaxsga tegishli hujjat va ma'lumotlardan foydalanish qat'iyan taqiqlanadi.</p>
+
+    <h4 className="font-bold text-[hsl(var(--foreground))] text-base">3. Chegirmalar va hamkorlarning takliflari</h4>
+    <p>TalabaPass platformasida ko'rsatilgan chegirmalar va takliflarning asosiy shartlari tegishli Hamkor (biznes) tomonidan belgilanadi. TalabaPass chegirmalar miqdori yoki shartlari to'satdan o'zgartirilishi uchun to'g'ridan-to'g'ri javobgar emas.</p>
+
+    <h4 className="font-bold text-[hsl(var(--foreground))] text-base">4. Taqiqlangan harakatlar</h4>
+    <ul className="list-disc pl-5 space-y-1">
+      <li>soxta akkaunt yaratish yoki boshqa shaxs nomidan foydalanish;</li>
+      <li>chegirmalardan noqonuniy foydalanish;</li>
+      <li>platformaning texnik tizimlariga zarar yetkazishga urinish;</li>
+      <li>boshqa foydalanuvchilar yoki Hamkorlarga nisbatan tahdid yoki haqorat.</li>
+    </ul>
+
+    <h4 className="font-bold text-[hsl(var(--foreground))] text-base">5. Akkauntni cheklash yoki to'xtatish</h4>
+    <p>Agar foydalanuvchi ushbu Shartlarni buzsa yoki platformadan noqonuniy foydalanishda gumon qilinsa, TalabaPass akkauntni vaqtincha cheklash yoki butunlay bloklash huquqiga ega.</p>
+    <br/><br/>
+  </div>
+);
 
 export default function SignupPage() {
   const { t, lang, setLang } = useLanguage();
@@ -63,6 +134,10 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
+  // 🌟 QO'SHILDI: Shartlarga rozilik (Checkbox) va Modal state'lari
+  const [isAgreed, setIsAgreed] = useState(false);
+  const [openDoc, setOpenDoc] = useState<'privacy' | 'terms' | null>(null);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
@@ -79,7 +154,6 @@ export default function SignupPage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   
-  // 🌟 QO'SHILDI: CROP (Rasm qirqish) state'lari
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -95,24 +169,21 @@ export default function SignupPage() {
     setError(''); 
   };
 
-  // 🌟 YANGILANDI: Rasm yuklanganda to'g'ridan-to'g'ri qo'ymasdan Crop oynasini ochamiz
   const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.addEventListener('load', () => setSelectedImage(reader.result as string));
       reader.readAsDataURL(file);
-      event.target.value = ''; // Qayta yuklash uchun tozalash
+      event.target.value = ''; 
     }
   };
 
-  // 🌟 QO'SHILDI: Qirqilgan rasmni saqlash
   const handleCropSave = async () => {
     if (!selectedImage || !croppedAreaPixels) return;
-    
     try {
       const currentSelectedImage = selectedImage; 
-      setSelectedImage(null); // Oynani darhol yopish
+      setSelectedImage(null); 
       
       const image = await createImage(currentSelectedImage);
       const canvas = document.createElement('canvas');
@@ -128,26 +199,17 @@ export default function SignupPage() {
         croppedAreaPixels.y,
         croppedAreaPixels.width,
         croppedAreaPixels.height,
-        0,
-        0,
-        croppedAreaPixels.width,
-        croppedAreaPixels.height
+        0, 0, croppedAreaPixels.width, croppedAreaPixels.height
       );
 
       const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((b) => {
-          if (b) resolve(b);
-          else reject(new Error('Canvas is empty'));
-        }, 'image/jpeg', 0.9);
+        canvas.toBlob((b) => { if (b) resolve(b); else reject(new Error('Canvas is empty')); }, 'image/jpeg', 0.9);
       });
 
-      // Blob ni File ob'yektiga o'tkazish
       const file = new File([blob], 'avatar_photo.jpg', { type: 'image/jpeg' });
       setAvatarFile(file);
       setAvatarPreview(URL.createObjectURL(blob));
-
     } catch (error) {
-      console.error("Rasm qirqishda xatolik:", error);
       setError("Rasmni qayta ishlashda xatolik yuz berdi.");
     }
   };
@@ -217,17 +279,12 @@ export default function SignupPage() {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const { data } = await supabase.from('students').select('is_active').eq('id', user.id).single();
-          
           if (data && data.is_active === true) {
-            setIsApproved(true);
-            clearInterval(interval);
-            setTimeout(() => {
-              setStep(6);
-            }, 2000);
+            setIsApproved(true); clearInterval(interval);
+            setTimeout(() => { setStep(6); }, 2000);
           }
         }
       };
-      
       interval = setInterval(checkApprovalStatus, 5000);
     }
     return () => clearInterval(interval);
@@ -246,6 +303,9 @@ export default function SignupPage() {
       if (!formData.studentId || !formData.university) { setError("Barcha maydonlarni to'ldiring"); return; }
       if (strength.score < 5) { setError("Parol yetarlicha kuchli emas!"); return; }
       if (formData.password !== formData.confirmPassword) { setError("Parollar mos kelmadi!"); return; }
+      
+      // 🌟 QO'SHILDI: Rozilik belgisi tekshiruvi
+      if (!isAgreed) { setError("Foydalanish shartlari va Maxfiylik siyosatiga rozi bo'lishingiz kerak!"); return; }
 
       setIsLoading(true); setError('');
       try {
@@ -258,14 +318,11 @@ export default function SignupPage() {
 
     if (step === 4) {
       if (!documentFile) { setError("Iltimos, avval talabalik guvohnomangizni yuklang yoki rasmga oling!"); return; }
-      
       if (!formData.password || !formData.studentId) {
         setError("Ma'lumotlar yo'qolgan (Kamera ishga tushganda brauzer sahifani yangilagan). Iltimos oldingi qadamga qaytib parolingizni kiritib o'ting.");
         return;
       }
-
       setIsLoading(true); setError('');
-
       try {
         const fakeEmail = `${formData.studentId.toLowerCase()}@talabapass.uz`;
         const { data: authData, error: authError } = await supabase.auth.signUp({ email: fakeEmail, password: formData.password });
@@ -286,14 +343,9 @@ export default function SignupPage() {
         const nameParts = formData.fullName.trim().split(' ');
         
         const { error: dbError } = await supabase.from('students').insert([{
-            id: userId,
-            first_name: nameParts[0],
-            last_name: nameParts.slice(1).join(' '),
-            student_id: formData.studentId,
-            university: formData.university,
-            is_active: false,
-            avatar_url: null,
-            document_url: publicUrlData.publicUrl
+            id: userId, first_name: nameParts[0], last_name: nameParts.slice(1).join(' '),
+            student_id: formData.studentId, university: formData.university, is_active: false,
+            avatar_url: null, document_url: publicUrlData.publicUrl
         }]);
 
         if (dbError) throw dbError;
@@ -328,7 +380,6 @@ export default function SignupPage() {
         if (uploadError) throw new Error("Rasmni saqlashda xatolik");
 
         const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
-        
         await supabase.from('students').update({ avatar_url: publicUrlData.publicUrl }).eq('id', user.id);
       }
       finishSignup();
@@ -352,6 +403,7 @@ export default function SignupPage() {
 
       <div className="flex-1 flex flex-col px-6 max-w-md w-full mx-auto pb-10 relative z-10">
         
+        {/* QADAM 1 */}
         {step === 1 && (
            <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col">
              <div className="mt-4 mb-8">
@@ -376,10 +428,10 @@ export default function SignupPage() {
            </div>
         )}
 
+        {/* QADAM 2 */}
         {step === 2 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col">
              <div className="mt-4 mb-6"><h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">O'zingizni tanishtiring</h2></div>
-             
              <div className="space-y-4">
                <div>
                  <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">
@@ -392,7 +444,6 @@ export default function SignupPage() {
                </div>
                {error && <p className="text-red-500 text-sm font-semibold ml-2">{error}</p>}
              </div>
-             
              <div className="mt-auto flex flex-col gap-3">
                <div className="text-center mb-2">
                  <p className="text-sm font-semibold text-[hsl(var(--muted-foreground))]">
@@ -402,28 +453,23 @@ export default function SignupPage() {
                    </Link>
                  </p>
                </div>
-               
                <Link href="/merchant/signup">
                  <div className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-[hsl(var(--secondary))] py-4 text-base font-bold text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/.1)] hover:text-[hsl(var(--accent))] transition-all shadow-sm">
                    <Store size={18} /> Biznes sifatida ro'yxatdan o'tish
                  </div>
                </Link>
-
-               <button 
-                 type="button"
-                 onClick={nextStep} 
-                 className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all"
-               >
+               <button type="button" onClick={nextStep} className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all">
                  Keyingisi <ArrowRight size={18} />
                </button>
              </div>
           </div>
         )}
 
+        {/* 🌟 QADAM 3 - YANGILANGAN: CHECKBOX QO'SHILDI */}
         {step === 3 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col">
              <div className="mt-4 mb-6"><h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">Talaba ma'lumotlari</h2></div>
-             <div className="space-y-4 mb-8">
+             <div className="space-y-4 mb-4">
                
                <div>
                  <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Talaba ID</label>
@@ -455,11 +501,6 @@ export default function SignupPage() {
                          ))
                        ) : (
                          <div className="p-3 text-sm text-[hsl(var(--muted-foreground))] text-center">Topilmadi. O'zingiz kiriting:</div>
-                       )}
-                       {uniSearch && !filteredUnis.includes(uniSearch) && (
-                         <div onClick={() => { setFormData({ ...formData, university: uniSearch }); setIsUniOpen(false); setUniSearch(''); }} className="p-3 text-sm rounded-xl cursor-pointer bg-[hsl(var(--accent)/.1)] text-[hsl(var(--accent))] hover:bg-[hsl(var(--accent)/.2)] transition-colors font-semibold flex items-center justify-between">
-                           <span>"{uniSearch}" deb saqlash</span> <Check size={16} />
-                         </div>
                        )}
                      </div>
                    </div>
@@ -494,15 +535,38 @@ export default function SignupPage() {
                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors outline-none">{showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}</button>
                  </div>
                </div>
+
+               {/* 🌟 YANGI: CHECKBOX QISMI */}
+               <div className="pt-2">
+                 <label className="flex items-start gap-3 cursor-pointer group">
+                   <div className="relative flex items-center justify-center mt-0.5">
+                     <input 
+                       type="checkbox" 
+                       checked={isAgreed} 
+                       onChange={(e) => { setIsAgreed(e.target.checked); setError(''); }} 
+                       className="peer sr-only" 
+                     />
+                     <div className="w-5 h-5 rounded border-2 border-[hsl(var(--muted-foreground))] bg-transparent peer-checked:bg-[hsl(var(--primary))] peer-checked:border-[hsl(var(--primary))] transition-all flex items-center justify-center">
+                       <Check size={14} className="text-[hsl(var(--primary-foreground))] opacity-0 peer-checked:opacity-100 transition-opacity" strokeWidth={3.5} />
+                     </div>
+                   </div>
+                   <p className="text-[13px] text-[hsl(var(--muted-foreground))] leading-tight">
+                     Men <span onClick={(e) => { e.preventDefault(); setOpenDoc('terms'); }} className="text-[hsl(var(--primary))] font-bold hover:underline">Foydalanish shartlari</span> va <span onClick={(e) => { e.preventDefault(); setOpenDoc('privacy'); }} className="text-[hsl(var(--primary))] font-bold hover:underline">Maxfiylik siyosati</span> bilan tanishib chiqdim va rozi bo'laman.
+                   </p>
+                 </label>
+               </div>
+
                {error && <p className="text-red-500 text-[13px] font-semibold ml-1">{error}</p>}
              </div>
              
-             <button disabled={isLoading} onClick={nextStep} className="mt-auto flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all disabled:opacity-70">
+             {/* Tugma faqat rozi bo'lganda faollashadi */}
+             <button disabled={isLoading || !isAgreed} onClick={nextStep} className="mt-auto flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100">
                {isLoading ? <Loader2 className="animate-spin" /> : <>Davom etish <ArrowRight size={18} /></>}
              </button>
           </div>
         )}
 
+        {/* QADAM 4 */}
         {step === 4 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col items-center justify-center relative">
              <div className="text-center mb-6 mt-4">
@@ -513,7 +577,6 @@ export default function SignupPage() {
              <input type="file" ref={documentInputRef} onChange={handleDocumentUpload} accept="image/*" className="hidden" />
 
              <div className="relative w-full max-w-sm aspect-[4/3] bg-black rounded-[32px] overflow-hidden shadow-xl mb-6">
-               
                {!documentPreview && !isCameraOpen && (
                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-[hsl(var(--secondary))] border-4 border-dashed border-[hsl(var(--border))]">
                    <IdCard size={48} className="opacity-50 mb-6 text-[hsl(var(--muted-foreground))]" />
@@ -531,11 +594,9 @@ export default function SignupPage() {
                {isCameraOpen && (
                  <>
                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover bg-black" />
-                   
                    <button onClick={stopCamera} className="absolute top-4 right-4 z-30 bg-black/40 backdrop-blur-md text-white p-2 rounded-full hover:bg-black/60 transition-colors">
                      <X size={20} />
                    </button>
-
                    <div className="absolute inset-0 pointer-events-none z-10 border-[40px] border-black/60 flex items-center justify-center">
                      <div className="w-full h-full border-2 border-dashed border-white/60 rounded-xl relative">
                        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-white text-[10px] uppercase font-bold tracking-widest shadow-black drop-shadow-md">Hujjatni romga kiriting</div>
@@ -571,6 +632,7 @@ export default function SignupPage() {
           </div>
         )}
 
+        {/* QADAM 5 */}
         {step === 5 && (
           <div className="animate-in zoom-in-95 duration-500 flex-1 flex flex-col items-center justify-center text-center">
             {isApproved ? (
@@ -601,7 +663,7 @@ export default function SignupPage() {
           </div>
         )}
 
-        {/* 🌟 YANGILANGAN 6-QADAM */}
+        {/* QADAM 6 */}
         {step === 6 && (
           <div className="animate-in slide-in-from-bottom-8 fade-in duration-500 flex-1 flex flex-col items-center justify-center">
             <div className="text-center mb-10 mt-auto">
@@ -638,7 +700,7 @@ export default function SignupPage() {
 
       </div>
       
-      {/* 🌟 QO'SHILDI: RASMNI QIRQISH UCHUN MAXSUS MODAL OYNA */}
+      {/* RASMNI QIRQISH UCHUN MODAL OYNA */}
       {selectedImage && (
         <div className="fixed inset-0 z-[70] flex flex-col bg-black/95 backdrop-blur-md">
           <div className="relative flex-1 w-full mt-10">
@@ -655,30 +717,29 @@ export default function SignupPage() {
             />
           </div>
           <div className="p-6 pb-12 bg-black flex flex-col gap-6 items-center">
-            <input
-              type="range"
-              value={zoom}
-              min={1}
-              max={3}
-              step={0.1}
-              onChange={(e) => setZoom(Number(e.target.value))}
-              className="w-full max-w-xs accent-[hsl(var(--primary))]"
-            />
+            <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(Number(e.target.value))} className="w-full max-w-xs accent-[hsl(var(--primary))]" />
             <div className="flex w-full max-w-xs gap-4">
-              <button 
-                onClick={() => setSelectedImage(null)} 
-                className="flex-1 py-3.5 font-bold rounded-2xl text-white bg-white/20 hover:bg-white/30 transition-colors"
-              >
-                Bekor qilish
-              </button>
-              <button 
-                onClick={handleCropSave} 
-                className="flex-1 py-3.5 font-bold rounded-2xl text-[hsl(var(--primary-foreground))] bg-[hsl(var(--primary))] hover:brightness-110 transition-all flex justify-center items-center gap-2"
-              >
-                Saqlash
-              </button>
+              <button onClick={() => setSelectedImage(null)} className="flex-1 py-3.5 font-bold rounded-2xl text-white bg-white/20 hover:bg-white/30 transition-colors">Bekor qilish</button>
+              <button onClick={handleCropSave} className="flex-1 py-3.5 font-bold rounded-2xl text-[hsl(var(--primary-foreground))] bg-[hsl(var(--primary))] hover:brightness-110 transition-all flex justify-center items-center gap-2">Saqlash</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 🌟 QO'SHILDI: HUJJATLARNI O'QISH UCHUN MODAL OYNA */}
+      {openDoc && (
+        <div className="fixed inset-0 z-[80] flex flex-col bg-[hsl(var(--background))] animate-in slide-in-from-bottom-8 duration-300">
+           <div className="flex items-center justify-between p-4 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+             <h3 className="font-display font-bold text-lg text-[hsl(var(--foreground))]">
+               {openDoc === 'privacy' ? 'Maxfiylik siyosati' : 'Foydalanish shartlari'}
+             </h3>
+             <button onClick={() => setOpenDoc(null)} className="p-2 bg-[hsl(var(--secondary))] rounded-full text-[hsl(var(--foreground))] hover:bg-[hsl(var(--border))] transition-colors">
+               <X size={20} />
+             </button>
+           </div>
+           <div className="flex-1 overflow-y-auto p-5 text-[14px] text-[hsl(var(--muted-foreground))] leading-relaxed">
+              {openDoc === 'privacy' ? <PrivacyPolicyText /> : <TermsOfUseText />}
+           </div>
         </div>
       )}
 
