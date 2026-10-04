@@ -22,6 +22,7 @@ import StudentsReport from '@/admin/StudentsReport';
 import MerchantsReport from '@/admin/MerchantsReport';
 import ScansReport from '@/admin/ScansReport';
 import SystemLogs from '@/admin/SystemLogs';
+import Announcements from '@/admin/Announcements';
 
 // --- TALABALAR UCHUN SAHIFALAR ---
 import { AppShell } from '@/components/app-shell';
@@ -185,6 +186,7 @@ function Router() {
         <Route path="/merchant/signup"><Redirect to="/merchant" /></Route>
 
         {/* 🌟 1. YECHIM: ADMIN YO'NALISHLARI QAFASDAN CHIQARILIB ANIQLASHTIRILDI */}
+        {userRole === 'admin' && <Route path="/admin/announcements" component={Announcements} />}
         {userRole === 'admin' && <Route path="/admin" component={AdminDashboard} />}
         {userRole === 'admin' && <Route path="/admin/students-report" component={StudentsReport} />}
         {userRole === 'admin' && <Route path="/admin/merchants-report" component={MerchantsReport} />}

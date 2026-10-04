@@ -1,7 +1,8 @@
 import React, { useState, useEffect, ReactNode } from 'react';
 import { useLocation, Link } from 'wouter';
 import { supabase } from '@/lib/supabase';
-import { LayoutDashboard, Users, Store, Ticket, LogOut, Menu, X, Loader2, ShieldCheck, History } from 'lucide-react';
+import { LayoutDashboard, Users, Store, Ticket, LogOut, Menu, X, Loader2, ShieldCheck, History, Megaphone } from 'lucide-react';
+
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -53,6 +54,7 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
     { path: '/admin/students', icon: Users, label: 'Talabalar' },
     { path: '/admin/discounts', icon: Ticket, label: 'Chegirmalar' },
     { path: '/admin/logs', icon: History, label: 'Tarix (Logs)' },
+    { path: '/admin/announcements', icon: Megaphone, label: "E'lonlar" }, // <-- YANGI
   ];
 
   // 🌟 MUAMMO HAL QILINDI: Endi akkauntdan to'liq chiqib ketmaydi, profilga qaytadi!

@@ -8,6 +8,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { t } = useLanguage();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -19,7 +20,34 @@ export function AppShell({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [location]);
+  }, []);
+
+  // 🌟 O'QILMAGAN XABARLAR SONINI REAL-TIME KUZATISH
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const fetchUnreadCount = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { count } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('is_read', false);
+        setUnreadCount(count || 0);
+      }
+    };
+
+    fetchUnreadCount();
+
+    const channel = supabase.channel('realtime-notifications')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
+        fetchUnreadCount();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [isLoggedIn]);
 
   return (
     <div className="app-shell min-h-[100dvh] w-full bg-[hsl(var(--background))]">
@@ -37,7 +65,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="font-display text-[19px] font-bold text-[hsl(var(--primary))]">Talaba<span className="text-[hsl(var(--accent))]">Pass</span></span>
           </Link>
           
-          {/* KOMPYUTER UCHUN MARKAZIY MENYU (Simmetrik: 2 ta chapda, QR, 2 ta o'ngda) */}
           <nav className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center z-10 gap-1">
             {isLoggedIn ? (
               <>
@@ -73,8 +100,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-5 relative z-20">
             {isLoggedIn ? (
               <div className="flex items-center gap-3">
-                <Link href="/notifications" className="flex items-center justify-center h-10 w-10 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm transition-transform hover:-translate-y-0.5 text-[hsl(var(--foreground))] hover:text-[hsl(var(--accent))]">
+                {/* 🌟 QO'NG'IROQCHA VA UNREAD BADGE */}
+                <Link href="/notifications" className="relative flex items-center justify-center h-10 w-10 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm transition-transform hover:-translate-y-0.5 text-[hsl(var(--foreground))] hover:text-[hsl(var(--accent))]">
                   <Bell size={20} strokeWidth={2.5} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-extrabold text-white shadow-sm border-2 border-[hsl(var(--background))] animate-in zoom-in">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
                 </Link>
               </div>
             ) : (
@@ -95,44 +128,36 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </main>
       
-      {/* MOBIL UCHUN PASTKI MENYU (Simmetrik: 2 ta chapda, QR, 2 ta o'ngda) */}
       {isLoggedIn ? (
         <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[hsl(var(--card))] rounded-t-[28px] shadow-[0_-10px_40px_rgba(0,0,0,0.06)] border-t border-[hsl(var(--border)/.5)] z-50 h-[76px]">
           <div className="flex justify-between items-center h-full px-4 relative">
-            
-            {/* CHAP TOMON (Asosiy, Xizmatlar) */}
             <div className="flex justify-around items-center w-[40%] z-20">
               <Link href="/" className="flex flex-col items-center justify-center gap-1 h-full mt-1 transition-all">
                 <Home size={22} className={`transition-all duration-300 ${location === '/' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_8px_rgba(28,170,136,0.6)]" : "text-[hsl(var(--muted-foreground))]"}`} strokeWidth={location === '/' ? 2.5 : 2} />
                 <span className={`text-[10px] font-bold transition-all duration-300 ${location === '/' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_5px_rgba(28,170,136,0.4)]" : "text-[hsl(var(--muted-foreground))]"}`}>Asosiy</span>
               </Link>
-
               <Link href="/services" className="flex flex-col items-center justify-center gap-1 h-full mt-1 transition-all">
                 <LayoutGrid size={22} className={`transition-all duration-300 ${location === '/services' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_8px_rgba(28,170,136,0.6)]" : "text-[hsl(var(--muted-foreground))]"}`} strokeWidth={location === '/services' ? 2.5 : 2} />
                 <span className={`text-[10px] font-bold transition-all duration-300 ${location === '/services' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_5px_rgba(28,170,136,0.4)]" : "text-[hsl(var(--muted-foreground))]"}`}>Xizmatlar</span>
               </Link>
             </div>
 
-            {/* O'RTADAGI QR */}
             <div className="absolute left-1/2 -translate-x-1/2 -top-8 w-[88px] h-[88px] bg-[hsl(var(--background))] rounded-full flex items-center justify-center z-10 transition-colors duration-300">
               <Link href="/qr" className="w-[64px] h-[64px] bg-[hsl(var(--card))] rounded-full flex items-center justify-center shadow-[0_8px_20px_rgba(0,0,0,0.12)] transition-transform active:scale-90">
                 <QrCode size={30} className="text-[hsl(var(--accent))] drop-shadow-[0_0_8px_rgba(28,170,136,0.5)] dark:drop-shadow-[0_0_12px_rgba(28,170,136,0.9)]" strokeWidth={2.5} />
               </Link>
             </div>
 
-            {/* O'NG TOMON (Saqlanganlar, Profil) */}
             <div className="flex justify-around items-center w-[40%] z-20">
               <Link href="/saved" className="flex flex-col items-center justify-center gap-1 h-full mt-1 transition-all">
                 <Heart size={22} className={`transition-all duration-300 ${location === '/saved' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_8px_rgba(28,170,136,0.6)]" : "text-[hsl(var(--muted-foreground))]"}`} strokeWidth={location === '/saved' ? 2.5 : 2} />
                 <span className={`text-[10px] font-bold transition-all duration-300 ${location === '/saved' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_5px_rgba(28,170,136,0.4)]" : "text-[hsl(var(--muted-foreground))]"}`}>Saqlanganlar</span>
               </Link>
-
               <Link href="/profile" className="flex flex-col items-center justify-center gap-1 h-full mt-1 transition-all">
                 <UserRound size={22} className={`transition-all duration-300 ${location === '/profile' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_8px_rgba(28,170,136,0.6)]" : "text-[hsl(var(--muted-foreground))]"}`} strokeWidth={location === '/profile' ? 2.5 : 2} />
                 <span className={`text-[10px] font-bold transition-all duration-300 ${location === '/profile' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_5px_rgba(28,170,136,0.4)]" : "text-[hsl(var(--muted-foreground))]"}`}>Profil</span>
               </Link>
             </div>
-
           </div>
         </nav>
       ) : (

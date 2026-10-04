@@ -8,7 +8,6 @@ export default function MerchantDiscounts() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // 🌟 ITEM HOLATIGA 'isUnlimited' QO'SHILDI
   const [items, setItems] = useState<{ name: string; quantity: string; isUnlimited?: boolean }[]>([]);
   const [inputValue, setInputValue] = useState('');
   
@@ -28,7 +27,7 @@ export default function MerchantDiscounts() {
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
-      const { data } = await supabase.from('merchants').select('is_active, name').eq('id', user.id).single();
+      const { data } = await supabase.from('merchants').select('id, is_active, name').eq('id', user.id).single();
       return data;
     }
   });
@@ -57,17 +56,11 @@ export default function MerchantDiscounts() {
     }
   };
 
-  // 🌟 AVTOMATIK KATTA HARFGA O'GIRISH
   const handleTagInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     if (val.endsWith('  ')) {
       let newTag = val.trim();
-      
-      // Har bir so'zning birinchi harfini katta qilish
-      newTag = newTag.split(' ').map(word => {
-        if (!word) return '';
-        return word.charAt(0).toUpperCase() + word.slice(1);
-      }).join(' ');
+      newTag = newTag.split(' ').map(word => word ? word.charAt(0).toUpperCase() + word.slice(1) : '').join(' ');
 
       if (newTag && !items.find(i => i.name === newTag)) {
         setItems([...items, { name: newTag, quantity: '', isUnlimited: false }]);
@@ -88,11 +81,10 @@ export default function MerchantDiscounts() {
     setItems(newItems);
   };
 
-  // 🌟 CHEKSIZ (UNLIMITED) HOLATNI O'ZGARTIRISH
   const toggleUnlimited = (idx: number, checked: boolean) => {
     const newItems = [...items];
     newItems[idx].isUnlimited = checked;
-    if (!checked) newItems[idx].quantity = ''; // Galichka olinganda tozalab yuborish
+    if (!checked) newItems[idx].quantity = ''; 
     setItems(newItems);
   };
 
@@ -100,7 +92,6 @@ export default function MerchantDiscounts() {
     e.preventDefault();
     if (items.length === 0) return alert("Kamida bitta mahsulot kiritishingiz kerak!");
     
-    // 🌟 Agar 'cheksiz' belgilanmagan bo'lsa, miqdorni tekshirish
     for (const item of items) {
       if (!item.isUnlimited && (!item.quantity || Number(item.quantity) <= 0)) {
         return alert(`Iltimos, "${item.name}" uchun to'g'ri miqdor kiriting (yoki cheksizni belgilang)!`);
@@ -123,14 +114,14 @@ export default function MerchantDiscounts() {
       
       const { data: publicUrlData } = supabase.storage.from('discounts').getPublicUrl(fileName);
 
-      // 🌟 Cheksiz bo'lsa backend ga juda katta son (999999) ketadi.
       const formattedItems = items.map(i => ({ 
         name: i.name, 
         quantity: i.isUnlimited ? 999999 : Number(i.quantity),
         isUnlimited: !!i.isUnlimited
       }));
 
-      const { error: dbError } = await supabase.from('discounts').insert([{
+      // 🌟 Chegirmani bazaga kiritish (Id ni olib qolamiz .select().single() bilan)
+      const { data: newDiscount, error: dbError } = await supabase.from('discounts').insert([{
         merchant_id: user.id, 
         product_name: finalProductName, 
         items: formattedItems, 
@@ -141,10 +132,33 @@ export default function MerchantDiscounts() {
         start_time: startTime, 
         end_time: endTime, 
         image_url: publicUrlData.publicUrl
-      }]);
+      }]).select('id').single();
 
       if (dbError) throw new Error(dbError.message);
       
+      // 🌟 FOYDALANUVCHILARGA XABARNOMA YUBORISH
+      if (newDiscount && merchantStatus) {
+        // Shu do'konga tegishli eski chegirmalarni ko'rganlar yoki xarid qilganlarni topamiz
+        const { data: views } = await supabase.from('discount_views').select('student_id').eq('merchant_id', user.id);
+        const { data: scans } = await supabase.from('scan_history').select('student_id').eq('merchant_id', user.id);
+
+        const studentIds = new Set([
+          ...(views?.map(v => v.student_id) || []),
+          ...(scans?.map(s => s.student_id) || [])
+        ]);
+
+        if (studentIds.size > 0) {
+          const notifications = Array.from(studentIds).map(student_id => ({
+            user_id: student_id,
+            title: "Yangi chegirma! ⚡️",
+            message: `Siz qiziqqan "${merchantStatus.name}" do'koni yangi chegirma e'lon qildi: ${shortDesc}`,
+            link: `/discount/${newDiscount.id}`
+          }));
+          // Hammasiga bittada tashlaymiz
+          await supabase.from('notifications').insert(notifications);
+        }
+      }
+
       closeModal();
       queryClient.invalidateQueries({ queryKey: ['merchantDiscounts'] });
       queryClient.invalidateQueries({ queryKey: ['allDiscounts'] }); 
@@ -251,7 +265,6 @@ export default function MerchantDiscounts() {
 
       {isModalOpen && isActive && (
         <div className="fixed inset-0 z-[999999] bg-[hsl(var(--background))] flex flex-col animate-in slide-in-from-bottom-4 duration-300">
-          
           <div className="flex-none bg-[hsl(var(--background))] px-4 py-3 flex items-center justify-between z-10 border-b border-[hsl(var(--border))]">
             <button type="button" onClick={closeModal} className="p-2 -ml-2 rounded-full hover:bg-[hsl(var(--secondary))] transition-colors text-[hsl(var(--foreground))]">
               <ArrowLeft size={22} />
@@ -275,25 +288,12 @@ export default function MerchantDiscounts() {
 
                 <div>
                   <label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-1 mb-1.5 block">Qisqacha Tavsif (Bosh sahifa uchun)</label>
-                  <input 
-                    type="text" 
-                    required
-                    value={shortDesc} 
-                    onChange={(e) => setShortDesc(e.target.value)} 
-                    placeholder="Masalan: Barcha kiyimlarga 20% chegirma" 
-                    className="w-full bg-[hsl(var(--secondary))/20] border border-[hsl(var(--border))] py-3.5 px-4 rounded-2xl text-[14px] font-semibold outline-none focus:border-[hsl(var(--primary))] transition-colors" 
-                  />
+                  <input type="text" required value={shortDesc} onChange={(e) => setShortDesc(e.target.value)} placeholder="Masalan: Barcha kiyimlarga 20% chegirma" className="w-full bg-[hsl(var(--secondary))/20] border border-[hsl(var(--border))] py-3.5 px-4 rounded-2xl text-[14px] font-semibold outline-none focus:border-[hsl(var(--primary))] transition-colors" />
                 </div>
 
                 <div>
                   <label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-1 mb-1.5 block">Mahsulotlarni kiriting (Nomidan keyin 2 ta probel bosing)</label>
-                  <input 
-                    type="text" 
-                    value={inputValue} 
-                    onChange={handleTagInput} 
-                    placeholder="Masalan: Katta Burger  (2 ta probel)" 
-                    className="w-full bg-[hsl(var(--secondary))/20] border border-[hsl(var(--border))] py-3.5 px-4 rounded-2xl text-[14px] font-semibold outline-none focus:border-[hsl(var(--primary))] transition-colors" 
-                  />
+                  <input type="text" value={inputValue} onChange={handleTagInput} placeholder="Masalan: Katta Burger  (2 ta probel)" className="w-full bg-[hsl(var(--secondary))/20] border border-[hsl(var(--border))] py-3.5 px-4 rounded-2xl text-[14px] font-semibold outline-none focus:border-[hsl(var(--primary))] transition-colors" />
 
                   {items.length > 0 && (
                     <div className="mt-3 space-y-2">
@@ -301,26 +301,17 @@ export default function MerchantDiscounts() {
                         <div key={idx} className="flex items-start gap-3 bg-[hsl(var(--secondary))/10] p-3 pl-4 rounded-2xl border border-[hsl(var(--border))] animate-in fade-in slide-in-from-top-2">
                           <div className="flex-1 font-bold text-[14px] mt-2 truncate text-[hsl(var(--foreground))]">{item.name}</div>
                           
-                          {/* 🌟 INPUT VA CHEKSIZ GALICHKASI BIR QUTIDA */}
                           <div className="flex flex-col items-center gap-1.5 w-[90px] shrink-0">
                             <input 
                               type={item.isUnlimited ? "text" : "number"} 
-                              min="1" 
-                              required={!item.isUnlimited} 
-                              placeholder="Soni" 
+                              min="1" required={!item.isUnlimited} placeholder="Soni" 
                               value={item.isUnlimited ? "∞" : item.quantity} 
                               onChange={(e) => updateItemQuantity(idx, e.target.value)} 
                               disabled={item.isUnlimited}
                               className={`w-full min-w-0 bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-xl px-3 py-2 text-sm font-bold text-center outline-none transition-colors shadow-sm ${item.isUnlimited ? 'cursor-not-allowed opacity-60 text-lg font-black' : 'focus:border-[hsl(var(--primary))]'}`} 
                             />
-                            
                             <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                              <input 
-                                type="checkbox" 
-                                checked={!!item.isUnlimited}
-                                onChange={(e) => toggleUnlimited(idx, e.target.checked)}
-                                className="w-3.5 h-3.5 accent-[hsl(var(--primary))] cursor-pointer rounded-sm"
-                              />
+                              <input type="checkbox" checked={!!item.isUnlimited} onChange={(e) => toggleUnlimited(idx, e.target.checked)} className="w-3.5 h-3.5 accent-[hsl(var(--primary))] cursor-pointer rounded-sm" />
                               <span className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider">Cheksiz</span>
                             </label>
                           </div>

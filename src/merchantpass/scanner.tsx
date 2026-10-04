@@ -8,24 +8,21 @@ export default function MerchantScanner() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string; student?: any } | null>(null);
   
-  // 🌟 YANGI: Tasdiqlash jarayoni uchun statelar
   const [scannedStudent, setScannedStudent] = useState<any>(null);
   const [selectedDiscountId, setSelectedDiscountId] = useState<string | null>(null);
   const [selectedItemName, setSelectedItemName] = useState<string | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
 
-  // Do'kon statusini tekshirish
   const { data: merchantStatus, isLoading: isProfileLoading } = useQuery({
     queryKey: ['merchantStatusCheck'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
-      const { data } = await supabase.from('merchants').select('id, is_active').eq('id', user.id).single();
+      const { data } = await supabase.from('merchants').select('id, is_active, name').eq('id', user.id).single();
       return data;
     }
   });
 
-  // Do'konning barcha faol chegirmalarini yuklash
   const { data: activeDiscounts } = useQuery({
     queryKey: ['merchantActiveDiscounts', merchantStatus?.id],
     enabled: !!merchantStatus?.id,
@@ -42,7 +39,6 @@ export default function MerchantScanner() {
 
   const isActive = merchantStatus?.is_active === true;
 
-  // 1-QISIM: QR SKAN QILISH VA TALABANI TOPISH
   const handleScan = async (text: string) => {
     if (loading || result || scannedStudent) return; 
     setLoading(true);
@@ -72,7 +68,6 @@ export default function MerchantScanner() {
         throw new Error("Bunday talaba bazadan topilmadi!");
       }
 
-      // 🌟 Hali DB ga hech narsa yozmaymiz, faqat Ekranga chiqaramiz
       setScannedStudent(student);
 
     } catch (error: any) {
@@ -85,13 +80,11 @@ export default function MerchantScanner() {
     }
   };
 
-  // 2-QISIM: MAHSULOTNI TANLAB TASDIQLASH (Mahsulotni -1 qilish va Tarixga yozish)
   const handleConfirm = async () => {
     if (!selectedDiscountId || !selectedItemName || !scannedStudent || !merchantStatus) return;
     setIsConfirming(true);
 
     try {
-      // "Ketma-ket skanerlash" qallobligini himoyasi (5 daqiqa ichida qayta taqiqlangan)
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
       const { data: recentScan } = await supabase
         .from('scan_history')
@@ -112,8 +105,8 @@ export default function MerchantScanner() {
       const updatedItems = discount.items.map((item: any) => {
          if (item.name === selectedItemName) {
             itemFound = true;
-            if (item.quantity <= 0) throw new Error("Bu mahsulot qolmagan!");
-            return { ...item, quantity: item.quantity - 1 }; // 🌟 -1 QILISH
+            if (item.quantity <= 0 && !item.isUnlimited) throw new Error("Bu mahsulot qolmagan!");
+            return { ...item, quantity: item.isUnlimited ? 999999 : item.quantity - 1 };
          }
          return item;
       });
@@ -130,6 +123,15 @@ export default function MerchantScanner() {
         student_id: scannedStudent.id
       });
       if (histError) throw histError;
+
+      // 🌟 3. TALABAGA XARID UCHUN MINNATDORCHILIK BİLDİRİSHNOMASİ YUBORISH
+      await supabase.from('notifications').insert({
+        user_id: scannedStudent.id,
+        title: "Xaridingiz muvaffaqiyatli! 🎉",
+        message: `Siz hozirgina "${merchantStatus.name}" do'konidan "${selectedItemName}" xarid qildingiz. Xaridingiz barakali bo'lsin, yana kutib qolamiz!`,
+        link: `/store/${merchantStatus.id}`,
+        is_read: false
+      });
 
       setResult({ success: true, message: "Chegirma muvaffaqiyatli qo'llanildi!", student: scannedStudent });
       setScannedStudent(null);
@@ -185,7 +187,6 @@ export default function MerchantScanner() {
         </p>
       </div>
 
-      {/* 🌟 1-HOLAT: SKANERLASH OYNASI */}
       {!scannedStudent && !result && (
         <div className="relative w-full aspect-[3/4] max-w-sm mx-auto overflow-hidden rounded-[40px] bg-black shadow-2xl border-4 border-[hsl(var(--border))]">
           <Scanner 
@@ -211,7 +212,6 @@ export default function MerchantScanner() {
         </div>
       )}
 
-      {/* 🌟 2-HOLAT: TALABA TOPILDI, MAHSULOTNI TANLASH */}
       {scannedStudent && !result && (
         <div className="w-full max-w-md mx-auto animate-in slide-in-from-bottom-8 duration-300 px-4">
           
@@ -234,7 +234,6 @@ export default function MerchantScanner() {
               {activeDiscounts.map((discount: any) => (
                 <div key={discount.id} className={`bg-[hsl(var(--card))] border-2 rounded-[24px] overflow-hidden transition-all ${selectedDiscountId === discount.id ? 'border-[hsl(var(--primary))] shadow-md' : 'border-[hsl(var(--border))] opacity-70 hover:opacity-100'}`}>
                   
-                  {/* Chegirma sarlavhasi (Bossa ochiladi) */}
                   <div onClick={() => setSelectedDiscountId(selectedDiscountId === discount.id ? null : discount.id)} className="p-4 flex items-center gap-4 cursor-pointer bg-[hsl(var(--secondary))/30]">
                     <img src={discount.image_url} className="w-16 h-12 rounded-xl object-cover" />
                     <div className="flex-1">
@@ -243,11 +242,10 @@ export default function MerchantScanner() {
                     </div>
                   </div>
 
-                  {/* Ichidagi mahsulotlar royxati (Teglar) */}
                   {selectedDiscountId === discount.id && discount.items && discount.items.length > 0 && (
                     <div className="p-4 border-t border-[hsl(var(--border))] bg-[hsl(var(--background))] space-y-2">
                       {discount.items.map((item: any, idx: number) => {
-                        const isAvailable = item.quantity > 0;
+                        const isAvailable = item.quantity > 0 || item.isUnlimited;
                         const isSelected = selectedItemName === item.name;
                         
                         return (
@@ -259,7 +257,7 @@ export default function MerchantScanner() {
                           >
                             <span className="font-bold text-sm flex items-center gap-2 text-[hsl(var(--foreground))]"><Package size={16}/> {item.name}</span>
                             <span className={`text-[11px] font-bold px-2 py-1 rounded-md ${!isAvailable ? 'bg-red-500/10 text-red-500' : isSelected ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))]'}`}>
-                              {isAvailable ? `${item.quantity} ta qoldi` : 'Tugagan'}
+                              {item.isUnlimited ? 'Cheksiz' : isAvailable ? `${item.quantity} ta qoldi` : 'Tugagan'}
                             </span>
                           </button>
                         )
@@ -289,7 +287,6 @@ export default function MerchantScanner() {
         </div>
       )}
 
-      {/* 🌟 3-HOLAT: XULOSA (Muvaffaqiyatli yoki Xatolik) */}
       {result && (
         <div className="w-full max-w-sm mx-auto bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-8 rounded-[40px] text-center shadow-xl animate-in zoom-in-95 slide-in-from-bottom-8 duration-300">
           {result.success ? (
