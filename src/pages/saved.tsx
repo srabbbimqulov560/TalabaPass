@@ -1,4 +1,4 @@
-import { ArrowLeft, Bookmark, Clock, Store } from 'lucide-react';
+import { ArrowLeft, Heart, Store } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
@@ -11,8 +11,6 @@ export default function SavedPage() {
   const [, setLocation] = useLocation();
   const { savedIds, toggleFavorite, isLoading: favLoading } = useFavorites();
 
-  // 🌟 YECHIM: Number() ga o'tkazish olib tashlandi. 
-  // UUID (matnli) id'lar buzilib ketmasligi uchun shunchaki bo'sh qiymatlarni tozalaymiz.
   const validIds = useMemo(() => {
     return Array.isArray(savedIds) 
       ? savedIds.filter(id => id !== null && id !== undefined && String(id).trim() !== '')
@@ -23,10 +21,9 @@ export default function SavedPage() {
     queryKey: ['savedDiscounts', validIds],
     queryFn: async () => {
       if (validIds.length === 0) return [];
-      
       const { data, error } = await supabase
         .from('discounts')
-        .select(`*, merchant:merchants(name, logo_url, category)`)
+        .select(`*, merchant:merchants(id, name, logo_url, category)`)
         .in('id', validIds)
         .order('created_at', { ascending: false });
         
@@ -37,7 +34,7 @@ export default function SavedPage() {
       return data;
     },
     enabled: validIds.length > 0,
-    refetchOnMount: true, // Sahifa har safar ochilganda bazadan yangilanadi
+    refetchOnMount: true, 
     refetchOnWindowFocus: true
   });
 
@@ -53,82 +50,79 @@ export default function SavedPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pb-8">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[20px] overflow-hidden shadow-sm flex flex-col h-full animate-pulse">
-              <div className="w-full aspect-video bg-[hsl(var(--muted))] relative">
-                <div className="absolute bottom-3 left-3 bg-[hsl(var(--background))/50] w-28 h-8 rounded-full border border-[hsl(var(--border))]"></div>
-              </div>
-              <div className="p-4 flex-1 flex flex-col">
-                <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-3/4 mb-2"></div>
-                <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-1/2"></div>
-                <div className="mt-auto pt-3 flex items-center justify-between">
-                  <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-24"></div>
-                  <div className="w-9 h-9 rounded-full bg-[hsl(var(--muted))]"></div>
+             <div key={i} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[20px] overflow-hidden shadow-sm flex flex-col h-full animate-pulse">
+                <div className="w-full aspect-[16/10] bg-[hsl(var(--muted))] relative"></div>
+                <div className="p-4 flex-1 flex flex-col relative pt-6">
+                   <div className="absolute -top-6 left-4 w-12 h-12 rounded-xl bg-[hsl(var(--muted))] border-2 border-[hsl(var(--card))]"></div>
+                   <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-1/3 mb-2"></div>
+                   <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-3/4"></div>
                 </div>
               </div>
-            </div>
           ))}
         </div>
       ) : savedOffers && savedOffers.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pb-8">
           {savedOffers.map((discount: any) => {
             return (
               <div 
-                key={discount.id} 
-                onClick={() => setLocation(`/discount/${discount.id}`)}
-                className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[20px] overflow-hidden shadow-sm hover:border-[hsl(var(--accent))] transition-all active:scale-[0.98] cursor-pointer flex flex-col h-full relative group"
-              >
-                <div className="absolute top-3 right-3 z-10 bg-red-500 text-white text-[14px] font-extrabold px-3 py-1.5 rounded-xl shadow-lg">
-                  -{discount.discount_percent}%
-                </div>
-                
-                <div className="w-full aspect-video bg-[hsl(var(--secondary))] overflow-hidden relative">
-                  <img src={discount.image_url} alt={discount.product_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  key={discount.id} 
+                  onClick={() => setLocation(`/discount/${discount.id}`)}
+                  className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[16px] overflow-visible shadow-sm hover:border-[hsl(var(--accent))] transition-all active:scale-[0.98] cursor-pointer flex flex-col h-full relative group"
+                >
+                  <button 
+                    type="button" 
+                    onClick={(e) => {
+                      e.preventDefault(); 
+                      e.stopPropagation(); 
+                      toggleFavorite(String(discount.id));
+                    }}
+                    className={`absolute top-3 right-3 z-10 p-2 rounded-full backdrop-blur-md transition-all active:scale-90 text-red-500 bg-white/90 shadow-sm`}
+                  >
+                    <Heart size={18} fill="currentColor" strokeWidth={0} />
+                  </button>
                   
-                  <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-[hsl(var(--card))/90] backdrop-blur-md px-3 py-1.5 rounded-full border border-[hsl(var(--border))] shadow-sm">
-                    {discount.merchant?.logo_url ? (
-                      <img src={discount.merchant.logo_url} className="w-5 h-5 rounded-full object-cover" />
-                    ) : (
-                      <Store size={16} className="text-[hsl(var(--muted-foreground))]" />
-                    )}
-                    <span className="text-[12px] font-bold text-[hsl(var(--foreground))] line-clamp-1">{discount.merchant?.name}</span>
+                  <div className="w-full aspect-[16/10] bg-[hsl(var(--secondary))] overflow-hidden rounded-t-[16px] relative">
+                    <img src={discount.image_url} alt={discount.product_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   </div>
-                </div>
 
-                <div className="p-4 flex-1 flex flex-col">
-                  <h3 className="font-bold text-[15px] text-[hsl(var(--foreground))] leading-tight line-clamp-2">
-                    {discount.product_name.replace(/,/g, ' • ')}
-                  </h3>
-                  
-                  <div className="mt-auto pt-3 flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-[12px] font-semibold text-[hsl(var(--muted-foreground))]">
-                      <Clock size={14} className="text-[hsl(var(--accent))]" /> 
-                      {discount.start_time.slice(0, 5)} - {discount.end_time.slice(0, 5)}
+                  <div className="p-4 flex-1 flex flex-col relative pt-8 bg-[hsl(var(--card))] rounded-b-[16px]">
+                    <div 
+                      onClick={(e) => {
+                        e.preventDefault(); e.stopPropagation();
+                        setLocation(`/store/${discount.merchant?.id}`);
+                      }}
+                      className="absolute -top-7 left-4 w-[52px] h-[52px] bg-white rounded-xl p-1 shadow-md border border-[hsl(var(--border))] flex items-center justify-center overflow-hidden z-10 cursor-pointer hover:scale-105 transition-transform"
+                    >
+                      {discount.merchant?.logo_url ? (
+                        <img src={discount.merchant.logo_url} className="w-full h-full rounded-lg object-cover" />
+                      ) : (
+                        <Store size={24} className="text-[hsl(var(--muted-foreground))]" />
+                      )}
                     </div>
                     
-                    <button 
-                      type="button"
+                    <div 
                       onClick={(e) => {
-                        e.preventDefault(); 
-                        e.stopPropagation(); 
-                        toggleFavorite(String(discount.id));
+                        e.preventDefault(); e.stopPropagation();
+                        setLocation(`/store/${discount.merchant?.id}`);
                       }}
-                      className={`p-2 rounded-full transition-all active:scale-90 text-[hsl(var(--accent))] bg-[hsl(var(--accent)/.15)]`}
+                      className="text-[13px] font-medium text-[hsl(var(--muted-foreground))] mb-1 hover:text-[hsl(var(--foreground))] transition-colors w-fit"
                     >
-                      <Bookmark size={18} fill="currentColor" />
-                    </button>
+                      {discount.merchant?.name}
+                    </div>
+                    <h3 className="font-bold text-[15px] text-[hsl(var(--foreground))] leading-snug line-clamp-2">
+                      {discount.short_description || discount.product_name.replace(/,/g, ' • ')}
+                    </h3>
                   </div>
                 </div>
-
-              </div>
             );
           })}
         </div>
       ) : (
         <div className="text-center py-20 animate-in fade-in zoom-in duration-300 bg-[hsl(var(--card))] rounded-[32px] border border-[hsl(var(--border))] shadow-sm mt-4">
           <div className="mx-auto w-20 h-20 rounded-full bg-[hsl(var(--secondary))] border-2 border-[hsl(var(--border))] flex items-center justify-center text-[hsl(var(--muted-foreground))] mb-5 shadow-sm">
-            <Bookmark size={32} />
+            <Heart size={32} />
           </div>
           <h2 className="font-display text-xl font-bold text-[hsl(var(--foreground))] mb-2">Saqlanganlar yo'q</h2>
           <p className="text-sm text-[hsl(var(--muted-foreground))] max-w-[250px] mx-auto">Siz hali hech qanday chegirmani saqlamadingiz.</p>

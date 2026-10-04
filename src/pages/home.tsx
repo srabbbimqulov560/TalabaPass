@@ -1,9 +1,9 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
-import { Search, X, Coffee, ShoppingBag, BookOpen, Monitor, LayoutGrid, Clock, Store, Sparkles, Bookmark } from 'lucide-react';
+import { Search, X, Coffee, ShoppingBag, BookOpen, Monitor, LayoutGrid, Store, Sparkles, Heart } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { ScrollReveal } from '@/components/scroll-reveal';
 import { supabase } from '@/lib/supabase';
-import { useQuery, useQueryClient } from '@tanstack/react-query'; // 🌟 QO'SHILDI: useQueryClient
+import { useQuery, useQueryClient } from '@tanstack/react-query'; 
 import { useFavorites } from '@/lib/useFavorites';
 
 const BANNERS = [
@@ -15,7 +15,7 @@ const BANNERS = [
 
 export default function HomePage() {
   const [, setLocation] = useLocation();
-  const queryClient = useQueryClient(); // 🌟 KESHNI TOZALASH UCHUN
+  const queryClient = useQueryClient(); 
   
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
@@ -26,7 +26,7 @@ export default function HomePage() {
   const { data: allDiscounts, isLoading } = useQuery({
     queryKey: ['allDiscounts'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('discounts').select(`*, merchant:merchants(name, logo_url, category)`).order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('discounts').select(`*, merchant:merchants(id, name, logo_url, category)`).order('created_at', { ascending: false });
       if (error) throw error;
       return data;
     }
@@ -63,7 +63,7 @@ export default function HomePage() {
     { id: 'Kafe / Restoran', label: 'Kafelar', icon: Coffee, color: 'bg-red-500', shadow: 'shadow-red-500/30' },
     { id: 'Kiyim-kechak', label: "Do'konlar", icon: ShoppingBag, color: 'bg-orange-500', shadow: 'shadow-orange-500/30' },
     { id: "O'quv markazi", label: "Ta'lim", icon: BookOpen, color: 'bg-green-500', shadow: 'shadow-green-500/30' },
-    { id: 'Texnika do‘koni', label: 'Texnika', icon: Monitor, color: 'bg-purple-500', shadow: 'shadow-purple-500/30' },
+    { id: 'Texnika do窶鰐oni', label: 'Texnika', icon: Monitor, color: 'bg-purple-500', shadow: 'shadow-purple-500/30' },
   ], []);
 
   const hasFilters = Boolean(search || category !== 'All');
@@ -136,84 +136,84 @@ export default function HomePage() {
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-8">
             {[1, 2, 3, 4].map((i) => (
-              <div 
-                key={i} 
-                className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[20px] overflow-hidden shadow-sm flex flex-col h-full animate-pulse"
-              >
-                <div className="w-full aspect-video bg-[hsl(var(--muted))] relative">
-                  <div className="absolute bottom-3 left-3 bg-[hsl(var(--background))/50] w-28 h-8 rounded-full border border-[hsl(var(--border))]"></div>
-                </div>
-
-                <div className="p-4 flex-1 flex flex-col">
-                  <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-3/4 mb-2"></div>
-                  <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-1/2"></div>
-                  
-                  <div className="mt-auto pt-3 flex items-center justify-between">
-                    <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-24"></div>
-                    <div className="w-9 h-9 rounded-full bg-[hsl(var(--muted))]"></div>
-                  </div>
+              <div key={i} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[20px] overflow-hidden shadow-sm flex flex-col h-full animate-pulse">
+                <div className="w-full aspect-[16/10] bg-[hsl(var(--muted))] relative"></div>
+                <div className="p-4 flex-1 flex flex-col relative pt-6">
+                   <div className="absolute -top-6 left-4 w-12 h-12 rounded-xl bg-[hsl(var(--muted))] border-2 border-[hsl(var(--card))]"></div>
+                   <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-1/3 mb-2"></div>
+                   <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-3/4"></div>
                 </div>
               </div>
             ))}
           </div>
         ) : filteredDiscounts && filteredDiscounts.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pb-8">
             {filteredDiscounts.map((discount: any) => {
               const isSaved = savedIds.includes(String(discount.id));
               return (
                 <div 
                   key={discount.id} 
                   onClick={() => setLocation(`/discount/${discount.id}`)}
-                  className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[20px] overflow-hidden shadow-sm hover:border-[hsl(var(--accent))] transition-all active:scale-[0.98] cursor-pointer flex flex-col h-full relative group"
+                  className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[16px] overflow-visible shadow-sm hover:border-[hsl(var(--accent))] transition-all active:scale-[0.98] cursor-pointer flex flex-col h-full relative group"
                 >
-                  <div className="absolute top-3 right-3 z-10 bg-red-500 text-white text-[14px] font-extrabold px-3 py-1.5 rounded-xl shadow-lg">
-                    -{discount.discount_percent}%
-                  </div>
+                  {/* Yurakcha (Like) */}
+                  <button 
+                    type="button" 
+                    onClick={async (e) => {
+                      e.preventDefault(); 
+                      e.stopPropagation(); 
+                      await toggleFavorite(String(discount.id));
+                      setTimeout(() => queryClient.invalidateQueries({ queryKey: ['savedDiscounts'] }), 100);
+                    }}
+                    className={`absolute top-3 right-3 z-10 p-2 rounded-full backdrop-blur-md transition-all active:scale-90 ${
+                      isSaved 
+                        ? 'text-red-500 bg-white/90 shadow-sm' 
+                        : 'text-white bg-black/30 hover:bg-black/50'
+                    }`}
+                  >
+                    <Heart size={18} fill={isSaved ? 'currentColor' : 'none'} strokeWidth={isSaved ? 0 : 2} />
+                  </button>
                   
-                  <div className="w-full aspect-video bg-[hsl(var(--secondary))] overflow-hidden relative">
+                  {/* Asosiy Rasm */}
+                  <div className="w-full aspect-[16/10] bg-[hsl(var(--secondary))] overflow-hidden rounded-t-[16px] relative">
                     <img src={discount.image_url} alt={discount.product_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    
-                    <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-[hsl(var(--card))/90] backdrop-blur-md px-3 py-1.5 rounded-full border border-[hsl(var(--border))] shadow-sm">
-                      {discount.merchant?.logo_url ? (
-                        <img src={discount.merchant.logo_url} className="w-5 h-5 rounded-full object-cover" />
-                      ) : (
-                        <Store size={16} className="text-[hsl(var(--muted-foreground))]" />
-                      )}
-                      <span className="text-[12px] font-bold text-[hsl(var(--foreground))] line-clamp-1">{discount.merchant?.name}</span>
-                    </div>
                   </div>
 
-                  <div className="p-4 flex-1 flex flex-col">
-                    <h3 className="font-bold text-[15px] text-[hsl(var(--foreground))] leading-tight line-clamp-2">
-                      {discount.product_name.replace(/,/g, ' • ')}
-                    </h3>
+                  {/* Pastki qism */}
+                  <div className="p-4 flex-1 flex flex-col relative pt-8 bg-[hsl(var(--card))] rounded-b-[16px]">
                     
-                    <div className="mt-auto pt-3 flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-[12px] font-semibold text-[hsl(var(--muted-foreground))]">
-                        <Clock size={14} className="text-[hsl(var(--accent))]" /> 
-                        {discount.start_time.slice(0, 5)} - {discount.end_time.slice(0, 5)}
-                      </div>
-                      
-                      <button 
-                        type="button" // 🌟 MUHIM
-                        onClick={async (e) => {
-                          e.preventDefault(); 
-                          e.stopPropagation(); 
-                          await toggleFavorite(String(discount.id));
-                          // 🌟 YECHIM: Saqlanganda Saved sahifasi tezkor yangilanishi uchun keshni yangilaymiz
-                          setTimeout(() => {
-                             queryClient.invalidateQueries({ queryKey: ['savedDiscounts'] });
-                          }, 100);
-                        }}
-                        className={`p-2 rounded-full transition-all active:scale-90 ${
-                          isSaved 
-                            ? 'text-[hsl(var(--accent))] bg-[hsl(var(--accent)/.15)]' 
-                            : 'text-[hsl(var(--muted-foreground))] bg-[hsl(var(--secondary))] hover:bg-[hsl(var(--border))]'
-                        }`}
-                      >
-                        <Bookmark size={18} fill={isSaved ? 'currentColor' : 'none'} />
-                      </button>
+                    {/* Do'kon logotipi oq qutichada */}
+                    <div 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setLocation(`/store/${discount.merchant?.id}`);
+                      }}
+                      className="absolute -top-7 left-4 w-[52px] h-[52px] bg-white rounded-xl p-1 shadow-md border border-[hsl(var(--border))] flex items-center justify-center overflow-hidden z-10 cursor-pointer hover:scale-105 transition-transform"
+                    >
+                      {discount.merchant?.logo_url ? (
+                        <img src={discount.merchant.logo_url} className="w-full h-full rounded-lg object-cover" />
+                      ) : (
+                        <Store size={24} className="text-[hsl(var(--muted-foreground))]" />
+                      )}
                     </div>
+                    
+                    {/* Matnlar */}
+                    <div 
+                      onClick={(e) => {
+                         e.preventDefault();
+                         e.stopPropagation();
+                         setLocation(`/store/${discount.merchant?.id}`);
+                      }}
+                      className="text-[13px] font-medium text-[hsl(var(--muted-foreground))] mb-1 hover:text-[hsl(var(--foreground))] transition-colors w-fit"
+                    >
+                      {discount.merchant?.name}
+                    </div>
+                    
+                    <h3 className="font-bold text-[15px] text-[hsl(var(--foreground))] leading-snug line-clamp-2">
+                      {discount.short_description || discount.product_name.replace(/,/g, ' • ')}
+                    </h3>
+
                   </div>
 
                 </div>
