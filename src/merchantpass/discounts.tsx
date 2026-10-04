@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { PlusCircle, Tag as TagIcon, Loader2, Camera, Trash2, Clock, CalendarDays, X, Eye, ShieldAlert } from 'lucide-react';
+import { PlusCircle, Tag as TagIcon, Loader2, Camera, Trash2, Clock, CalendarDays, X, Eye, ShieldAlert, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -8,7 +8,8 @@ export default function MerchantDiscounts() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const [tags, setTags] = useState<string[]>([]);
+  // 🌟 YANGI: Teglar endi obyekt shaklida (nomi va miqdori bilan)
+  const [items, setItems] = useState<{ name: string; quantity: string }[]>([]);
   const [inputValue, setInputValue] = useState('');
   
   const [discountPercent, setDiscountPercent] = useState('');
@@ -21,7 +22,6 @@ export default function MerchantDiscounts() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 1. DO'KON STATUSINI TEKSHIRISH
   const { data: merchantStatus } = useQuery({
     queryKey: ['merchantStatus'],
     queryFn: async () => {
@@ -34,7 +34,6 @@ export default function MerchantDiscounts() {
 
   const isActive = merchantStatus?.is_active === true;
 
-  // BAZADAN CHEGIRMALAR
   const { data: discounts, isLoading } = useQuery({
     queryKey: ['merchantDiscounts'],
     queryFn: async () => {
@@ -57,22 +56,43 @@ export default function MerchantDiscounts() {
     }
   };
 
+  // 🌟 YANGI: 2 ta probel bosilganda element yaratiladi
   const handleTagInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     if (val.endsWith('  ')) {
       const newTag = val.trim();
-      if (newTag && !tags.includes(newTag)) setTags([...tags, newTag]);
+      if (newTag && !items.find(i => i.name === newTag)) {
+        setItems([...items, { name: newTag, quantity: '' }]);
+      }
       setInputValue('');
     } else {
       setInputValue(val);
     }
   };
 
-  const removeTag = (tagToRemove: string) => setTags(tags.filter(t => t !== tagToRemove));
+  const removeItem = (idxToRemove: number) => {
+    setItems(items.filter((_, idx) => idx !== idxToRemove));
+  };
+
+  const updateItemQuantity = (idx: number, newQty: string) => {
+    const newItems = [...items];
+    newItems[idx].quantity = newQty;
+    setItems(newItems);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const finalProductName = [...tags, inputValue.trim()].filter(Boolean).join(', ');
+    if (items.length === 0) return alert("Kamida bitta mahsulot kiritishingiz kerak!");
+    
+    // Miqdorlarni tekshirish
+    for (const item of items) {
+      if (!item.quantity || Number(item.quantity) <= 0) {
+        return alert(`Iltimos, "${item.name}" uchun to'g'ri miqdor kiriting!`);
+      }
+    }
+
+    const finalProductName = items.map(i => i.name).join(', ');
+    
     if (!imageFile || !finalProductName || !discountPercent || !startDate || !endDate) return alert("Barcha maydonlarni to'ldiring!");
     
     setIsSubmitting(true);
@@ -88,49 +108,37 @@ export default function MerchantDiscounts() {
       
       const { data: publicUrlData } = supabase.storage.from('discounts').getPublicUrl(fileName);
 
-      // YANGI CHEGIRMANI YARATISH
+      // JSONB formatida saqlanadigan mahsulotlar ro'yxati
+      const formattedItems = items.map(i => ({ name: i.name, quantity: Number(i.quantity) }));
+
+      // BAZAGA YOZISH
       const { error: dbError } = await supabase.from('discounts').insert([{
-        merchant_id: user.id, product_name: finalProductName, discount_percent: parseInt(discountPercent),
+        merchant_id: user.id, 
+        product_name: finalProductName, 
+        items: formattedItems, // 🌟 Yangi JSONB ustun
+        discount_percent: parseInt(discountPercent),
         start_date: startDate, end_date: endDate, start_time: startTime, end_time: endTime, image_url: publicUrlData.publicUrl
       }]);
 
       if (dbError) throw new Error(dbError.message);
 
-      // 🌟 YECHIM: DO'KONNING AVVALGI CHEGIRMALARINI SAQLAGAN (FAVORITE) TALABALARGA XABAR YUBORISH
-      // 1. Shu do'kon id'siga tegishli saqlangan (favorites) foydalanuvchilarini topish
-      const { data: savedDiscounts } = await supabase
-        .from('discounts')
-        .select('id')
-        .eq('merchant_id', user.id);
-
+      // Kuzatuvchilarga xabar yuborish qismi (Avvalgidek qoldi)
+      const { data: savedDiscounts } = await supabase.from('discounts').select('id').eq('merchant_id', user.id);
       if (savedDiscounts && savedDiscounts.length > 0) {
         const discountIds = savedDiscounts.map(d => String(d.id));
-
-        const { data: favUsers } = await supabase
-          .from('favorites')
-          .select('user_id')
-          .in('discount_id', discountIds);
-
-        // 2. Takrorlanmas (Unique) talabalar ro'yxatini ajratib olish
+        const { data: favUsers } = await supabase.from('favorites').select('user_id').in('discount_id', discountIds);
         if (favUsers && favUsers.length > 0) {
            const uniqueUserIds = [...new Set(favUsers.map(u => u.user_id))];
-
-           // 3. Ularning barchasiga "notifications" tablitsasiga xabar yozish
            const notificationsData = uniqueUserIds.map(userId => ({
-              user_id: userId,
-              title: `${merchantStatus?.name || "Do'kon"} - yangi chegirma!`,
-              message: `Siz kuzatayotgan do'kon: ${finalProductName} (-${discountPercent}%) e'lon qildi! Kirib ko'ring.`,
-              is_read: false
+              user_id: userId, title: `${merchantStatus?.name || "Do'kon"} - yangi chegirma!`,
+              message: `Siz kuzatayotgan do'kon: ${finalProductName} (-${discountPercent}%) e'lon qildi! Kirib ko'ring.`, is_read: false
            }));
-
            await supabase.from('notifications').insert(notificationsData);
         }
       }
 
-      setIsModalOpen(false); setImageFile(null); setImagePreview(null); setTags([]); setInputValue(''); 
-      setDiscountPercent(''); setStartDate(''); setEndDate('');
+      closeModal();
       queryClient.invalidateQueries({ queryKey: ['merchantDiscounts'] });
-      // Shuningdek yangi chegirmalar ro'yxatini umumiy tizim uchun ham yangilaymiz
       queryClient.invalidateQueries({ queryKey: ['allDiscounts'] }); 
       
     } catch (error: any) {
@@ -138,6 +146,11 @@ export default function MerchantDiscounts() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false); setImageFile(null); setImagePreview(null); setItems([]); setInputValue(''); 
+    setDiscountPercent(''); setStartDate(''); setEndDate('');
   };
 
   const handleDelete = async (id: string, imageUrl: string) => {
@@ -180,22 +193,8 @@ export default function MerchantDiscounts() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[20px] overflow-hidden shadow-sm relative flex flex-col animate-pulse">
-              <div className="absolute top-2 right-2 z-10 bg-[hsl(var(--muted))] w-14 h-8 rounded-xl shadow-md"></div>
-              
               <div className="w-full aspect-video bg-[hsl(var(--muted))]"></div>
-              
-              <div className="p-4 flex-1 flex flex-col">
-                <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-3/4 mb-2"></div>
-                <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-1/2"></div>
-                
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="flex flex-col gap-2 w-1/2">
-                    <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-full"></div>
-                    <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-4/5"></div>
-                  </div>
-                  <div className="w-12 h-8 bg-[hsl(var(--muted))] rounded-xl"></div>
-                </div>
-              </div>
+              <div className="p-4 h-24"></div>
             </div>
           ))}
         </div>
@@ -217,6 +216,17 @@ export default function MerchantDiscounts() {
                 <h3 className="font-bold text-[15px] text-[hsl(var(--foreground))] leading-tight line-clamp-2">
                   {discount.product_name.replace(/,/g, ' • ')}
                 </h3>
+                
+                {/* 🌟 YANGI: Karta ichida nechta mahsulot qolganini ko'rsatish */}
+                {discount.items && discount.items.length > 0 && (
+                   <div className="mt-2 flex flex-wrap gap-1.5">
+                     {discount.items.map((item: any, i: number) => (
+                       <span key={i} className="text-[10px] font-bold bg-[hsl(var(--secondary))] px-2 py-1 rounded-md text-[hsl(var(--muted-foreground))]">
+                         {item.name}: <span className={item.quantity > 0 ? "text-[hsl(var(--primary))]" : "text-red-500"}>{item.quantity} ta</span>
+                       </span>
+                     ))}
+                   </div>
+                )}
                 
                 <div className="mt-4 flex items-center text-[12px] font-semibold text-[hsl(var(--muted-foreground))]">
                   <div className="flex flex-col gap-1.5">
@@ -240,51 +250,86 @@ export default function MerchantDiscounts() {
         </div>
       )}
 
-      {/* MODAL */}
+      {/* 🌟 YANGILANGAN: TO'LIQ EKRANLI YARATISH OYNASI */}
       {isModalOpen && isActive && (
-        <div className="fixed inset-0 z-[60] flex flex-col justify-end" style={{ height: '100dvh' }}>
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !isSubmitting && setIsModalOpen(false)} />
-          <div className="relative bg-[hsl(var(--card))] rounded-t-[32px] p-6 pb-[100px] animate-in slide-in-from-bottom-full duration-300 shadow-2xl h-[90vh] overflow-y-auto border-t border-[hsl(var(--border))]">
-            <div className="w-12 h-1.5 bg-[hsl(var(--muted))] rounded-full mx-auto mb-6" />
-            <h3 className="font-display text-xl font-bold mb-6 text-[hsl(var(--foreground))]">Yangi chegirma yaratish</h3>
-            
-            <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="fixed inset-0 z-[100] bg-[hsl(var(--background))] overflow-y-auto animate-in slide-in-from-bottom-8 duration-300">
+          <div className="sticky top-0 z-10 bg-[hsl(var(--background))/80] backdrop-blur-md border-b border-[hsl(var(--border))] px-4 py-4 flex items-center justify-between">
+            <button type="button" onClick={closeModal} className="p-2 -ml-2 rounded-full hover:bg-[hsl(var(--secondary))] transition-colors text-[hsl(var(--foreground))]">
+              <ArrowLeft size={24} />
+            </button>
+            <h3 className="font-display text-lg font-bold text-[hsl(var(--foreground))]">Yangi chegirma</h3>
+            <div className="w-10"></div>
+          </div>
+
+          <div className="p-4 max-w-md mx-auto pb-32">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="flex flex-col mb-2">
                 <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
-                <div onClick={() => fileInputRef.current?.click()} className="w-full aspect-video rounded-2xl bg-[hsl(var(--secondary))] border-2 border-dashed border-[hsl(var(--border))] overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:border-[hsl(var(--accent))] transition-colors">
+                <div onClick={() => fileInputRef.current?.click()} className="w-full aspect-video rounded-[24px] bg-[hsl(var(--card))] border-2 border-dashed border-[hsl(var(--border))] overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:border-[hsl(var(--accent))] transition-colors shadow-sm">
                   {imagePreview ? ( <img src={imagePreview} className="w-full h-full object-cover" /> ) : (
-                    <> <Camera size={32} className="text-[hsl(var(--muted-foreground))]/50 mb-2" /> <span className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase text-center">Gorizontal rasm yuklang (16:9)</span> </>
+                    <> <Camera size={36} className="text-[hsl(var(--muted-foreground))]/50 mb-3" /> <span className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase text-center">Gorizontal rasm yuklang (16:9)</span> </>
                   )}
                 </div>
               </div>
 
-              <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Nomi (2 ta probel bosing)</label>
-                <div className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-2 px-3 rounded-2xl min-h-[54px] flex flex-wrap items-center gap-2 focus-within:border-[hsl(var(--accent))] transition-all cursor-text" onClick={() => document.getElementById('tag-input')?.focus()}>
-                  {tags.map(tag => (
-                    <span key={tag} className="flex items-center gap-1.5 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm">
-                      {tag} <button type="button" onClick={() => removeTag(tag)} className="hover:text-red-300 cursor-pointer"><X size={14} /></button>
-                    </span>
-                  ))}
-                  <input id="tag-input" type="text" value={inputValue} onChange={handleTagInput} onKeyDown={(e) => { if (e.key === 'Backspace' && inputValue === '' && tags.length > 0) removeTag(tags[tags.length - 1]); }} placeholder={tags.length === 0 ? "Masalan: Burger (2 ta probel bosing)" : "Yana qo'shish..."} className="flex-1 bg-transparent outline-none text-sm font-semibold min-w-[150px] text-[hsl(var(--foreground))]" />
-                </div>
+              {/* 🌟 YANGI: OBYEKTLI TEG VA MIQDOR KIRITISH */}
+              <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-4 rounded-[24px] shadow-sm">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-1 mb-2 block">Mahsulotlarni kiriting (Nomidan keyin 2 ta probel bosing)</label>
+                
+                <input 
+                  type="text" 
+                  value={inputValue} 
+                  onChange={handleTagInput} 
+                  placeholder="Masalan: Burger  (2 ta probel)" 
+                  className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-xl text-sm font-semibold outline-none focus:border-[hsl(var(--accent))] transition-colors" 
+                />
+
+                {items.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {items.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-3 bg-[hsl(var(--background))] p-2 pl-4 rounded-xl border border-[hsl(var(--border))] animate-in fade-in slide-in-from-top-2">
+                        <div className="flex-1 font-bold text-[14px] truncate text-[hsl(var(--foreground))]">{item.name}</div>
+                        <div className="w-[100px]">
+                          <input 
+                            type="number" 
+                            min="1"
+                            required
+                            placeholder="Soni" 
+                            value={item.quantity}
+                            onChange={(e) => updateItemQuantity(idx, e.target.value)}
+                            className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-lg px-3 py-2 text-sm font-bold text-center outline-none focus:border-[hsl(var(--primary))] transition-colors"
+                          />
+                        </div>
+                        <button type="button" onClick={() => removeItem(idx)} className="text-red-500 p-2 hover:bg-red-500/10 rounded-lg transition-colors">
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>
                 <label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Chegirma Foizi (%)</label>
-                <input type="number" required min="1" max="100" value={discountPercent} onChange={(e)=>setDiscountPercent(e.target.value)} className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-2xl text-sm font-semibold outline-none focus:border-[hsl(var(--accent))]" />
+                <input type="number" required min="1" max="100" value={discountPercent} onChange={(e)=>setDiscountPercent(e.target.value)} className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-[16px] text-sm font-semibold outline-none focus:border-[hsl(var(--accent))]" />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Boshlanish</label><input type="date" required value={startDate} onChange={(e)=>setStartDate(e.target.value)} className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-2xl text-sm font-bold outline-none focus:border-[hsl(var(--accent))]" /></div>
-                <div><label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Tugash</label><input type="date" required value={endDate} onChange={(e)=>setEndDate(e.target.value)} className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-2xl text-sm font-bold outline-none focus:border-[hsl(var(--accent))]" /></div>
-                <div><label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Vaqt (dan)</label><input type="time" required value={startTime} onChange={(e)=>setStartTime(e.target.value)} className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-2xl text-sm font-bold outline-none focus:border-[hsl(var(--accent))]" /></div>
-                <div><label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Vaqt (gacha)</label><input type="time" required value={endTime} onChange={(e)=>setEndTime(e.target.value)} className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-2xl text-sm font-bold outline-none focus:border-[hsl(var(--accent))]" /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Boshlanish</label><input type="date" required value={startDate} onChange={(e)=>setStartDate(e.target.value)} className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-[16px] text-sm font-bold outline-none focus:border-[hsl(var(--accent))]" /></div>
+                <div><label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Tugash</label><input type="date" required value={endDate} onChange={(e)=>setEndDate(e.target.value)} className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-[16px] text-sm font-bold outline-none focus:border-[hsl(var(--accent))]" /></div>
+                <div><label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Vaqt (dan)</label><input type="time" required value={startTime} onChange={(e)=>setStartTime(e.target.value)} className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-[16px] text-sm font-bold outline-none focus:border-[hsl(var(--accent))]" /></div>
+                <div><label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Vaqt (gacha)</label><input type="time" required value={endTime} onChange={(e)=>setEndTime(e.target.value)} className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-[16px] text-sm font-bold outline-none focus:border-[hsl(var(--accent))]" /></div>
               </div>
-
-              <button type="submit" disabled={isSubmitting || !imageFile} className="w-full py-4 mt-4 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-bold rounded-2xl shadow-float active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-70 cursor-pointer">
-                {isSubmitting ? <Loader2 className="animate-spin" size={20}/> : "Saqlash"}
-              </button>
+              
+              {/* 🌟 YANGI: Ikkita tugma - Joylash va Bekor qilish */}
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={closeModal} className="flex-1 py-4 bg-[hsl(var(--secondary))] text-[hsl(var(--foreground))] font-bold rounded-2xl active:scale-95 transition-all cursor-pointer">
+                  Bekor qilish
+                </button>
+                <button type="submit" disabled={isSubmitting || !imageFile} className="flex-[2] py-4 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-bold rounded-2xl shadow-float active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-70 cursor-pointer">
+                  {isSubmitting ? <Loader2 className="animate-spin" size={20}/> : "Joylash"}
+                </button>
+              </div>
             </form>
           </div>
         </div>
