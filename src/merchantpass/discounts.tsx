@@ -8,7 +8,7 @@ export default function MerchantDiscounts() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // 🌟 YANGI: Teglar endi obyekt shaklida (nomi va miqdori bilan)
+  // Teglar va miqdorlar uchun state
   const [items, setItems] = useState<{ name: string; quantity: string }[]>([]);
   const [inputValue, setInputValue] = useState('');
   
@@ -56,9 +56,9 @@ export default function MerchantDiscounts() {
     }
   };
 
-  // 🌟 YANGI: 2 ta probel bosilganda element yaratiladi
   const handleTagInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
+    // 2 ta probel bosilganda ishlaydi
     if (val.endsWith('  ')) {
       const newTag = val.trim();
       if (newTag && !items.find(i => i.name === newTag)) {
@@ -84,7 +84,6 @@ export default function MerchantDiscounts() {
     e.preventDefault();
     if (items.length === 0) return alert("Kamida bitta mahsulot kiritishingiz kerak!");
     
-    // Miqdorlarni tekshirish
     for (const item of items) {
       if (!item.quantity || Number(item.quantity) <= 0) {
         return alert(`Iltimos, "${item.name}" uchun to'g'ri miqdor kiriting!`);
@@ -108,21 +107,18 @@ export default function MerchantDiscounts() {
       
       const { data: publicUrlData } = supabase.storage.from('discounts').getPublicUrl(fileName);
 
-      // JSONB formatida saqlanadigan mahsulotlar ro'yxati
       const formattedItems = items.map(i => ({ name: i.name, quantity: Number(i.quantity) }));
 
-      // BAZAGA YOZISH
       const { error: dbError } = await supabase.from('discounts').insert([{
         merchant_id: user.id, 
         product_name: finalProductName, 
-        items: formattedItems, // 🌟 Yangi JSONB ustun
+        items: formattedItems, 
         discount_percent: parseInt(discountPercent),
         start_date: startDate, end_date: endDate, start_time: startTime, end_time: endTime, image_url: publicUrlData.publicUrl
       }]);
 
       if (dbError) throw new Error(dbError.message);
 
-      // Kuzatuvchilarga xabar yuborish qismi (Avvalgidek qoldi)
       const { data: savedDiscounts } = await supabase.from('discounts').select('id').eq('merchant_id', user.id);
       if (savedDiscounts && savedDiscounts.length > 0) {
         const discountIds = savedDiscounts.map(d => String(d.id));
@@ -217,7 +213,6 @@ export default function MerchantDiscounts() {
                   {discount.product_name.replace(/,/g, ' • ')}
                 </h3>
                 
-                {/* 🌟 YANGI: Karta ichida nechta mahsulot qolganini ko'rsatish */}
                 {discount.items && discount.items.length > 0 && (
                    <div className="mt-2 flex flex-wrap gap-1.5">
                      {discount.items.map((item: any, i: number) => (
@@ -250,10 +245,12 @@ export default function MerchantDiscounts() {
         </div>
       )}
 
-      {/* 🌟 YANGILANGAN: TO'LIQ EKRANLI YARATISH OYNASI */}
+      {/* 🌟 YANGI: TO'LIQ EKRANLI, MUSTAQIL MODAL (Z-INDEX 9999) */}
       {isModalOpen && isActive && (
-        <div className="fixed inset-0 z-[100] bg-[hsl(var(--background))] overflow-y-auto animate-in slide-in-from-bottom-8 duration-300">
-          <div className="sticky top-0 z-10 bg-[hsl(var(--background))/80] backdrop-blur-md border-b border-[hsl(var(--border))] px-4 py-4 flex items-center justify-between">
+        <div className="fixed inset-0 z-[9999] bg-[hsl(var(--background))] flex flex-col w-full h-[100dvh] animate-in slide-in-from-bottom-4 duration-200">
+          
+          {/* Header - Yuqoriga qotirilgan (Sticky) */}
+          <div className="flex-none bg-[hsl(var(--background))] border-b border-[hsl(var(--border))] px-4 py-4 flex items-center justify-between shadow-sm z-10">
             <button type="button" onClick={closeModal} className="p-2 -ml-2 rounded-full hover:bg-[hsl(var(--secondary))] transition-colors text-[hsl(var(--foreground))]">
               <ArrowLeft size={24} />
             </button>
@@ -261,76 +258,79 @@ export default function MerchantDiscounts() {
             <div className="w-10"></div>
           </div>
 
-          <div className="p-4 max-w-md mx-auto pb-32">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="flex flex-col mb-2">
-                <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
-                <div onClick={() => fileInputRef.current?.click()} className="w-full aspect-video rounded-[24px] bg-[hsl(var(--card))] border-2 border-dashed border-[hsl(var(--border))] overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:border-[hsl(var(--accent))] transition-colors shadow-sm">
-                  {imagePreview ? ( <img src={imagePreview} className="w-full h-full object-cover" /> ) : (
-                    <> <Camera size={36} className="text-[hsl(var(--muted-foreground))]/50 mb-3" /> <span className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase text-center">Gorizontal rasm yuklang (16:9)</span> </>
+          {/* Form qismi - Mustaqil skroll bo'ladi */}
+          <div className="flex-1 overflow-y-auto p-4 pb-[120px]">
+            <div className="max-w-md mx-auto">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                
+                <div className="flex flex-col mb-2">
+                  <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+                  <div onClick={() => fileInputRef.current?.click()} className="w-full aspect-video rounded-[24px] bg-[hsl(var(--card))] border-2 border-dashed border-[hsl(var(--border))] overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:border-[hsl(var(--accent))] transition-colors shadow-sm">
+                    {imagePreview ? ( <img src={imagePreview} className="w-full h-full object-cover" /> ) : (
+                      <> <Camera size={36} className="text-[hsl(var(--muted-foreground))]/50 mb-3" /> <span className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase text-center">Gorizontal rasm yuklang (16:9)</span> </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-4 rounded-[24px] shadow-sm">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-1 mb-2 block">Mahsulotlarni kiriting (Nomidan keyin 2 ta probel bosing)</label>
+                  
+                  <input 
+                    type="text" 
+                    value={inputValue} 
+                    onChange={handleTagInput} 
+                    placeholder="Masalan: Burger  (2 ta probel)" 
+                    className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-xl text-sm font-semibold outline-none focus:border-[hsl(var(--accent))] transition-colors" 
+                  />
+
+                  {items.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      {items.map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-3 bg-[hsl(var(--background))] p-2 pl-4 rounded-xl border border-[hsl(var(--border))] animate-in fade-in slide-in-from-top-2">
+                          <div className="flex-1 font-bold text-[14px] truncate text-[hsl(var(--foreground))]">{item.name}</div>
+                          <div className="w-[100px]">
+                            <input 
+                              type="number" 
+                              min="1"
+                              required
+                              placeholder="Soni" 
+                              value={item.quantity}
+                              onChange={(e) => updateItemQuantity(idx, e.target.value)}
+                              className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-lg px-3 py-2 text-sm font-bold text-center outline-none focus:border-[hsl(var(--primary))] transition-colors"
+                            />
+                          </div>
+                          <button type="button" onClick={() => removeItem(idx)} className="text-red-500 p-2 hover:bg-red-500/10 rounded-lg transition-colors">
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
-              </div>
 
-              {/* 🌟 YANGI: OBYEKTLI TEG VA MIQDOR KIRITISH */}
-              <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-4 rounded-[24px] shadow-sm">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-1 mb-2 block">Mahsulotlarni kiriting (Nomidan keyin 2 ta probel bosing)</label>
+                <div>
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Chegirma Foizi (%)</label>
+                  <input type="number" required min="1" max="100" value={discountPercent} onChange={(e)=>setDiscountPercent(e.target.value)} className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-[16px] text-sm font-semibold outline-none focus:border-[hsl(var(--accent))]" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Boshlanish</label><input type="date" required value={startDate} onChange={(e)=>setStartDate(e.target.value)} className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-[16px] text-sm font-bold outline-none focus:border-[hsl(var(--accent))]" /></div>
+                  <div><label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Tugash</label><input type="date" required value={endDate} onChange={(e)=>setEndDate(e.target.value)} className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-[16px] text-sm font-bold outline-none focus:border-[hsl(var(--accent))]" /></div>
+                  <div><label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Vaqt (dan)</label><input type="time" required value={startTime} onChange={(e)=>setStartTime(e.target.value)} className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-[16px] text-sm font-bold outline-none focus:border-[hsl(var(--accent))]" /></div>
+                  <div><label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Vaqt (gacha)</label><input type="time" required value={endTime} onChange={(e)=>setEndTime(e.target.value)} className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-[16px] text-sm font-bold outline-none focus:border-[hsl(var(--accent))]" /></div>
+                </div>
                 
-                <input 
-                  type="text" 
-                  value={inputValue} 
-                  onChange={handleTagInput} 
-                  placeholder="Masalan: Burger  (2 ta probel)" 
-                  className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-xl text-sm font-semibold outline-none focus:border-[hsl(var(--accent))] transition-colors" 
-                />
+                <div className="flex gap-3 pt-4">
+                  <button type="button" onClick={closeModal} className="flex-1 py-4 bg-[hsl(var(--secondary))] text-[hsl(var(--foreground))] font-bold rounded-2xl active:scale-95 transition-all cursor-pointer">
+                    Bekor qilish
+                  </button>
+                  <button type="submit" disabled={isSubmitting || !imageFile} className="flex-[2] py-4 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-bold rounded-2xl shadow-float active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-70 cursor-pointer">
+                    {isSubmitting ? <Loader2 className="animate-spin" size={20}/> : "Joylash"}
+                  </button>
+                </div>
 
-                {items.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    {items.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-3 bg-[hsl(var(--background))] p-2 pl-4 rounded-xl border border-[hsl(var(--border))] animate-in fade-in slide-in-from-top-2">
-                        <div className="flex-1 font-bold text-[14px] truncate text-[hsl(var(--foreground))]">{item.name}</div>
-                        <div className="w-[100px]">
-                          <input 
-                            type="number" 
-                            min="1"
-                            required
-                            placeholder="Soni" 
-                            value={item.quantity}
-                            onChange={(e) => updateItemQuantity(idx, e.target.value)}
-                            className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-lg px-3 py-2 text-sm font-bold text-center outline-none focus:border-[hsl(var(--primary))] transition-colors"
-                          />
-                        </div>
-                        <button type="button" onClick={() => removeItem(idx)} className="text-red-500 p-2 hover:bg-red-500/10 rounded-lg transition-colors">
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Chegirma Foizi (%)</label>
-                <input type="number" required min="1" max="100" value={discountPercent} onChange={(e)=>setDiscountPercent(e.target.value)} className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-[16px] text-sm font-semibold outline-none focus:border-[hsl(var(--accent))]" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Boshlanish</label><input type="date" required value={startDate} onChange={(e)=>setStartDate(e.target.value)} className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-[16px] text-sm font-bold outline-none focus:border-[hsl(var(--accent))]" /></div>
-                <div><label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Tugash</label><input type="date" required value={endDate} onChange={(e)=>setEndDate(e.target.value)} className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-[16px] text-sm font-bold outline-none focus:border-[hsl(var(--accent))]" /></div>
-                <div><label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Vaqt (dan)</label><input type="time" required value={startTime} onChange={(e)=>setStartTime(e.target.value)} className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-[16px] text-sm font-bold outline-none focus:border-[hsl(var(--accent))]" /></div>
-                <div><label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Vaqt (gacha)</label><input type="time" required value={endTime} onChange={(e)=>setEndTime(e.target.value)} className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] py-3.5 px-4 rounded-[16px] text-sm font-bold outline-none focus:border-[hsl(var(--accent))]" /></div>
-              </div>
-              
-              {/* 🌟 YANGI: Ikkita tugma - Joylash va Bekor qilish */}
-              <div className="flex gap-3 pt-4">
-                <button type="button" onClick={closeModal} className="flex-1 py-4 bg-[hsl(var(--secondary))] text-[hsl(var(--foreground))] font-bold rounded-2xl active:scale-95 transition-all cursor-pointer">
-                  Bekor qilish
-                </button>
-                <button type="submit" disabled={isSubmitting || !imageFile} className="flex-[2] py-4 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-bold rounded-2xl shadow-float active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-70 cursor-pointer">
-                  {isSubmitting ? <Loader2 className="animate-spin" size={20}/> : "Joylash"}
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
         </div>
       )}
