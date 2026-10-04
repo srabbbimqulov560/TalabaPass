@@ -30,15 +30,12 @@ const createImage = (url: string): Promise<HTMLImageElement> =>
     image.src = url;
   });
 
-// 🌟 QO'SHILDI: Maxfiylik siyosati matni
 const PrivacyPolicyText = () => (
   <div className="space-y-4">
     <p className="font-bold">Amal qilish sanasi: [01.10.2026]<br/>Oxirgi yangilanish: [01.10.2026]</p>
     <p>TalabaPass ("TalabaPass", "biz", "bizning") foydalanuvchilarning shaxsiy ma'lumotlarini himoya qilishga jiddiy yondashadi. Ushbu Maxfiylik siyosati TalabaPass mobil ilovasi, veb-sayti va ular bilan bog'liq xizmatlardan foydalanish jarayonida foydalanuvchilarning shaxsga doir ma'lumotlari qanday yig'ilishi, ishlatilishi, saqlanishi va himoya qilinishini tushuntiradi. TalabaPass ushbu siyosatni O'zbekiston Respublikasining amaldagi qonunchiligi, shu jumladan "Shaxsga doir ma'lumotlar to'g'risida"gi Qonun talablarini hisobga olgan holda qo'llaydi.</p>
-    
     <h4 className="font-bold text-[hsl(var(--foreground))] text-base">1. Biz haqimizda</h4>
     <p>TalabaPass xizmatining operatori:<br/>Yuridik nomi: [TALABAPASS MCHJning to'liq nomi]<br/>STIR: [STIR]<br/>Yuridik manzil: [yuridik manzil]<br/>Elektron pochta: [email]<br/>Telefon: [telefon raqami]<br/>Ushbu hujjatda ushbu tashkilot "TalabaPass" yoki "Operator" deb yuritiladi.</p>
-    
     <h4 className="font-bold text-[hsl(var(--foreground))] text-base">2. Qanday ma'lumotlarni yig'ishimiz mumkin?</h4>
     <p className="font-semibold text-[hsl(var(--foreground))]">2.1. Foydalanuvchi taqdim etadigan ma'lumotlar</p>
     <p>Ro'yxatdan o'tish yoki xizmatlardan foydalanish vaqtida:</p>
@@ -52,10 +49,8 @@ const PrivacyPolicyText = () => (
       <li>profil rasmi, agar foydalanuvchi uni o'zi yuklasa;</li>
       <li>foydalanuvchi tomonidan ixtiyoriy ravishda kiritilgan boshqa ma'lumotlar.</li>
     </ul>
-    
     <p className="font-semibold text-[hsl(var(--foreground))] mt-2">2.2. Avtomatik ravishda olinadigan ma'lumotlar</p>
     <p>Ilova yoki veb-saytdan foydalanilganda texnik ma'lumotlarning ayrimlari avtomatik ravishda qayd etilishi mumkin (qurilma turi, IP manzil, operatsion tizim va h.k.).</p>
-
     <h4 className="font-bold text-[hsl(var(--foreground))] text-base">3. Ma'lumotlardan foydalanish maqsadlari</h4>
     <ul className="list-disc pl-5 space-y-1">
       <li>foydalanuvchi akkauntini yaratish va boshqarish;</li>
@@ -63,31 +58,24 @@ const PrivacyPolicyText = () => (
       <li>talabalik maqomini tekshirish va chegirmalar taqdim etish;</li>
       <li>firibgarlik va noqonuniy harakatlarning oldini olish.</li>
     </ul>
-
     <h4 className="font-bold text-[hsl(var(--foreground))] text-base">4. Shaxsiy ma'lumotlarni uchinchi shaxslarga berish</h4>
     <p>TalabaPass foydalanuvchining shaxsiy ma'lumotlarini uning roziligisiz yoki qonuniy asos bo'lmagan holda uchinchi shaxslarga sotmaydi. Faqatgina chegirma xizmatini ko'rsatuvchi hamkorlarga tegishli chegirma taqdim etish uchungina kerakli ma'lumotlar uzatiladi.</p>
-
     <h4 className="font-bold text-[hsl(var(--foreground))] text-base">5. Foydalanuvchining huquqlari va akkauntni o'chirish</h4>
     <p>Foydalanuvchi amaldagi qonunchilikka muvofiq o'z ma'lumotlarini o'chirish, aniqlashtirish va yangilash huquqiga ega. Akkaunt o'chirilganda ma'lumotlar tizimdan butunlay olib tashlanadi (qonun talab qiladigan hollar bundan mustasno).</p>
     <br/><br/>
   </div>
 );
 
-// 🌟 QO'SHILDI: Foydalanish shartlari matni
 const TermsOfUseText = () => (
   <div className="space-y-4">
     <p className="font-bold">Amal qilish sanasi: [01.10.2026]<br/>Oxirgi yangilanish: [01.10.2026]</p>
     <p>TalabaPass mobil ilovasi, veb-sayti va boshqa raqamli xizmatlaridan foydalanishdan oldin ushbu Foydalanish shartlarini diqqat bilan o'qib chiqing. TalabaPass xizmatlaridan foydalanish orqali foydalanuvchi ushbu Shartlarni qabul qilgan hisoblanadi.</p>
-
     <h4 className="font-bold text-[hsl(var(--foreground))] text-base">1. Umumiy qoidalar</h4>
     <p>TalabaPass — talabalar uchun turli tashkilot va bizneslar tomonidan taqdim etiladigan chegirmalar, maxsus takliflar va boshqa imtiyozlarni bir joyda topish va ulardan foydalanishga yordam beruvchi raqamli platforma.</p>
-
     <h4 className="font-bold text-[hsl(var(--foreground))] text-base">2. Ro'yxatdan o'tish va Talabalikni tasdiqlash</h4>
     <p>TalabaPass'dan foydalanish uchun foydalanuvchidan akkaunt yaratish va haqiqiy ma'lumotlarni kiritish talab qilinadi. Talabalikni tasdiqlash uchun yolg'on, soxta yoki boshqa shaxsga tegishli hujjat va ma'lumotlardan foydalanish qat'iyan taqiqlanadi.</p>
-
     <h4 className="font-bold text-[hsl(var(--foreground))] text-base">3. Chegirmalar va hamkorlarning takliflari</h4>
     <p>TalabaPass platformasida ko'rsatilgan chegirmalar va takliflarning asosiy shartlari tegishli Hamkor (biznes) tomonidan belgilanadi. TalabaPass chegirmalar miqdori yoki shartlari to'satdan o'zgartirilishi uchun to'g'ridan-to'g'ri javobgar emas.</p>
-
     <h4 className="font-bold text-[hsl(var(--foreground))] text-base">4. Taqiqlangan harakatlar</h4>
     <ul className="list-disc pl-5 space-y-1">
       <li>soxta akkaunt yaratish yoki boshqa shaxs nomidan foydalanish;</li>
@@ -95,7 +83,6 @@ const TermsOfUseText = () => (
       <li>platformaning texnik tizimlariga zarar yetkazishga urinish;</li>
       <li>boshqa foydalanuvchilar yoki Hamkorlarga nisbatan tahdid yoki haqorat.</li>
     </ul>
-
     <h4 className="font-bold text-[hsl(var(--foreground))] text-base">5. Akkauntni cheklash yoki to'xtatish</h4>
     <p>Agar foydalanuvchi ushbu Shartlarni buzsa yoki platformadan noqonuniy foydalanishda gumon qilinsa, TalabaPass akkauntni vaqtincha cheklash yoki butunlay bloklash huquqiga ega.</p>
     <br/><br/>
@@ -123,9 +110,14 @@ export default function SignupPage() {
     localStorage.setItem('studentSignupData', JSON.stringify(formData));
   }, [formData]);
 
+  // 🌟 1-QISM BUG FIX: Tizimga ilk kirganda sessiyani tekshirish
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session && step < 5) {
+      if (!session && step >= 4) {
+        // Agar foydalanuvchi profilingdan chiqqan bo'lsa va xotirada 4-5-6 qadam qolib ketgan bo'lsa, uni 1-qadamga qaytarib tozalaymiz.
+        setStep(1);
+        localStorage.removeItem('studentSignupStep');
+      } else if (session && step < 5) {
         setStep(5);
       }
     });
@@ -134,7 +126,6 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  // 🌟 QO'SHILDI: Shartlarga rozilik (Checkbox) va Modal state'lari
   const [isAgreed, setIsAgreed] = useState(false);
   const [openDoc, setOpenDoc] = useState<'privacy' | 'terms' | null>(null);
 
@@ -272,6 +263,7 @@ export default function SignupPage() {
     }
   };
 
+  // 🌟 2-QISM BUG FIX: Agar 5-qadamda aylanib yotgan bo'lsayu, aslini olganda u profildan chiqqan bo'lsa, to'xtatish!
   useEffect(() => {
     let interval: any;
     if (step === 5) {
@@ -283,8 +275,15 @@ export default function SignupPage() {
             setIsApproved(true); clearInterval(interval);
             setTimeout(() => { setStep(6); }, 2000);
           }
+        } else {
+          // Foydalanuvchi "Tekshirilmoqda" sahifasiga kirgan, lekin aslini olganda u sessiyadan chiqqan
+          clearInterval(interval);
+          setStep(1);
+          localStorage.removeItem('studentSignupStep');
         }
       };
+      
+      checkApprovalStatus(); // 5 soniya kutmasdan darhol bir marta tekshirib ko'rish
       interval = setInterval(checkApprovalStatus, 5000);
     }
     return () => clearInterval(interval);
@@ -303,8 +302,6 @@ export default function SignupPage() {
       if (!formData.studentId || !formData.university) { setError("Barcha maydonlarni to'ldiring"); return; }
       if (strength.score < 5) { setError("Parol yetarlicha kuchli emas!"); return; }
       if (formData.password !== formData.confirmPassword) { setError("Parollar mos kelmadi!"); return; }
-      
-      // 🌟 QO'SHILDI: Rozilik belgisi tekshiruvi
       if (!isAgreed) { setError("Foydalanish shartlari va Maxfiylik siyosatiga rozi bo'lishingiz kerak!"); return; }
 
       setIsLoading(true); setError('');
@@ -386,6 +383,14 @@ export default function SignupPage() {
     } catch (err: any) { setError(err.message); setIsLoading(false); }
   };
 
+  // 🌟 QO'SHIMCHA FIX: Hamma narsani tozalab chiqib ketadigan Logout funksiyasi
+  const forceRestart = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem('studentSignupStep');
+    localStorage.removeItem('studentSignupData');
+    setStep(1);
+  };
+
   return (
     <div className="min-h-[100dvh] flex flex-col bg-[hsl(var(--background))] relative overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-1.5 bg-[hsl(var(--secondary))] z-50">
@@ -465,7 +470,7 @@ export default function SignupPage() {
           </div>
         )}
 
-        {/* 🌟 QADAM 3 - YANGILANGAN: CHECKBOX QO'SHILDI */}
+        {/* QADAM 3 */}
         {step === 3 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col">
              <div className="mt-4 mb-6"><h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">Talaba ma'lumotlari</h2></div>
@@ -536,7 +541,6 @@ export default function SignupPage() {
                  </div>
                </div>
 
-               {/* 🌟 YANGI: CHECKBOX QISMI */}
                <div className="pt-2">
                  <label className="flex items-start gap-3 cursor-pointer group">
                    <div className="relative flex items-center justify-center mt-0.5">
@@ -559,7 +563,6 @@ export default function SignupPage() {
                {error && <p className="text-red-500 text-[13px] font-semibold ml-1">{error}</p>}
              </div>
              
-             {/* Tugma faqat rozi bo'lganda faollashadi */}
              <button disabled={isLoading || !isAgreed} onClick={nextStep} className="mt-auto flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100">
                {isLoading ? <Loader2 className="animate-spin" /> : <>Davom etish <ArrowRight size={18} /></>}
              </button>
@@ -634,9 +637,9 @@ export default function SignupPage() {
 
         {/* QADAM 5 */}
         {step === 5 && (
-          <div className="animate-in zoom-in-95 duration-500 flex-1 flex flex-col items-center justify-center text-center">
+          <div className="animate-in zoom-in-95 duration-500 flex-1 flex flex-col items-center justify-center text-center pb-8">
             {isApproved ? (
-              <div className="animate-in fade-in zoom-in duration-300">
+              <div className="animate-in fade-in zoom-in duration-300 w-full mt-auto mb-auto">
                 <div className="w-24 h-24 bg-green-500/10 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-green-500/20 shadow-[0_0_40px_rgba(34,197,94,0.3)]">
                   <CheckCircle2 size={48} strokeWidth={2.5} />
                 </div>
@@ -644,7 +647,7 @@ export default function SignupPage() {
                 <p className="text-sm font-medium text-[hsl(var(--muted-foreground))]">Ma'lumotlaringiz muvaffaqiyatli qabul qilindi.</p>
               </div>
             ) : (
-              <>
+              <div className="w-full mt-auto mb-auto">
                 <div className="relative mb-8">
                   <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full w-24 h-24 mx-auto animate-pulse"></div>
                   <div className="relative w-24 h-24 bg-[hsl(var(--card))] text-blue-500 rounded-full flex items-center justify-center mx-auto border-[3px] border-blue-500/30 shadow-lg">
@@ -658,8 +661,18 @@ export default function SignupPage() {
                   <br/><br/>
                   Iltimos, ushbu oynadan chiqmang. Tasdiqlangach avtomatik keyingi bosqichga o'tkazilasiz.
                 </p>
-              </>
+              </div>
             )}
+            
+            {/* 🌟 BUG FIX: Xavfsizlik chiqish tugmasi qo'shildi (Agar bloklanib qolsa, shu qutqaradi) */}
+            <div className="mt-8 pt-8 border-t border-[hsl(var(--border))] w-full">
+               <button 
+                 onClick={forceRestart}
+                 className="text-[13px] font-bold text-red-500/80 hover:text-red-500 hover:underline transition-colors w-full text-center p-2"
+               >
+                 Boshidan boshlash (Chiqish)
+               </button>
+            </div>
           </div>
         )}
 
@@ -726,7 +739,7 @@ export default function SignupPage() {
         </div>
       )}
 
-      {/* 🌟 QO'SHILDI: HUJJATLARNI O'QISH UCHUN MODAL OYNA */}
+      {/* HUJJATLARNI O'QISH UCHUN MODAL OYNA */}
       {openDoc && (
         <div className="fixed inset-0 z-[80] flex flex-col bg-[hsl(var(--background))] animate-in slide-in-from-bottom-8 duration-300">
            <div className="flex items-center justify-between p-4 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))]">
