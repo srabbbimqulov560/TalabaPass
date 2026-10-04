@@ -55,7 +55,6 @@ export default function SavedPage() {
              <div key={i} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[20px] overflow-hidden shadow-sm flex flex-col h-full animate-pulse">
                 <div className="w-full aspect-[16/10] bg-[hsl(var(--muted))] relative"></div>
                 <div className="p-4 flex-1 flex flex-col relative pt-6">
-                   <div className="absolute -top-6 left-4 w-12 h-12 rounded-xl bg-[hsl(var(--muted))] border-2 border-[hsl(var(--card))]"></div>
                    <div className="h-3 bg-[hsl(var(--muted))] rounded-md w-1/3 mb-2"></div>
                    <div className="h-4 bg-[hsl(var(--muted))] rounded-md w-3/4"></div>
                 </div>
@@ -78,30 +77,30 @@ export default function SavedPage() {
                       e.stopPropagation(); 
                       toggleFavorite(String(discount.id));
                     }}
-                    className={`absolute top-3 right-3 z-10 p-2 rounded-full backdrop-blur-md transition-all active:scale-90 text-red-500 bg-white/90 shadow-sm`}
+                    className={`absolute top-3 right-3 z-20 p-2 rounded-full backdrop-blur-md transition-all active:scale-90 text-red-500 bg-white/90 shadow-sm`}
                   >
                     <Heart size={18} fill="currentColor" strokeWidth={0} />
                   </button>
                   
                   <div className="w-full aspect-[16/10] bg-[hsl(var(--secondary))] overflow-hidden rounded-t-[16px] relative">
                     <img src={discount.image_url} alt={discount.product_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  </div>
-
-                  <div className="p-4 flex-1 flex flex-col relative pt-8 bg-[hsl(var(--card))] rounded-b-[16px]">
+                    
                     <div 
                       onClick={(e) => {
                         e.preventDefault(); e.stopPropagation();
                         setLocation(`/store/${discount.merchant?.id}`);
                       }}
-                      className="absolute -top-7 left-4 w-[52px] h-[52px] bg-white rounded-xl p-1 shadow-md border border-[hsl(var(--border))] flex items-center justify-center overflow-hidden z-10 cursor-pointer hover:scale-105 transition-transform"
+                      className="absolute bottom-3 left-3 w-[46px] h-[46px] bg-white rounded-[14px] p-[2px] shadow-lg border border-black/5 flex items-center justify-center overflow-hidden z-10 cursor-pointer hover:scale-105 transition-transform"
                     >
                       {discount.merchant?.logo_url ? (
-                        <img src={discount.merchant.logo_url} className="w-full h-full rounded-lg object-cover" />
+                        <img src={discount.merchant.logo_url} className="w-full h-full rounded-[10px] object-cover" />
                       ) : (
-                        <Store size={24} className="text-[hsl(var(--muted-foreground))]" />
+                        <Store size={22} className="text-[hsl(var(--muted-foreground))]" />
                       )}
                     </div>
-                    
+                  </div>
+
+                  <div className="p-4 flex-1 flex flex-col relative bg-[hsl(var(--card))] rounded-b-[16px]">
                     <div 
                       onClick={(e) => {
                         e.preventDefault(); e.stopPropagation();

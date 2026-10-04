@@ -1,4 +1,4 @@
-import { Bookmark, Home, UserRound, QrCode, Bell, LayoutGrid } from 'lucide-react';
+import { Heart, Home, UserRound, QrCode, Bell, LayoutGrid } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { useState, useEffect, type ReactNode } from 'react';
 import { useLanguage } from '@/lib/i18n';
@@ -56,7 +56,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </div>
 
                 <Link href="/saved" className={`flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-bold transition-all ${location === '/saved' ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]'}`}>
-                  <Bookmark size={18} /> Saqlanganlar
+                  <Heart size={18} /> Saqlanganlar
                 </Link>
 
                 <Link href="/profile" className={`flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-bold transition-all ${location === '/profile' ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]'}`}>
@@ -73,7 +73,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-5 relative z-20">
             {isLoggedIn ? (
               <div className="flex items-center gap-3">
-                {/* O'NG TOMON TEPADAGI BILDIRISHNOMA (BELL) */}
                 <Link href="/notifications" className="flex items-center justify-center h-10 w-10 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm transition-transform hover:-translate-y-0.5 text-[hsl(var(--foreground))] hover:text-[hsl(var(--accent))]">
                   <Bell size={20} strokeWidth={2.5} />
                 </Link>
@@ -124,7 +123,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             {/* O'NG TOMON (Saqlanganlar, Profil) */}
             <div className="flex justify-around items-center w-[40%] z-20">
               <Link href="/saved" className="flex flex-col items-center justify-center gap-1 h-full mt-1 transition-all">
-                <Bookmark size={22} className={`transition-all duration-300 ${location === '/saved' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_8px_rgba(28,170,136,0.6)]" : "text-[hsl(var(--muted-foreground))]"}`} strokeWidth={location === '/saved' ? 2.5 : 2} />
+                <Heart size={22} className={`transition-all duration-300 ${location === '/saved' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_8px_rgba(28,170,136,0.6)]" : "text-[hsl(var(--muted-foreground))]"}`} strokeWidth={location === '/saved' ? 2.5 : 2} />
                 <span className={`text-[10px] font-bold transition-all duration-300 ${location === '/saved' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_5px_rgba(28,170,136,0.4)]" : "text-[hsl(var(--muted-foreground))]"}`}>Saqlanganlar</span>
               </Link>
 

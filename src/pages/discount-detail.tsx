@@ -19,7 +19,7 @@ export default function DiscountDetailPage() {
   const [copied, setCopied] = useState(false);
   const [showMapOptions, setShowMapOptions] = useState(false);
 
-  // BAZADAN CHEGIRMA HAQIDA TO'LIQ MA'LUMOT
+  // 🌟 QOTISHNI OLDINI OLISH UCHUN KESH QO'SHILDI
   const { data: offer, isLoading, isError } = useQuery({
     queryKey: ['discountDetail', id],
     queryFn: async () => {
@@ -28,18 +28,33 @@ export default function DiscountDetailPage() {
       if (error) throw error;
       return data;
     },
-    enabled: !!id 
+    enabled: !!id,
+    staleTime: 1000 * 60 * 5 // 5 daqiqa keshda turadi, qayta kirsangiz qotmaydi
   });
 
-  // KO'RISHLARNI (+1) YOZISH
+  // 🌟 409 CONFLICT XATOSINI OLDINI OLISH
   useEffect(() => {
     async function trackView() {
       if (!id || !offer?.merchant_id) return;
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from('discount_views').insert({
-          discount_id: id, merchant_id: offer.merchant_id, student_id: user.id
-        });
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // 1. Avval bu talaba shu chegirmani ko'rganini tekshiramiz
+          const { count } = await supabase
+            .from('discount_views')
+            .select('*', { count: 'exact', head: true })
+            .eq('discount_id', id)
+            .eq('student_id', user.id);
+            
+          // 2. Agar hali ko'rmagan bo'lsa (0 ta bo'lsa), keyin yozamiz. (Console qizarib xato bermaydi)
+          if (count === 0) {
+            await supabase.from('discount_views').insert({
+              discount_id: id, merchant_id: offer.merchant_id, student_id: user.id
+            });
+          }
+        }
+      } catch (err) {
+        // Jimgina xatoni o'tkazib yuboramiz
       }
     }
     trackView();
@@ -86,16 +101,14 @@ export default function DiscountDetailPage() {
     </div>
   );
   
-  // Mahsulotlar yo'q bo'lsa (Eski bazadagi ma'lumotlar uchun ehtiyot sharti)
   const productTags = offer.product_name.split(',').map((tag: string) => tag.trim()).filter(Boolean);
   const hasItems = offer.items && offer.items.length > 0;
 
   return (
     <div className="page-enter flex flex-col h-[calc(100dvh-200px)] max-w-3xl mx-auto overflow-y-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
       
-      {/* 🌟 Sarlavha qismi */}
       <div className="flex items-center justify-between mb-4 shrink-0">
-        <button onClick={() => setLocation('/')} className="flex items-center gap-2 text-[15px] font-bold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors p-2 -ml-2 rounded-full hover:bg-[hsl(var(--secondary))]">
+        <button onClick={() => window.history.back()} className="flex items-center gap-2 text-[15px] font-bold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors p-2 -ml-2 rounded-full hover:bg-[hsl(var(--secondary))]">
           <ArrowLeft size={20} /> Orqaga
         </button>
         <button onClick={handleFavorite} className={`shrink-0 p-3 rounded-full border shadow-sm transition-all active:scale-90 ${isSaved ? 'border-[hsl(var(--accent))] bg-[hsl(var(--accent)/.1)] text-[hsl(var(--accent))]' : 'border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))]'}`}>
@@ -103,14 +116,11 @@ export default function DiscountDetailPage() {
         </button>
       </div>
       
-      {/* 🌟 RASM QISMI (Silliq va Katta) */}
       <div className="w-full flex-1 min-h-[200px] max-h-[35vh] rounded-[32px] overflow-hidden shadow-md mb-6 flex items-center justify-center bg-[hsl(var(--secondary))] border-2 border-[hsl(var(--card-border))] shrink-0 relative group">
         <img src={offer.image_url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Discount Cover" />
         
-        {/* Yorqin Gradient qoplama (Pastdan tepaga) */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
 
-        {/* Do'kon logotipi va nomi (Rasm ichida pastda) */}
         <div className="absolute bottom-5 left-5 flex items-center gap-3">
           <div className="w-12 h-12 bg-[hsl(var(--card))] rounded-full p-1 shadow-xl border-2 border-white/20 overflow-hidden backdrop-blur-md">
             {offer.merchant?.logo_url ? (
@@ -123,7 +133,6 @@ export default function DiscountDetailPage() {
         </div>
       </div>
       
-      {/* 🌟 KREATIV CHEGIRMA BELGISI (BADGE) */}
       <div className="shrink-0 mb-6 flex items-center">
         <div className="relative inline-block transform -rotate-2 hover:rotate-0 transition-transform duration-300">
            <div className="absolute inset-0 bg-gradient-to-r from-rose-500 to-red-600 blur-md opacity-60 rounded-2xl"></div>
@@ -135,7 +144,6 @@ export default function DiscountDetailPage() {
         </div>
       </div>
 
-      {/* 🌟 MAHSULOTLAR VA ULARNING SONI */}
       <div className="shrink-0 mb-6">
         <h3 className="text-[12px] font-bold uppercase tracking-widest text-[hsl(var(--muted-foreground))] mb-3 ml-2">Mavjud Mahsulotlar</h3>
         <div className="flex flex-col gap-2.5">
@@ -157,7 +165,6 @@ export default function DiscountDetailPage() {
               )
             })
           ) : (
-            // Eski ma'lumotlar uchun fallback
             <div className="flex flex-wrap gap-2">
               {productTags.map((tag: string, idx: number) => (
                 <span key={idx} className="flex items-center gap-1.5 text-[14px] font-bold text-[hsl(var(--foreground))] bg-[hsl(var(--card))] px-4 py-2.5 rounded-[16px] border-2 border-[hsl(var(--border))] shadow-sm">
@@ -169,9 +176,7 @@ export default function DiscountDetailPage() {
         </div>
       </div>
       
-      {/* 🌟 MANZIL VA XARITA */}
       <div className="grid gap-3 grid-cols-1 shrink-0 mb-4">
-        
         <div className="rounded-[24px] bg-[hsl(var(--card))] border-2 border-[hsl(var(--card-border))] p-5 shadow-sm overflow-hidden relative">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 text-[hsl(var(--accent))]">
@@ -180,7 +185,6 @@ export default function DiscountDetailPage() {
             </div>
           </div>
           
-          {/* Nusxa olish imkoniyati */}
           <div 
             onClick={handleCopyAddress}
             className="group relative bg-[hsl(var(--secondary))/50] p-4 rounded-[18px] cursor-pointer hover:bg-[hsl(var(--secondary))] active:scale-[0.98] transition-all border border-[hsl(var(--border))]"
@@ -193,18 +197,15 @@ export default function DiscountDetailPage() {
             </div>
           </div>
 
-          {/* Xaritani ochish tugmasi */}
           <button 
             onClick={() => setShowMapOptions(true)}
             className="w-full mt-3 flex items-center justify-center gap-2 bg-[hsl(var(--background))] border border-[hsl(var(--border))] py-3.5 rounded-[16px] text-[14px] font-bold text-[hsl(var(--foreground))] hover:bg-[hsl(var(--primary))/5] hover:text-[hsl(var(--primary))] hover:border-[hsl(var(--primary))/30] transition-all active:scale-[0.98]"
           >
-
-<Map size={18} />
-Xaritadan ko'rish
+            <Map size={18} />
+            Xaritadan ko'rish
           </button>
         </div>
         
-        {/* 🌟 AMAL QILISH VAQTI KARTASI */}
         <div className="rounded-[24px] bg-[hsl(var(--card))] border-2 border-[hsl(var(--card-border))] p-5 shadow-sm flex flex-col justify-center">
           <div className="mb-4 flex items-center gap-2 text-[#c38922]">
             <Clock3 size={20} />
@@ -233,14 +234,12 @@ Xaritadan ko'rish
         </button>
       </div>
       
-      {/* XABARNOMA */}
       {notice && (
         <div className="fixed top-10 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-full bg-[hsl(var(--foreground))] px-6 py-3 text-[13px] font-bold text-[hsl(var(--background))] shadow-2xl animate-in slide-in-from-top-4 fade-in duration-300">
           <CheckCircle2 size={16} className="text-green-400"/> {notice}
         </div>
       )}
 
-      {/* 🌟 YANGI: XARITANI TANLASH MODALI (BOTTOM SHEET) */}
       {showMapOptions && (
         <div className="fixed inset-0 z-[100] flex flex-col justify-end animate-in fade-in duration-200">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowMapOptions(false)}></div>

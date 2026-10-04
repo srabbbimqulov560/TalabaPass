@@ -35,6 +35,7 @@ import LoginPage from '@/pages/login';
 import SignupPage from '@/pages/signup';
 import CashierPage from '@/pages/cashier';
 import DiscountDetailPage from '@/pages/discount-detail';
+import DiscountListPage from '@/pages/discount-list';
 
 // --- BIZNES (DO'KONLAR) UCHUN SAHIFALAR ---
 import { MerchantAppShell } from '@/merchantpass/app-shell';
@@ -219,6 +220,7 @@ function Router() {
               <Route path="/discount/:id" component={DiscountDetailPage} />
               <Route path="/profile" component={ProfilePage} />
               <Route path="/qr" component={QrPage} />
+              <Route path="/list/:type" component={DiscountListPage} />
               
               {/* O'chirilgan URL'lar uchun 404 sahifa chiqadi */}
               <Route component={NotFound} />
