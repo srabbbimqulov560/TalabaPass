@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, Camera, LockKeyhole, UserRound, IdCard, CheckCir
 import { useLanguage } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import Cropper from 'react-easy-crop';
-import { sendTelegramMessage } from '@/lib/telegram'; // 🌟 TELEGRAM KUTUBXONASI QO'SHILDI
+import { sendTelegramMessage } from '@/lib/telegram';
 
 const UNIVERSITIES = [ "O'zbekiston milliy universiteti (O'zMU)", "Toshkent davlat texnika universiteti (TDTU)", "Toshkent davlat iqtisodiyot universiteti (TDIU)", "Toshkent moliya instituti (TMI)", "Jahon iqtisodiyoti va diplomatiya universiteti (JIDU)", "O'zbekiston davlat jahon tillari universiteti (O'zDJTU)", "Toshkent pediatriya tibbiyot instituti (ToshPTI)", "Toshkent tibbiyot akademiyasi (TTA)", "Toshkent davlat yuridik universiteti (TDYU)", "Toshkent axborot texnologiyalari universiteti (TATU)", "Toshkent davlat pedagogika universiteti (TDPU)", "Toshkent davlat sharqshunoslik universiteti (TDShU)", "Toshkent arxitektura-qurilish universiteti (TAQU)", "O'zbekiston davlat san'at va madaniyat instituti (O'zDSMI)", "Toshkent davlat agrar universiteti (TDAU)", "Toshkent kimyo-texnologiya instituti (TKTI)", "Toshkent davlat transport universiteti (TDTU)", "Toshkent davlat stomatologiya instituti (TDSI)", "O'zbekiston davlat jismoniy tarbiya va sport universiteti (O'zDJTSU)", "O'zbekiston jurnalistika va ommaviy kommunikatsiyalar universiteti (O'zJOKU)", "Toshkent to'qimachilik va yengil sanoat instituti (TTESI)", "Toshkent farmatsevtika instituti (ToshFarI)", "O'zbekiston xalqaro islom akademiyasi", "Jamoat xavfsizligi universiteti", "Bojxona instituti", "Westminster xalqaro universiteti (WIUT)", "Inha universiteti (IUT)", "Amity universiteti", "Webster universiteti", "Akfa universiteti (AKFA)", "Toshkent shahridagi Turin politexnika universiteti (TTPU)", "Kimyo xalqaro universiteti (KIUT - sobiq Yeoju)", "Singapur menejmentni rivojlantirish instituti (MDIS)", "Puchon universiteti (Bucheon)", "Toshkent shahridagi Yodju texnika instituti", "British Management University (BMU)", "TEAM universiteti", "TMC instituti", "Alfraganus universiteti", "Renessans ta'lim universiteti", "Toshkent xalqaro ta'lim universiteti (TIUE)", "Stars International University", "Jahon tillari va biznes instituti", "Profi universiteti", "Toshkent amaliy fanlar universiteti (UTAS)", "Diplomat universiteti", "Cambridge xalqaro universiteti", "Samarqand davlat universiteti (SamDU)", "Samarqand davlat tibbiyot instituti (SamDTU)", "Samarqand iqtisodiyot va servis instituti (SamISI)", "Samarqand davlat arxitektura-qurilish universiteti (SamDAQU)", "Samarqand davlat chet tillar instituti (SamDChTI)", "Samarqand davlat veterinariya meditsinasi", "Silk Road xalqaro turizm va madaniy meros universiteti", "Samarqand xalqaro texnologiya universiteti (SIUT)", "Buxoro davlat universiteti (BuxDU)", "Buxoro davlat tibbiyot instituti (BuxDTI)", "Buxoro muhandislik-texnologiya instituti (BuxMTI)", "Buxoro davlat pedagogika instituti", "Navoiy davlat konchilik va texnologiyalar universiteti (NDKTU)", "Navoiy davlat pedagogika instituti (NavDPI)", "Urganch davlat universiteti (UrDU)", "Farg'ona davlat universiteti (FarDU)", "Farg'ona politexnika instituti (FarPI)", "Farg'ona jamoat salomatligi tibbiyot instituti", "Andijon davlat universiteti (ADU)", "Andijon davlat tibbiyot instituti (ADTI)", "Andijon mashinasozlik instituti (AndMI)", "Namangan davlat universiteti (NamDU)", "Namangan muhandislik-qurilish instituti (NamMQI)", "Qarshi davlat universiteti (QarDU)", "Qarshi muhandislik-iqtisodiyot instituti (QarMII)", "Termiz davlat universiteti (TerDU)", "Jizzax davlat pedagogika universiteti (JDPU)", "Jizzax politexnika instituti (JizPI)", "Guliston davlat universiteti (GulDU)", "Qoraqalpoq davlat universiteti (QDU)", "Nukus davlat pedagogika instituti (NDPI)", "Boshqa (O'zim kiritaman)" ];
 
@@ -323,7 +323,11 @@ export default function SignupPage() {
       const checkApprovalStatus = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data } = await supabase.from('students').select('is_active').eq('id', user.id).single();
+          // 🌟 XATOLIKNI TO'G'IRLASH: .single() o'rniga .maybeSingle() ishlatildi
+          const { data, error } = await supabase.from('students').select('is_active').eq('id', user.id).maybeSingle();
+          if (error) {
+              console.error("Student check error:", error);
+          }
           if (data && data.is_active === true) {
             setIsApproved(true); clearInterval(interval);
             setTimeout(() => { setStep(6); }, 2000);
@@ -399,7 +403,6 @@ export default function SignupPage() {
 
         if (dbError) throw dbError;
 
-        // 🌟 YECHIM: YANGA TALABA RO'YXATDAN O'TGANIDA TELEGRAMGA XABAR YUBORISH
         try {
           const msg = `🎓 <b>YANGI TALABA RO'YXATDAN O'TDI!</b>\n\n<b>F.I.SH:</b> ${formData.fullName}\n<b>Universitet:</b> ${formData.university}\n<b>ID Raqami:</b> ${formData.studentId}\n\n<i>Iltimos, tezroq Admin paneldan hujjatni tekshirib tasdiqlang!</i>`;
           await sendTelegramMessage(msg);
@@ -772,6 +775,7 @@ export default function SignupPage() {
 
       </div>
       
+      {/* RASMNI QIRQISH UCHUN MODAL OYNA */}
       {selectedImage && (
         <div className="fixed inset-0 z-[70] flex flex-col bg-black/95 backdrop-blur-md">
           <div className="relative flex-1 w-full mt-10">
@@ -797,6 +801,7 @@ export default function SignupPage() {
         </div>
       )}
 
+      {/* HUJJATLARNI O'QISH UCHUN MODAL OYNA */}
       {openDoc && (
         <div className="fixed inset-0 z-[80] flex flex-col bg-[hsl(var(--background))] animate-in slide-in-from-bottom-8 duration-300">
            <div className="flex items-center justify-between p-4 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))]">

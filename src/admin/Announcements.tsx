@@ -15,9 +15,8 @@ export default function Announcements() {
   const [selectedDiscountId, setSelectedDiscountId] = useState<string | null>(null);
   
   const [isSending, setIsSending] = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
 
-  // 🌟 CHIROYLI MODALLAR UCHUN STATE'LAR
+  // CHIROYLI MODALLAR UCHUN STATE'LAR
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type: 'success' | 'error' }>({ isOpen: false, title: '', message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; targetTitle: string; targetMessage: string }>({ isOpen: false, title: '', targetTitle: '', targetMessage: '' });
   const [isDeleting, setIsDeleting] = useState(false);
@@ -53,11 +52,22 @@ export default function Announcements() {
 
       if (error) throw error;
 
+      // 🌟 TIZIM TOMONIDAN AVTO YUBORILADIGAN XABARLAR RO'YXATI
+      const systemTitles = [
+        "Arizangiz tasdiqlandi! 🎉",
+        "Xaridingiz muvaffaqiyatli! 🎉",
+        "Yangi chegirma! ⚡️",
+        "Yangi e'lon! 📣"
+      ];
+
       const uniqueMap = new Map();
       data?.forEach(item => {
-        const key = `${item.title}|${item.message}`;
-        if (!uniqueMap.has(key)) {
-          uniqueMap.set(key, item);
+        // 🌟 FAQAT ADMIN QO'LDA YOZGANLARINI QOLDIRAMIZ
+        if (!systemTitles.includes(item.title)) {
+          const key = `${item.title}|${item.message}`;
+          if (!uniqueMap.has(key)) {
+            uniqueMap.set(key, item);
+          }
         }
       });
 
@@ -71,7 +81,6 @@ export default function Announcements() {
     if (!title || !message) return;
     
     setIsSending(true);
-    setSuccessMsg('');
 
     try {
       let finalLink = null;
@@ -106,7 +115,6 @@ export default function Announcements() {
       
       queryClient.invalidateQueries({ queryKey: ['adminRecentAnnouncements'] });
       
-      // 🌟 Standart alert o'rniga shaxsiy modal chaqiramiz
       setAlertModal({
         isOpen: true,
         type: 'success',
@@ -126,7 +134,6 @@ export default function Announcements() {
     }
   };
 
-  // 🌟 O'CHIRISH UCHUN TASDIQLASH OYNASINI OCHISH
   const openConfirmDelete = (announcementTitle: string, announcementMessage: string) => {
     setConfirmModal({
       isOpen: true,
@@ -136,7 +143,6 @@ export default function Announcements() {
     });
   };
 
-  // 🌟 O'CHIRISHNI IJRO ETISH
   const executeDelete = async () => {
     setIsDeleting(true);
     try {
@@ -151,10 +157,9 @@ export default function Announcements() {
 
       await logAdminAction("E'LONNI O'CHIRDI", 'TIZIM', confirmModal.targetTitle);
       
-      setConfirmModal({ ...confirmModal, isOpen: false }); // Yopish
+      setConfirmModal({ ...confirmModal, isOpen: false }); 
       queryClient.invalidateQueries({ queryKey: ['adminRecentAnnouncements'] });
 
-      // O'chirilgach, muvaffaqiyat oynasini ochish
       setAlertModal({
         isOpen: true,
         type: 'success',
@@ -179,7 +184,6 @@ export default function Announcements() {
     <AdminLayout title="Global E'lonlar">
       <div className="max-w-2xl mx-auto space-y-8">
         
-        {/* YUBORISH QISMI */}
         <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[32px] p-8 shadow-sm">
           <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center mb-6">
             <Megaphone size={32} />
@@ -265,14 +269,13 @@ export default function Announcements() {
           </form>
         </div>
 
-        {/* SO'NGGI 48 SOATDAGI E'LONLAR RO'YXATI */}
         <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[32px] p-6 md:p-8 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
-            <AlertCircle className="text-orange-500" size={24} />
+            <AlertCircle className="text-[hsl(var(--foreground))]" size={24} />
             <h3 className="font-display text-xl font-bold text-[hsl(var(--foreground))]">So'nggi 48 soatdagi e'lonlar</h3>
           </div>
           <p className="text-[13.5px] text-[hsl(var(--muted-foreground))] mb-6 leading-relaxed">
-            Quyida so'nggi ikki kun ichida barchaga yuborilgan e'lonlar ro'yxati keltirilgan. Agar xato yuborib qo'ygan bo'lsangiz, ularni tanlab o'chirishingiz mumkin. Muddatidan o'tgan e'lonlar bu yerda ko'rinmaydi.
+            Quyida siz yuborgan e'lonlar ro'yxati keltirilgan. Tizim tomonidan avtomatik yuborilgan xabarlar (xaridlar va tasdiqlashlar) bu ro'yxatga kirmaydi. Xato e'lonlarni bu yerdan o'chirishingiz mumkin.
           </p>
 
           {isAnnouncementsLoading ? (
@@ -308,7 +311,6 @@ export default function Announcements() {
 
       </div>
 
-      {/* 🌟 1. TASDIQLASH (CONFIRM) MODALI */}
       {confirmModal.isOpen && (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[32px] p-6 md:p-8 max-w-sm w-full text-center shadow-2xl animate-in zoom-in-95 duration-300">
@@ -323,14 +325,14 @@ export default function Announcements() {
               <button 
                 onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })} 
                 disabled={isDeleting}
-                className="flex-1 py-3.5 bg-[hsl(var(--secondary))] text-[hsl(var(--foreground))] font-bold text-[15px] rounded-[20px] transition-all"
+                className="flex-1 py-3.5 bg-[hsl(var(--secondary))] text-[hsl(var(--foreground))] font-bold text-[15px] rounded-[20px] transition-all cursor-pointer"
               >
                 Bekor qilish
               </button>
               <button 
                 onClick={executeDelete} 
                 disabled={isDeleting}
-                className="flex-1 py-3.5 bg-red-500 text-white font-bold text-[15px] rounded-[20px] shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="flex-1 py-3.5 bg-red-500 text-white font-bold text-[15px] rounded-[20px] shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 {isDeleting ? <Loader2 className="animate-spin" size={18} /> : "O'chirish"}
               </button>
@@ -339,7 +341,6 @@ export default function Announcements() {
         </div>
       )}
 
-      {/* 🌟 2. MUVAFFAQIYAT / XATOLIK (ALERT) MODALI */}
       {alertModal.isOpen && (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[32px] p-6 md:p-8 max-w-sm w-full text-center shadow-2xl animate-in zoom-in-95 duration-300">
@@ -352,7 +353,7 @@ export default function Announcements() {
             </p>
             <button 
               onClick={() => setAlertModal({ ...alertModal, isOpen: false })} 
-              className="w-full py-4 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-bold text-[16px] rounded-[20px] shadow-float active:scale-95 transition-all"
+              className="w-full py-4 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-bold text-[16px] rounded-[20px] shadow-float active:scale-95 transition-all cursor-pointer"
             >
               Yopish
             </button>

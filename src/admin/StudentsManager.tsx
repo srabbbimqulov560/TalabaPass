@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { Users, CheckCircle, Trash2, Loader2, GraduationCap, IdCard, User, Ban, FileImage, X } from 'lucide-react';
+import { Users, CheckCircle, Trash2, Loader2, GraduationCap, IdCard, User, Ban, FileImage, X, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { logAdminAction } from '@/lib/adminLogger';
 
@@ -12,6 +12,10 @@ export default function StudentsManager() {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [expiryDate, setExpiryDate] = useState('');
+
+  // 🌟 CHIROYLI MODALLAR STATE
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type: 'success' | 'error' }>({ isOpen: false, title: '', message: '', type: 'success' });
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; action: 'delete' | 'block' | null; targetId: string; targetName: string }>({ isOpen: false, title: '', action: null, targetId: '', targetName: '' });
 
   const { data: students, isLoading } = useQuery({
     queryKey: ['adminStudents'],
@@ -28,7 +32,7 @@ export default function StudentsManager() {
 
   const handleApprove = async (id: string) => {
     if (!expiryDate) {
-      alert("Iltimos, avval talabalikning amal qilish muddatini belgilang!");
+      setAlertModal({ isOpen: true, type: 'error', title: "E'tibor bering", message: "Iltimos, avval talabalikning amal qilish muddatini belgilang!" });
       return;
     }
     setIsActionLoading(true);
@@ -41,55 +45,73 @@ export default function StudentsManager() {
         message: `Tabriklaymiz, sizning Talaba ID kartangiz muvaffaqiyatli tasdiqlandi. Karta amal qilish muddati: ${expiryDate.split('-').reverse().join('.')}. Endi bemalol chegirmalardan foydalanishingiz mumkin!`
       }]);
 
-      // TIZIM TARIXIGA YOZISH
       await logAdminAction('TASDIQLADI', 'TALABA', `${selectedStudent.first_name} ${selectedStudent.last_name} (ID: ${selectedStudent.student_id})`);
 
       queryClient.invalidateQueries({ queryKey: ['adminStudents'] });
       setSelectedStudent(null); 
       setExpiryDate('');
-    } catch (err) {
-      alert("Xatolik yuz berdi");
+      
+      setAlertModal({ isOpen: true, type: 'success', title: "Muvaffaqiyatli", message: "Talaba muvaffaqiyatli tasdiqlandi!" });
+    } catch (err: any) {
+      setAlertModal({ isOpen: true, type: 'error', title: "Xatolik", message: err.message || "Tasdiqlashda xatolik yuz berdi" });
     } finally {
       setIsActionLoading(false);
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`ROSTDAN HAM O'CHIRASIZMI?\n\n"${name}" tizimdan butunlay o'chiriladi va bu Talaba ID si bo'shaydi.`)) return;
+  const handleDelete = (id: string, name: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "O'chirishni tasdiqlang",
+      action: 'delete',
+      targetId: id,
+      targetName: name
+    });
+  };
+
+  const handleBlock = (id: string, name: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Bloklashni tasdiqlang",
+      action: 'block',
+      targetId: id,
+      targetName: name
+    });
+  };
+
+  // 🌟 O'CHIRISH VA BLOKLASHNI IJRO ETUVCHI FUNKSIYA
+  const executeAction = async () => {
+    if (!confirmModal.action || !confirmModal.targetId) return;
+    
     setIsActionLoading(true);
     try {
-      const { error } = await supabase.rpc('delete_user_by_admin', { target_user_id: id });
-      if (error) throw error;
-
-      // TIZIM TARIXIGA YOZISH
-      await logAdminAction("O'CHIRDI / RAD ETDI", 'TALABA', name);
+      if (confirmModal.action === 'delete') {
+        const { error } = await supabase.rpc('delete_user_by_admin', { target_user_id: confirmModal.targetId });
+        if (error) throw error;
+        await logAdminAction("O'CHIRDI / RAD ETDI", 'TALABA', confirmModal.targetName);
+        
+        setAlertModal({ isOpen: true, type: 'success', title: "O'chirildi", message: `"${confirmModal.targetName}" tizimdan butunlay o'chirildi.` });
+      } else if (confirmModal.action === 'block') {
+        await supabase.from('students').update({ is_active: false }).eq('id', confirmModal.targetId);
+        await logAdminAction('BLOKLADI', 'TALABA', confirmModal.targetName);
+        
+        setAlertModal({ isOpen: true, type: 'success', title: "Bloklandi", message: `"${confirmModal.targetName}" muvaffaqiyatli bloklandi.` });
+      }
 
       queryClient.invalidateQueries({ queryKey: ['adminStudents'] });
       setSelectedStudent(null);
-    } catch (err) {
-      alert("O'chirishda xatolik yuz berdi");
+    } catch (err: any) {
+      setAlertModal({ isOpen: true, type: 'error', title: "Xatolik", message: err.message || "Xatolik yuz berdi" });
     } finally {
       setIsActionLoading(false);
-    }
-  };
-
-  const handleBlock = async (id: string, name: string) => {
-    if (!confirm(`Rostdan ham "${name}" ni bloklamoqchimisiz?`)) return;
-    try {
-      await supabase.from('students').update({ is_active: false }).eq('id', id);
-      
-      // TIZIM TARIXIGA YOZISH
-      await logAdminAction('BLOKLADI', 'TALABA', name);
-
-      queryClient.invalidateQueries({ queryKey: ['adminStudents'] });
-    } catch (err) {
-      alert("Bloklashda xatolik");
+      setConfirmModal({ ...confirmModal, isOpen: false });
     }
   };
 
   return (
     <AdminLayout title="Talabalar nazorati">
       
+      {/* TALABANI TEKSHIRISH MODALI */}
       {selectedStudent && (
         <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 md:p-8 backdrop-blur-sm">
           <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] w-full max-w-5xl rounded-[32px] overflow-hidden flex flex-col md:flex-row shadow-2xl relative animate-in zoom-in-95 duration-300 max-h-[90vh]">
@@ -207,6 +229,59 @@ export default function StudentsManager() {
           <h3 className="font-display text-xl font-bold text-[hsl(var(--foreground))] mb-1">{activeTab === 'pending' ? 'Kutayotgan talabalar yo\'q!' : 'Tasdiqlangan talabalar yo\'q'}</h3>
         </div>
       )}
+
+      {/* 🌟 1. TASDIQLASH (CONFIRM) MODALI */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[32px] p-6 md:p-8 max-w-sm w-full text-center shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5 border-4 shadow-inner ${confirmModal.action === 'delete' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-orange-500/10 text-orange-500 border-orange-500/20'}`}>
+              <AlertTriangle size={32} strokeWidth={2.5} />
+            </div>
+            <h3 className="font-display text-xl font-bold text-[hsl(var(--foreground))] mb-2">{confirmModal.title}</h3>
+            <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))] mb-8 leading-relaxed">
+              Rostdan ham "{confirmModal.targetName}" {confirmModal.action === 'delete' ? "tizimdan butunlay o'chiriladi va bu Talaba ID si bo'shaydi" : "ni bloklamoqchimisiz"}?
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })} 
+                disabled={isActionLoading}
+                className="flex-1 py-3.5 bg-[hsl(var(--secondary))] text-[hsl(var(--foreground))] font-bold text-[15px] rounded-[20px] transition-all cursor-pointer"
+              >
+                Bekor qilish
+              </button>
+              <button 
+                onClick={executeAction} 
+                disabled={isActionLoading}
+                className={`flex-1 py-3.5 font-bold text-[15px] rounded-[20px] shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer text-white ${confirmModal.action === 'delete' ? 'bg-red-500' : 'bg-orange-500'}`}
+              >
+                {isActionLoading ? <Loader2 className="animate-spin" size={18} /> : (confirmModal.action === 'delete' ? "O'chirish" : "Bloklash")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 2. MUVAFFAQIYAT / XATOLIK (ALERT) MODALI */}
+      {alertModal.isOpen && (
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[32px] p-6 md:p-8 max-w-sm w-full text-center shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5 border-4 shadow-inner ${alertModal.type === 'success' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
+              {alertModal.type === 'success' ? <CheckCircle2 size={40} strokeWidth={2.5} /> : <XCircle size={40} strokeWidth={2.5} />}
+            </div>
+            <h3 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-2">{alertModal.title}</h3>
+            <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))] mb-8 leading-relaxed">
+              {alertModal.message}
+            </p>
+            <button 
+              onClick={() => setAlertModal({ ...alertModal, isOpen: false })} 
+              className="w-full py-4 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-bold text-[16px] rounded-[20px] shadow-float active:scale-95 transition-all cursor-pointer"
+            >
+              Yopish
+            </button>
+          </div>
+        </div>
+      )}
+
     </AdminLayout>
   );
 }
