@@ -21,7 +21,7 @@ export default function MerchantDiscounts() {
   
   const [items, setItems] = useState<{ name: string; quantity: string; isUnlimited?: boolean }[]>([]);
   const [inputValue, setInputValue] = useState('');
-  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]); // 🌟 TEG TAKLIFLARI UCHUN
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   
   const [discountPercent, setDiscountPercent] = useState('');
   const [shortDesc, setShortDesc] = useState(''); 
@@ -62,7 +62,6 @@ export default function MerchantDiscounts() {
     }
   });
 
-  // 🌟 BAZADAN ESKI TEGLARNI TORTIB OLISH
   const { data: previousTags } = useQuery({
     queryKey: ['merchantPreviousTags'],
     queryFn: async () => {
@@ -132,7 +131,6 @@ export default function MerchantDiscounts() {
     }
   };
 
-  // 🌟 TEG YOZILGANDA TAKLIFLARNI CHIQARISH
   const handleTagInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setInputValue(val);
@@ -155,7 +153,6 @@ export default function MerchantDiscounts() {
     }
   };
 
-  // 🌟 TAKLIF QILINGAN TEGNI BOSGANDA QO'SHISH
   const addTagFromSuggestion = (tag: string) => {
     if (!items.find(i => i.name === tag)) {
       setItems([...items, { name: tag, quantity: '', isUnlimited: false }]);
@@ -182,6 +179,12 @@ export default function MerchantDiscounts() {
     const finalProductName = items.map(i => i.name).join(', ');
     if (!imageFile || !finalProductName || !discountPercent || !startDate || !endDate || !shortDesc) return alert("Barcha maydonlarni to'ldiring!");
     
+    // 🌟 MANTIQIY CHEKLOV (1 dan 100 gacha bo'lmasa xato beradi)
+    const parsedPercent = parseInt(discountPercent);
+    if (isNaN(parsedPercent) || parsedPercent < 1 || parsedPercent > 100) {
+      return alert("Chegirma foizi 1% dan 100% gacha bo'lishi kerak!");
+    }
+
     setIsSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -197,7 +200,7 @@ export default function MerchantDiscounts() {
       const formattedItems = items.map(i => ({ name: i.name, quantity: i.isUnlimited ? 999999 : Number(i.quantity), isUnlimited: !!i.isUnlimited }));
 
       const { data: newDiscount, error: dbError } = await supabase.from('discounts').insert([{
-        merchant_id: user.id, product_name: finalProductName, items: formattedItems, discount_percent: parseInt(discountPercent),
+        merchant_id: user.id, product_name: finalProductName, items: formattedItems, discount_percent: parsedPercent,
         short_description: shortDesc, start_date: startDate, end_date: endDate, start_time: startTime, end_time: endTime, image_url: publicUrlData.publicUrl
       }]).select('id').single();
 
@@ -320,8 +323,13 @@ export default function MerchantDiscounts() {
                   <div onClick={() => fileInputRef.current?.click()} className={`w-full aspect-[16/10] rounded-[24px] bg-[hsl(var(--secondary))/30] overflow-hidden flex flex-col items-center justify-center cursor-pointer transition-colors shadow-sm ${!imagePreview ? 'border-2 border-dashed border-[hsl(var(--border))] hover:border-[hsl(var(--primary))/50]' : 'border border-[hsl(var(--border))]'}`}>
                     {imagePreview ? ( <img src={imagePreview} className="w-full h-full object-cover" /> ) : (
                       <> 
-                        {isSubmitting ? <Loader2 className="animate-spin text-[hsl(var(--accent))]" size={32} /> : (
-                           <><Camera size={32} className="text-[hsl(var(--muted-foreground))]/50 mb-3" /> <span className="text-[11px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider text-center">{t('upload_horizontal_img')}</span></>
+                        {isSubmitting ? (
+                           <Loader2 className="animate-spin text-[hsl(var(--accent))]" size={32} />
+                        ) : (
+                           <>
+                             <Camera size={32} className="text-[hsl(var(--muted-foreground))]/50 mb-3" /> 
+                             <span className="text-[11px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider text-center">{t('upload_horizontal_img')}</span> 
+                           </>
                         )}
                       </>
                     )}
@@ -337,7 +345,6 @@ export default function MerchantDiscounts() {
                   <label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-1 mb-1.5 block">{t('products_label')}</label>
                   <input type="text" value={inputValue} onChange={handleTagInput} placeholder={t('products_placeholder')} className="w-full bg-[hsl(var(--secondary))/20] border border-[hsl(var(--border))] py-3.5 px-4 rounded-2xl text-[14px] font-semibold outline-none focus:border-[hsl(var(--primary))] transition-colors" />
                   
-                  {/* 🌟 TEG TAKLIFLARI DROPDOWN */}
                   {tagSuggestions.length > 0 && (
                     <div className="absolute z-20 w-full bg-[hsl(var(--card))] border border-[hsl(var(--border))] mt-1.5 rounded-2xl shadow-xl max-h-40 overflow-y-auto overflow-hidden animate-in fade-in slide-in-from-top-2">
                       {tagSuggestions.map(tag => (
@@ -373,7 +380,25 @@ export default function MerchantDiscounts() {
 
                 <div>
                   <label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-1 mb-1.5 block">{t('discount_percent_label')}</label>
-                  <input type="number" required min="1" max="100" value={discountPercent} onChange={(e)=>setDiscountPercent(e.target.value)} className="w-full bg-[hsl(var(--secondary))/20] border border-[hsl(var(--border))] py-3.5 px-4 rounded-2xl text-[14px] font-semibold outline-none focus:border-[hsl(var(--primary))] transition-colors" />
+                  <input 
+                    type="number" 
+                    required 
+                    min="1" 
+                    max="100" 
+                    value={discountPercent} 
+                    onChange={(e) => {
+                      // 🌟 UX CHEKLOV: FAQAT 1 DAN 100 GACHA YOZISH MUMKIN
+                      const val = e.target.value;
+                      if (val === '') {
+                        setDiscountPercent('');
+                      } else {
+                        const num = parseInt(val);
+                        if (num > 100) setDiscountPercent('100');
+                        else setDiscountPercent(val);
+                      }
+                    }} 
+                    className="w-full bg-[hsl(var(--secondary))/20] border border-[hsl(var(--border))] py-3.5 px-4 rounded-2xl text-[14px] font-semibold outline-none focus:border-[hsl(var(--primary))] transition-colors" 
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 mb-3">
@@ -413,7 +438,16 @@ export default function MerchantDiscounts() {
       {selectedImage && (
         <div className="fixed inset-0 z-[9999999] flex flex-col bg-black/95 backdrop-blur-md">
           <div className="relative flex-1 w-full mt-10">
-            <Cropper image={selectedImage} crop={crop} zoom={zoom} aspect={16/9} showGrid={false} onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={(_, pixels) => setCroppedAreaPixels(pixels)} />
+            <Cropper 
+              image={selectedImage} 
+              crop={crop} 
+              zoom={zoom} 
+              aspect={16/9} 
+              showGrid={false} 
+              onCropChange={setCrop} 
+              onZoomChange={setZoom} 
+              onCropComplete={(_, pixels) => setCroppedAreaPixels(pixels)} 
+            />
           </div>
           <div className="p-6 pb-12 bg-black flex flex-col gap-6 items-center">
             <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(Number(e.target.value))} className="w-full max-w-xs accent-[hsl(var(--primary))]" />

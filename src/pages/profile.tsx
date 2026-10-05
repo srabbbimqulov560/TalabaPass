@@ -421,13 +421,14 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <a href="https://t.me/AIBOT_USERNAME_SHU_YERGA_YOZILADI" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 cursor-pointer hover:bg-[hsl(var(--secondary)/.5)] transition-colors border-b border-[hsl(var(--border))]">
-                <div className="flex items-center gap-3">
-                  <CircleHelp size={22} className="text-[hsl(var(--foreground))]" />
-                  <span className="text-[15px] font-semibold text-[hsl(var(--foreground))]">{t('help_support')} (AI)</span>
-                </div>
-                <ChevronRight size={20} className="text-[hsl(var(--muted-foreground))]" />
-              </a>
+              {/* 🌟 YECHIM 2: YORDAM VA QO'LLAB-QUVVATLASH UCHUN TELEGRAM LINKI */}
+<a href={import.meta.env.VITE_TELEGRAM_SUPPORT_LINK || '#'} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-5 cursor-pointer hover:bg-[hsl(var(--secondary)/.5)] transition-colors border-b border-[hsl(var(--border))]">
+  <div className="flex items-center gap-3">
+    <CircleHelp size={22} className="text-[hsl(var(--foreground))]" />
+    <span className="text-[15px] font-semibold text-[hsl(var(--foreground))]">{t('help_support')}</span>
+  </div>
+  <ChevronRight size={20} className="text-[hsl(var(--muted-foreground))]" />
+</a>
 
               {isAdmin && (
                 <Link href="/admin">

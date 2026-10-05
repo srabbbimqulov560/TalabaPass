@@ -4,6 +4,7 @@ import { Link } from 'wouter';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/lib/i18n';
 import Cropper from 'react-easy-crop';
+import { sendTelegramMessage } from '@/lib/telegram'; // 🌟 TELEGRAM KUTUBXONASI QO'SHILDI
 
 const getPasswordStrength = (pass: string) => {
   if (!pass) return { score: 0, text: '', color: 'bg-transparent', width: '0%' };
@@ -201,6 +202,15 @@ export default function MerchantSignup() {
       }]);
 
       if (dbError) throw dbError;
+
+      // 🌟 YECHIM 1: YANGA DO'KON RO'YXATDAN O'TGANIDA TELEGRAMGA XABAR YUBORISH
+      try {
+        const msg = `🏪 <b>YANGI DO'KON RO'YXATDAN O'TDI!</b>\n\n<b>Do'kon nomi:</b> ${formData.name}\n<b>Kategoriya:</b> ${formData.category}\n<b>Username:</b> ${formData.username}\n\n<i>Iltimos, tezroq Admin paneldan tasdiqlang!</i>`;
+        await sendTelegramMessage(msg);
+      } catch (telegramErr) {
+        console.error("Telegram xabari yuborilmadi", telegramErr);
+      }
+
       setStep(6); 
     } catch (err: any) { setError(err.message); } 
     finally { setLoading(false); }
@@ -292,7 +302,6 @@ export default function MerchantSignup() {
               </p>
             </div>
 
-            {/* 🌟 2-RASMDAGI XATOLIK: 1 ni l ga o'zgartirdik */}
             <div className="space-y-3 mt-2 mb-8">
                {['uz', 'ru', 'en'].map((l) => (
                  <div key={l} onClick={() => setLang(l as 'uz'|'ru'|'en')} className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer border-2 transition-colors ${lang === l ? 'border-[hsl(var(--accent))] bg-[hsl(var(--accent)/.08)]' : 'border-transparent bg-[hsl(var(--card))] shadow-sm'}`}>
@@ -548,7 +557,7 @@ export default function MerchantSignup() {
             <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(Number(e.target.value))} className="w-full max-w-xs accent-[hsl(var(--primary))]" />
             <div className="flex w-full max-w-xs gap-4">
               <button onClick={() => setSelectedImage(null)} className="flex-1 py-3.5 font-bold rounded-2xl text-white bg-white/20 hover:bg-white/30 transition-colors">Bekor qilish</button>
-              <button onClick={handleCropSave} className="flex-1 py-3.5 font-bold rounded-2xl text-[hsl(var(--primary-foreground))] bg-[hsl(var(--primary))] hover:brightness-110 transition-all flex justify-center items-center gap-2">Saqlash</button>
+              <button onClick={handleCropSave} className="flex-1 py-3.5 font-bold rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-md active:scale-95 transition-transform">Saqlash</button>
             </div>
           </div>
         </div>
