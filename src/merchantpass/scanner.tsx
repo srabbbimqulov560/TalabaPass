@@ -1,18 +1,18 @@
 import { useState } from 'react';
-import { QrCode, CheckCircle2, XCircle, Loader2, User, RefreshCcw, ShieldAlert, ArrowRight, Package } from 'lucide-react';
+import { QrCode, CheckCircle2, XCircle, Loader2, User, RefreshCcw, ShieldAlert, ArrowRight, Package, ShieldCheck, Ticket } from 'lucide-react';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { supabase } from '@/lib/supabase';
 import { useQuery } from '@tanstack/react-query';
-import { useLanguage } from '@/lib/i18n';
 
 export default function MerchantScanner() {
-  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ success: boolean; message: string; student?: any } | null>(null);
+  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
   
+  // 🌟 YAKUNIY KO'RINISH UCHUN STATE'LAR
   const [scannedStudent, setScannedStudent] = useState<any>(null);
-  const [selectedDiscountId, setSelectedDiscountId] = useState<string | null>(null);
-  const [selectedItemName, setSelectedItemName] = useState<string | null>(null);
+  const [scannedDiscount, setScannedDiscount] = useState<any>(null);
+  const [scannedItemName, setScannedItemName] = useState<string | null>(null);
+  
   const [isConfirming, setIsConfirming] = useState(false);
 
   const { data: merchantStatus, isLoading: isProfileLoading } = useQuery({
@@ -25,76 +25,83 @@ export default function MerchantScanner() {
     }
   });
 
-  const { data: activeDiscounts } = useQuery({
-    queryKey: ['merchantActiveDiscounts', merchantStatus?.id],
-    enabled: !!merchantStatus?.id,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('discounts')
-        .select('*')
-        .eq('merchant_id', merchantStatus!.id);
-      return data || [];
-    }
-  });
-
-  // 🌟 FAQAT FAOL VA MAHSULOTI BOR CHEGIRMALARNI FILTRLASH
-  const validDiscounts = activeDiscounts?.filter(discount => {
-      const now = new Date();
-      const startDT = new Date(`${discount.start_date}T${discount.start_time || '00:00'}`);
-      const endDT = new Date(`${discount.end_date}T${discount.end_time || '23:59'}`);
-      const isSoldOut = discount.items?.length > 0 && discount.items.every((i: any) => !i.isUnlimited && i.quantity <= 0);
-
-      return now >= startDT && now <= endDT && !isSoldOut;
-  });
-
   const isActive = merchantStatus?.is_active === true;
 
+  // 🌟 NOHAQIY VA BARCHASINI O'Z ICHIGA OLGAN SKANERLASH MANTIG'I
   const handleScan = async (text: string) => {
     if (loading || result || scannedStudent) return; 
     setLoading(true);
 
     try {
-      let searchId = text; 
-
-      if (text.includes('|')) {
-        const [scannedId, timestampStr] = text.split('|');
-        const timestamp = parseInt(timestampStr, 10);
-        const timeDiff = Date.now() - timestamp; 
-
-        if (timeDiff > 30000 || timeDiff < 0) {
-          throw new Error("QR kod muddati tugagan! Talabadan dasturga kirib kodni yangilashni so'rang.");
-        }
-        searchId = scannedId; 
+      const parts = text.split('|');
+      
+      // Yangi formatda kamida 4 ta qism bo'lishi kerak: ID | Vaqt | Chegirma_ID | Item
+      if (parts.length < 4) {
+         throw new Error("Iltimos, talabaga o'z ilovasidan aniq maxsulotni tanlab, yangi QR kod ko'rsatishini ayting.");
       }
 
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchId);
+      const [scannedId, timestampStr, discountId, itemName] = parts;
+      const decodedItemName = decodeURIComponent(itemName);
+      const timestamp = parseInt(timestampStr, 10);
+      const timeDiff = Date.now() - timestamp; 
+
+      if (timeDiff > 30000 || timeDiff < 0) {
+        throw new Error("QR kod muddati tugagan! Talabadan dasturga kirib kodni yangilashni so'rang.");
+      }
+
+      // 1. TALABANI TEKSHIRISH
       const { data: student, error: studentError } = await supabase
         .from('students')
         .select('*')
-        .eq(isUUID ? 'id' : 'student_id', searchId)
+        .eq('id', scannedId)
         .maybeSingle();
 
-      if (studentError || !student) {
-        throw new Error("Bunday talaba bazadan topilmadi!");
+      if (studentError || !student) throw new Error("Bunday talaba bazadan topilmadi!");
+      if (!student.is_active) throw new Error("Bu talaba akkaunti hali tasdiqlanmagan yoki bloklangan!");
+
+      // 2. CHEGIRMANI TEKSHIRISH
+      const { data: discount, error: discountError } = await supabase
+        .from('discounts')
+        .select('*')
+        .eq('id', discountId)
+        .maybeSingle();
+
+      if (discountError || !discount) throw new Error("Kechirasiz, bunday chegirma topilmadi yoki o'chirilgan.");
+      if (discount.merchant_id !== merchantStatus?.id) throw new Error("Diqqat! Bu chegirma sizning do'koningizga tegishli emas!");
+
+      // Vaqtini tekshirish
+      const now = new Date();
+      const startDT = new Date(`${discount.start_date}T${discount.start_time || '00:00'}`);
+      const endDT = new Date(`${discount.end_date}T${discount.end_time || '23:59'}`);
+      if (now < startDT) throw new Error("Bu chegirma hali boshlanmagan.");
+      if (now > endDT) throw new Error("Bu chegirmaning amal qilish muddati tugagan.");
+
+      // 3. MAHSULOTNI TEKSHIRISH
+      let itemFound = null;
+      if (discount.items && discount.items.length > 0) {
+        itemFound = discount.items.find((i: any) => i.name === decodedItemName);
+        if (!itemFound) throw new Error(`"${decodedItemName}" nomli mahsulot bu chegirmada yo'q!`);
+        if (!itemFound.isUnlimited && itemFound.quantity <= 0) throw new Error(`"${decodedItemName}" mahsuloti to'liq sotilib ketgan!`);
       }
 
+      // Hamma narsa joyida bo'lsa ekranga chiqaramiz
       setScannedStudent(student);
+      setScannedDiscount(discount);
+      setScannedItemName(decodedItemName || "Umumiy Chegirma");
 
     } catch (error: any) {
-      setResult({
-        success: false,
-        message: error.message || "Noma'lum xatolik"
-      });
+      setResult({ success: false, message: error.message || "Noma'lum xatolik" });
     } finally {
       setLoading(false);
     }
   };
 
   const handleConfirm = async () => {
-    if (!selectedDiscountId || !selectedItemName || !scannedStudent || !merchantStatus) return;
+    if (!scannedStudent || !scannedDiscount || !merchantStatus) return;
     setIsConfirming(true);
 
     try {
+      // 5 daqiqa ichida oldin olganmi tekshiramiz (Spamdan himoya)
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
       const { data: recentScan } = await supabase
         .from('scan_history')
@@ -105,45 +112,44 @@ export default function MerchantScanner() {
         .maybeSingle();
 
       if (recentScan) {
-        throw new Error("Qalloblik! Bu talaba so'nggi 5 daqiqa ichida chegirma olib bo'lgan.");
+        throw new Error("Diqqat! Bu talaba so'nggi 5 daqiqa ichida allaqachon chegirma olib bo'lgan.");
       }
 
-      const discount = validDiscounts?.find(d => d.id === selectedDiscountId);
-      if (!discount || !discount.items) throw new Error("Chegirma yoki mahsulotlar ro'yxati topilmadi.");
+      // Miqdorni kamaytirish
+      if (scannedDiscount.items && scannedDiscount.items.length > 0) {
+        const updatedItems = scannedDiscount.items.map((item: any) => {
+           if (item.name === scannedItemName) {
+              return { ...item, quantity: item.isUnlimited ? 999999 : item.quantity - 1 };
+           }
+           return item;
+        });
 
-      let itemFound = false;
-      const updatedItems = discount.items.map((item: any) => {
-         if (item.name === selectedItemName) {
-            itemFound = true;
-            if (item.quantity <= 0 && !item.isUnlimited) throw new Error("Bu mahsulot qolmagan!");
-            return { ...item, quantity: item.isUnlimited ? 999999 : item.quantity - 1 };
-         }
-         return item;
-      });
+        const { error: updateError } = await supabase.from('discounts').update({ items: updatedItems }).eq('id', scannedDiscount.id);
+        if (updateError) throw updateError;
+      }
 
-      if (!itemFound) throw new Error("Tanlangan mahsulot tizimdan topilmadi.");
-
-      const { error: updateError } = await supabase.from('discounts').update({ items: updatedItems }).eq('id', discount.id);
-      if (updateError) throw updateError;
-
+      // Tarixga yozish
       const { error: histError } = await supabase.from('scan_history').insert({
         merchant_id: merchantStatus.id,
         student_id: scannedStudent.id,
-        discount_id: discount.id,    
-        item_name: selectedItemName  
+        discount_id: scannedDiscount.id,    
+        item_name: scannedItemName  
       });
       if (histError) throw histError;
 
+      // Talabaga bildirishnoma
       await supabase.from('notifications').insert({
         user_id: scannedStudent.id,
         title: "Xaridingiz muvaffaqiyatli! 🎉",
-        message: `Siz hozirgina "${merchantStatus.name}" do'konidan "${selectedItemName}" xarid qildingiz. Xaridingiz barakali bo'lsin, yana kutib qolamiz!`,
+        message: `Siz hozirgina "${merchantStatus.name}" do'konidan "${scannedItemName}" xarid qildingiz. Xaridingiz barakali bo'lsin, yana kutib qolamiz!`,
         link: `/store/${merchantStatus.id}`,
         is_read: false
       });
 
-      setResult({ success: true, message: "Chegirma muvaffaqiyatli qo'llanildi!", student: scannedStudent });
+      setResult({ success: true, message: "Xarid muvaffaqiyatli tasdiqlandi!" });
       setScannedStudent(null);
+      setScannedDiscount(null);
+      setScannedItemName(null);
       
     } catch (error: any) {
       setResult({ success: false, message: error.message || "Xatolik yuz berdi" });
@@ -155,19 +161,12 @@ export default function MerchantScanner() {
   const resetScanner = () => {
     setResult(null);
     setScannedStudent(null);
-    setSelectedDiscountId(null);
-    setSelectedItemName(null);
+    setScannedDiscount(null);
+    setScannedItemName(null);
   };
 
   if (isProfileLoading) {
-    return (
-      <div className="page-enter pb-20">
-        <div className="text-center mb-8 flex flex-col items-center animate-pulse"><div className="h-8 bg-[hsl(var(--muted))] rounded-md w-48 mb-3"></div><div className="h-4 bg-[hsl(var(--muted))] rounded-md w-64"></div></div>
-        <div className="w-full aspect-[3/4] max-w-sm mx-auto overflow-hidden rounded-[40px] bg-[hsl(var(--muted))] animate-pulse shadow-2xl border-4 border-[hsl(var(--border))] flex items-center justify-center">
-           <div className="w-3/4 h-1/2 border-4 border-[hsl(var(--background))/50] rounded-[32px]"></div>
-        </div>
-      </div>
-    );
+    return <div className="page-enter pb-20 flex justify-center mt-20"><Loader2 className="animate-spin text-primary" size={40} /></div>;
   }
 
   if (!isActive) {
@@ -177,7 +176,7 @@ export default function MerchantScanner() {
         <div className="w-full max-w-sm mx-auto bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-8 rounded-[40px] text-center shadow-xl">
           <div className="w-24 h-24 bg-orange-500/10 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-orange-500/20"><ShieldAlert size={48} /></div>
           <h3 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-3">Tasdiqlanmagan</h3>
-          <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))] leading-relaxed px-2">{t('checking_desc_merchant')}</p>
+          <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))] leading-relaxed px-2">Do'koningiz hozircha adminlar tomonidan tasdiqlanmadi.</p>
         </div>
       </div>
     );
@@ -189,13 +188,14 @@ export default function MerchantScanner() {
 
       <div className="text-center mb-8">
         <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))]">
-          {scannedStudent ? t('confirm_purchase') : t('search_student')}
+          {scannedStudent ? 'Xaridni tasdiqlash' : 'QR kodni skanerlang'}
         </h2>
         <p className="text-sm font-medium text-[hsl(var(--muted-foreground))] mt-1">
-          {scannedStudent ? t('select_product_desc') : t('scan_qr_desc')}
+          {scannedStudent ? 'Ma\'lumotlar to\'g\'riligini tekshiring' : 'Talaba telefonidagi QR kodni kadrga tuting'}
         </p>
       </div>
 
+      {/* SKANER QISMI */}
       {!scannedStudent && !result && (
         <div className="relative w-full aspect-[3/4] max-w-sm mx-auto overflow-hidden rounded-[40px] bg-black shadow-2xl border-4 border-[hsl(var(--border))]">
           <Scanner 
@@ -215,87 +215,64 @@ export default function MerchantScanner() {
           {loading && (
             <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white backdrop-blur-md z-50 animate-in fade-in duration-200">
               <Loader2 className="animate-spin text-[hsl(var(--accent))] mb-4" size={48}/>
-              <p className="font-bold text-lg tracking-wide">{t('checking')}</p>
+              <p className="font-bold text-lg tracking-wide">Tekshirilmoqda...</p>
             </div>
           )}
         </div>
       )}
 
+      {/* 🌟 YANGI: TASDIQLASH EKRANI (Mahsulot tanlanmaydi, faqat ko'rsatiladi) */}
       {scannedStudent && !result && (
         <div className="w-full max-w-md mx-auto animate-in slide-in-from-bottom-8 duration-300 px-4">
           
-          <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-5 rounded-[24px] mb-6 shadow-sm flex items-center gap-4">
+          {/* TALABA INFO */}
+          <div className="bg-[hsl(var(--card))] border-2 border-green-500/50 p-5 rounded-[24px] mb-4 shadow-md flex items-center gap-4 relative overflow-hidden">
+            <div className="absolute top-0 right-0 bg-green-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-wider flex items-center gap-1">
+               <ShieldCheck size={12}/> Tasdiqlangan
+            </div>
+            
             {scannedStudent.avatar_url ? (
               <img src={scannedStudent.avatar_url} className="w-16 h-16 rounded-full object-cover shadow-sm border-2 border-[hsl(var(--border))]" />
             ) : (
               <div className="w-16 h-16 rounded-full bg-[hsl(var(--muted))] flex items-center justify-center shadow-sm"><User size={28}/></div>
             )}
-            <div>
+            <div className="pt-2">
               <p className="font-bold text-lg text-[hsl(var(--foreground))] leading-tight mb-1">{scannedStudent.first_name} {scannedStudent.last_name}</p>
               <p className="text-xs font-bold text-[hsl(var(--accent))] uppercase tracking-wider">{scannedStudent.university}</p>
             </div>
           </div>
 
-          <h3 className="font-display font-bold text-lg mb-4 text-[hsl(var(--foreground))]">{t('select_product_desc')}</h3>
-          
-          {validDiscounts && validDiscounts.length > 0 ? (
-            <div className="space-y-4">
-              {validDiscounts.map((discount: any) => (
-                <div key={discount.id} className={`bg-[hsl(var(--card))] border-2 rounded-[24px] overflow-hidden transition-all ${selectedDiscountId === discount.id ? 'border-[hsl(var(--primary))] shadow-md' : 'border-[hsl(var(--border))] opacity-70 hover:opacity-100'}`}>
-                  
-                  <div onClick={() => setSelectedDiscountId(selectedDiscountId === discount.id ? null : discount.id)} className="p-4 flex items-center gap-4 cursor-pointer bg-[hsl(var(--secondary))/30]">
-                    <img src={discount.image_url} className="w-16 h-12 rounded-xl object-cover" />
-                    <div className="flex-1">
-                      <p className="font-bold text-sm leading-tight text-[hsl(var(--foreground))] line-clamp-1">{discount.product_name}</p>
-                      <p className="text-xs font-bold text-red-500 mt-1">-{discount.discount_percent}% {t('off')}</p>
-                    </div>
-                  </div>
+          {/* CHEGIRMA VA MAHSULOT INFO */}
+          <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-5 rounded-[24px] mb-8 shadow-sm">
+             <div className="flex items-center justify-between mb-4 pb-4 border-b border-[hsl(var(--border))]">
+                <span className="text-[12px] font-bold uppercase text-[hsl(var(--muted-foreground))] flex items-center gap-1.5"><Ticket size={16}/> Chegirma foizi</span>
+                <span className="text-xl font-extrabold text-red-500 bg-red-500/10 px-3 py-1 rounded-xl">-{scannedDiscount?.discount_percent}%</span>
+             </div>
+             
+             <div>
+               <span className="text-[12px] font-bold uppercase text-[hsl(var(--muted-foreground))] flex items-center gap-1.5 mb-2"><Package size={16}/> Tanlangan mahsulot:</span>
+               <div className="bg-[hsl(var(--primary))/10] border border-[hsl(var(--primary))/20] p-4 rounded-xl">
+                 <p className="text-lg font-bold text-[hsl(var(--primary))] leading-tight">
+                    {scannedItemName}
+                 </p>
+               </div>
+             </div>
+          </div>
 
-                  {selectedDiscountId === discount.id && discount.items && discount.items.length > 0 && (
-                    <div className="p-4 border-t border-[hsl(var(--border))] bg-[hsl(var(--background))] space-y-2">
-                      {discount.items.map((item: any, idx: number) => {
-                        const isAvailable = item.quantity > 0 || item.isUnlimited;
-                        const isSelected = selectedItemName === item.name;
-                        
-                        return (
-                          <button 
-                            key={idx}
-                            disabled={!isAvailable}
-                            onClick={() => setSelectedItemName(item.name)}
-                            className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition-all ${!isAvailable ? 'opacity-40 bg-[hsl(var(--muted))] border-transparent cursor-not-allowed' : isSelected ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))/10]' : 'border-[hsl(var(--border))] hover:border-[hsl(var(--primary))/50]'}`}
-                          >
-                            <span className="font-bold text-sm flex items-center gap-2 text-[hsl(var(--foreground))]"><Package size={16}/> {item.name}</span>
-                            <span className={`text-[11px] font-bold px-2 py-1 rounded-md ${!isAvailable ? 'bg-red-500/10 text-red-500' : isSelected ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))]'}`}>
-                              {item.isUnlimited ? t('unlimited') : isAvailable ? `${item.quantity} ta` : 'Tugagan'}
-                            </span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
-
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="p-5 bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-[24px] text-center">
-              <p className="text-sm font-semibold text-[hsl(var(--muted-foreground))]">Hozirda foydalanish mumkin bo'lgan chegirmalaringiz yo'q (muddati o'tgan yoki sotib bo'lingan).</p>
-            </div>
-          )}
-
-          <div className="mt-8 flex gap-3">
-            <button onClick={resetScanner} className="flex-1 py-4 bg-[hsl(var(--secondary))] text-[hsl(var(--foreground))] font-bold rounded-2xl active:scale-95 transition-all">{t('cancel')}</button>
+          <div className="flex gap-3">
+            <button onClick={resetScanner} className="flex-1 py-4.5 bg-[hsl(var(--secondary))] text-[hsl(var(--foreground))] font-bold rounded-2xl active:scale-95 transition-all text-[15px]">Bekor qilish</button>
             <button 
-              disabled={isConfirming || !selectedDiscountId || !selectedItemName} 
+              disabled={isConfirming} 
               onClick={handleConfirm} 
-              className="flex-[2] py-4 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-bold rounded-2xl shadow-float active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-[2] py-4.5 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-bold rounded-2xl shadow-float active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-[15px]"
             >
-              {isConfirming ? <Loader2 className="animate-spin" size={20}/> : <>{t('confirm_purchase')} <ArrowRight size={18}/></>}
+              {isConfirming ? <Loader2 className="animate-spin" size={20}/> : <>Xaridni tasdiqlash <ArrowRight size={18}/></>}
             </button>
           </div>
         </div>
       )}
 
+      {/* NATIJA EKRANI */}
       {result && (
         <div className="w-full max-w-sm mx-auto bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-8 rounded-[40px] text-center shadow-xl animate-in zoom-in-95 slide-in-from-bottom-8 duration-300">
           {result.success ? (
