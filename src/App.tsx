@@ -23,6 +23,7 @@ import MerchantsReport from '@/admin/MerchantsReport';
 import ScansReport from '@/admin/ScansReport';
 import SystemLogs from '@/admin/SystemLogs';
 import Announcements from '@/admin/Announcements';
+import AdminCarousel from '@/admin/carousel';
 
 // --- TALABALAR UCHUN SAHIFALAR ---
 import { AppShell } from '@/components/app-shell';
@@ -39,7 +40,7 @@ import DiscountDetailPage from '@/pages/discount-detail';
 import DiscountListPage from '@/pages/discount-list';
 
 // --- BIZNES (DO'KONLAR) UCHUN SAHIFALAR ---
-import {  MerchantAppShell } from '@/components/app-shell';
+import { MerchantAppShell } from '@/components/app-shell';
 import MerchantSignup from '@/merchantpass/signup';
 import MerchantLogin from '@/merchantpass/login';
 import MerchantHome from '@/merchantpass/home';
@@ -185,7 +186,8 @@ function Router() {
         <Route path="/merchant/login"><Redirect to="/merchant" /></Route>
         <Route path="/merchant/signup"><Redirect to="/merchant" /></Route>
 
-        {/* 🌟 1. YECHIM: ADMIN YO'NALISHLARI QAFASDAN CHIQARILIB ANIQLASHTIRILDI */}
+        {/* 🌟 YECHIM: REDIRECT OLIB TASHLANDI VA SAHIFA QO'YILDI */}
+        {userRole === 'admin' && <Route path="/admin/carousel" component={AdminCarousel} />}
         {userRole === 'admin' && <Route path="/admin/announcements" component={Announcements} />}
         {userRole === 'admin' && <Route path="/admin" component={AdminDashboard} />}
         {userRole === 'admin' && <Route path="/admin/students-report" component={StudentsReport} />}
@@ -196,7 +198,7 @@ function Router() {
         {userRole === 'admin' && <Route path="/admin/students" component={StudentsManager} />}
         {userRole === 'admin' && <Route path="/admin/discounts" component={DiscountsManager} />}
 
-        {/* 🏪 2. BIZNES (DO'KON) HUDUDI */}
+        {/* 🏪 BIZNES (DO'KON) HUDUDI */}
         {userRole === 'merchant' && (
           <MerchantAppShell>
             <Switch>
@@ -210,7 +212,7 @@ function Router() {
           </MerchantAppShell>
         )}
 
-        {/* 🎓 3. TALABALAR VA ADMIN HUDUDI */}
+        {/* 🎓 TALABALAR VA ADMIN HUDUDI */}
         {(userRole === 'student' || userRole === 'admin') && (
           <AppShell>
             <Switch>

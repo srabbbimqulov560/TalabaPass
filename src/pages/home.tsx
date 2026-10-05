@@ -27,6 +27,15 @@ export default function HomePage() {
   
   const { savedIds, toggleFavorite } = useFavorites();
 
+  // 🌟 KARUSEL BANNERLARINI TORTISH
+  const { data: carouselBanners } = useQuery({
+    queryKey: ['homeBanners'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('carousel_banners').select('*').order('created_at', { ascending: false });
+      if (error) throw error; return data;
+    }
+  });
+
   const { data: allDiscounts, isLoading } = useQuery({
     queryKey: ['allDiscounts'],
     queryFn: async () => {
@@ -58,22 +67,11 @@ export default function HomePage() {
   const popularDiscounts = allDiscounts ? [...allDiscounts].sort((a, b) => (b.discount_percent || 0) - (a.discount_percent || 0)).slice(0, 3) : [];
   const topPurchasedDiscounts = allDiscounts ? [...allDiscounts].sort((a, b) => String(a.product_name).localeCompare(String(b.product_name))).slice(0, 3) : [];
 
-  // 🌟 REAL KARUSEL: Bazadagi eng so'nggi 5 ta chegirmani banner qilib olamiz
-  const carouselItems = useMemo(() => {
-    if (!allDiscounts || allDiscounts.length === 0) return [];
-    return allDiscounts.slice(0, 5).map((d: any) => ({
-      id: d.id,
-      image: d.image_url,
-      title: d.short_description || d.product_name,
-      merchantName: d.merchant?.name
-    }));
-  }, [allDiscounts]);
-
-  const infiniteBanners = carouselItems.length > 0 ? Array(10).fill(carouselItems).flat() : [];
+  const infiniteBanners = carouselBanners && carouselBanners.length > 0 ? Array(10).fill(carouselBanners).flat() : [];
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (carouselRef.current) {
+      if (carouselRef.current && infiniteBanners.length > 0) {
         const carousel = carouselRef.current;
         const firstChild = carousel.firstElementChild as HTMLElement;
         if (firstChild) {
@@ -84,7 +82,7 @@ export default function HomePage() {
       }
     }, 3500); 
     return () => clearInterval(interval);
-  }, []);
+  }, [infiniteBanners.length]);
 
   const categories = useMemo(() => [
     { id: 'All', label: t('all_categories'), icon: LayoutGrid, color: 'bg-blue-500', shadow: 'shadow-blue-500/30' },
@@ -171,6 +169,18 @@ export default function HomePage() {
     );
   };
 
+  // BANNER BOSILGANDAGI HARAKAT
+  const handleBannerClick = (banner: any) => {
+    if (banner.type === 'discount') setLocation(`/discount/${banner.reference_id}`);
+    else if (banner.type === 'merchant') setLocation(`/store/${banner.reference_id}`);
+    else if (banner.type === 'category') {
+      setLocation(banner.reference_id); // To'g'ridan-to'g'ri ko'rsatilgan sahifaga o'tadi
+    }
+    else if (banner.type === 'external') {
+      window.open(banner.reference_id, '_blank');
+    }
+  };
+
   return (
     <div className="page-enter pb-10">
       
@@ -193,19 +203,19 @@ export default function HomePage() {
         </div>
       </ScrollReveal>
 
-      {/* REAL BANNERLAR */}
+      {/* ADMIN TOMONIDAN BOSHQARILADIGAN KARUSEL */}
       {infiniteBanners.length > 0 && (
         <ScrollReveal delay={100}>
           <div ref={carouselRef} className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-5 px-5 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
             {infiniteBanners.map((banner, idx) => (
               <div 
                 key={`${banner.id}-${idx}`} 
-                onClick={() => setLocation(`/discount/${banner.id}`)}
+                onClick={() => handleBannerClick(banner)}
                 className="min-w-[85%] md:min-w-[400px] snap-center relative rounded-3xl overflow-hidden shadow-md aspect-[21/9] cursor-pointer group"
               >
-                <img src={banner.image} alt={banner.title} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                <img src={banner.image_url} alt={banner.title} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-5">
-                  <span className="text-[11px] font-bold text-[hsl(var(--accent))] uppercase tracking-wider mb-1 drop-shadow-md">{banner.merchantName}</span>
+                  {/* Ortiqcha teg (DO'KON, CHEGIRMA) olib tashlandi, faqat Tasnif qoldi */}
                   <h3 className="text-white font-display font-bold text-[18px] leading-tight line-clamp-2 drop-shadow-md">{banner.title}</h3>
                 </div>
               </div>
@@ -227,7 +237,7 @@ export default function HomePage() {
         </div>
       </ScrollReveal>
 
-      <ScrollReveal delay={300}>
+      <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300 fill-mode-both">
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-8 mt-6">
             {[1, 2, 3, 4].map((i) => (
@@ -280,7 +290,7 @@ export default function HomePage() {
             </div>
           </div>
         )}
-      </ScrollReveal>
+      </div>
     </div>
   );
 }

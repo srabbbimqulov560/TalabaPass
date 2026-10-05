@@ -1,6 +1,7 @@
 import { Heart, Home, UserRound, QrCode, Bell, LayoutGrid, Store, Tags, ScanLine, History, Settings } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { useState, useEffect, type ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query'; // 🌟 2-MUAMMO YECHIMI: useQuery chaqirildi
 import { useLanguage } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 
@@ -11,7 +12,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { t } = useLanguage();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -23,38 +23,26 @@ export function AppShell({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [location]);
+  }, []);
 
-  useEffect(() => {
-    if (!isLoggedIn) return;
-
-    const fetchUnreadCount = async () => {
+  // 🌟 2-MUAMMO YECHIMI: Bildirishnomalar sonini eng ishonchli (useQuery + refetchInterval) usulda olish
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: ['unreadNotifications', isLoggedIn],
+    enabled: isLoggedIn,
+    queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { count } = await supabase
-          .from('notifications')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .eq('is_read', false);
-        setUnreadCount(count || 0); 
-      }
-    };
-
-    fetchUnreadCount();
-
-    window.addEventListener('notifications_updated', fetchUnreadCount);
-
-    const channel = supabase.channel('realtime-notifications')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
-        fetchUnreadCount();
-      })
-      .subscribe();
-
-    return () => { 
-      window.removeEventListener('notifications_updated', fetchUnreadCount);
-      supabase.removeChannel(channel); 
-    };
-  }, [isLoggedIn, location]); 
+      if (!user) return 0;
+      
+      const { count } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false);
+        
+      return count || 0;
+    },
+    refetchInterval: 5000, // Har 5 soniyada yangilanib turadi, eski profildagi raqamni saqlab qolmaydi!
+  });
 
   return (
     <div className="app-shell min-h-[100dvh] w-full bg-[hsl(var(--background))]">
@@ -197,7 +185,6 @@ export function MerchantAppShell({ children }: { children: ReactNode }) {
         {children}
       </main>
       
-      {/* 🌟 BIZNES PASTKI MENYUSI (TARJIMAGA ULANDI) */}
       <nav className="fixed bottom-0 left-0 w-full bg-[hsl(var(--card))] rounded-t-[28px] shadow-[0_-10px_40px_rgba(0,0,0,0.06)] border-t border-[hsl(var(--border)/.5)] z-50 h-[76px]">
         <div className="flex justify-between items-center h-full px-4 relative">
           

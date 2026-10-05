@@ -16,7 +16,7 @@ function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon
     Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
     Math.sin(dLon/2) * Math.sin(dLon/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-  const d = R * c; // Masofa km da
+  const d = R * c; 
   return d;
 }
 
@@ -33,7 +33,7 @@ export default function ServicesPage() {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   
-  // Talabaning hozirgi joylashuvi
+  // 🌟 Talabaning hozirgi joylashuvi
   const [userLocation, setUserLocation] = useState<{lat: number, lon: number} | null>(null);
 
   useEffect(() => {
@@ -45,7 +45,8 @@ export default function ServicesPage() {
             lon: position.coords.longitude
           });
         },
-        (error) => console.log("Joylashuv aniqlanmadi:", error)
+        (error) => console.log("Joylashuv aniqlanmadi:", error),
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 } // 🌟 GPS parametrlar qo'shildi
       );
     }
   }, []);
@@ -78,23 +79,26 @@ export default function ServicesPage() {
       return matchesSearch && matchesCategory;
     });
 
-    // Masofa bo'yicha ma'lumot qoshish
+    // 🌟 MASOFA BO'YICHA MA'LUMOT QO'SHISH (Mukammallashtirildi)
     list = list.map((m: any) => {
       let distanceText = "Masofa noma'lum";
       
-      // Agar do'konda kordinatalar yozilgan bo'lsa va user ruxsat bergan bo'lsa
       if (userLocation && m.description) {
-        // Matn ichidan lat, lon kordinatalarini qidirish (Faraz qilamiz ro'yxatdan o'tganda kordinatalar saqlangan)
-        const match = m.description.match(/Kordinata: ([\d.-]+), ([\d.-]+)/);
-        if (match) {
+        // Matn ichidan lat, lon kordinatalarini qidirish (Bir nechta ehtimoliy yozilish usullari)
+        const match = m.description.match(/Kordinata:\s*([\d.-]+)[\s,]+([\d.-]+)/i);
+        
+        if (match && match[1] && match[2]) {
           const mLat = parseFloat(match[1]);
           const mLon = parseFloat(match[2]);
-          const distKm = getDistanceFromLatLonInKm(userLocation.lat, userLocation.lon, mLat, mLon);
           
-          if (distKm < 1) {
-            distanceText = `${Math.round(distKm * 1000)} metr`;
-          } else {
-            distanceText = `${distKm.toFixed(1)} km`;
+          if (!isNaN(mLat) && !isNaN(mLon)) {
+            const distKm = getDistanceFromLatLonInKm(userLocation.lat, userLocation.lon, mLat, mLon);
+            
+            if (distKm < 1) {
+              distanceText = `${Math.round(distKm * 1000)} metr`;
+            } else {
+              distanceText = `${distKm.toFixed(1)} km`;
+            }
           }
         }
       }
@@ -118,7 +122,6 @@ export default function ServicesPage() {
       <ScrollReveal>
         <div className="mb-6 flex items-end justify-between">
           <div>
-            {/* 🌟 1-RASMDAGI TALAB: Tepadagi yozuv qisqartirildi */}
             <h1 className="font-display text-3xl font-bold tracking-tight text-[hsl(var(--foreground))]">
               Barcha <span className="text-[hsl(var(--accent))]">Do'konlar</span>
             </h1>

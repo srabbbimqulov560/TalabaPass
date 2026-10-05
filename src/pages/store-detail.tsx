@@ -40,24 +40,24 @@ export default function StoreDetailPage() {
     }
   };
 
-  // 🌟 NATIVE XARITA OCHISH MANTIG'I
+  // 🌟 NATIVE XARITA OCHISH MANTIG'I (Mukammallashtirildi)
   const openMap = (type: 'yandex' | 'google' | '2gis') => {
     if (!merchant?.description) return;
     
-    // Kordinatalar bor-yo'qligini tekshirish
-    const match = merchant.description.match(/Kordinata: ([\d.-]+), ([\d.-]+)/);
+    // Kordinatalar bor-yo'qligini ishonchli regex bilan tekshirish
+    const match = merchant.description.match(/Kordinata:\s*([\d.-]+)[\s,]+([\d.-]+)/i);
     let url = '';
 
-    if (match) {
+    if (match && match[1] && match[2]) {
       const lat = match[1];
       const lon = match[2];
       
-      // Native ilovalarni ochishga urinish
+      // Native ilovalarni ochishga urinish (Telefonda)
       if (type === 'yandex') url = `yandexmaps://maps.yandex.ru/?pt=${lon},${lat}&z=16&l=map`;
-      if (type === 'google') url = `geo:${lat},${lon}?q=${lat},${lon}(${merchant.name})`;
+      if (type === 'google') url = `google.navigation:q=${lat},${lon}`;
       if (type === '2gis') url = `dgis://2gis.ru/routeSearch/rsType/car/to/${lon},${lat}`;
       
-      // Agar ilova ishlamasa (brauzerda bo'lsa), web manzilga fallback
+      // Agar ilova ishlamasa (brauzerda yoki kompyuterda bo'lsa), web manzilga fallback
       setTimeout(() => {
         if (type === 'yandex') window.open(`https://yandex.com/maps/?ll=${lon},${lat}&z=16`, '_blank');
         if (type === 'google') window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lon}`, '_blank');
@@ -66,7 +66,7 @@ export default function StoreDetailPage() {
 
       window.location.href = url; // Native ilovaga otish
     } else {
-      // Agar faqat text bo'lsa eskichasiga izlaydi
+      // Agar faqat text bo'lsa eski usulda matnni o'zini izlaydi
       const address = encodeURIComponent(merchant.description);
       if (type === 'yandex') url = `https://yandex.com/maps/?text=${address}`;
       if (type === 'google') url = `https://www.google.com/maps/search/?api=1&query=${address}`;
@@ -98,12 +98,14 @@ export default function StoreDetailPage() {
     );
   }
 
-  // 🌟 2-RASMDAGI TALAB: Matnni tozalash va ajratish
+  // Matnni tozalash va ajratish
   const fullDescription = merchant.description || "";
   const addressMatch = fullDescription.match(/📍 Manzil: (.*?)(?:\n|$)/);
   const timeMatch = fullDescription.match(/⏰ Ish vaqti: (.*?)(?:\n|$)/);
   
-  const addressText = addressMatch ? addressMatch[1] : fullDescription.replace(/Kordinata: [\d.-]+, [\d.-]+/, '');
+  // "Kordinata: xx.xx, yy.yy" yozuvini ekrandan olib tashlab toza manzil ko'rsatish
+  const cleanAddress = fullDescription.replace(/Kordinata:\s*[\d.-]+[\s,]+[\d.-]+/i, '').trim();
+  const addressText = addressMatch ? addressMatch[1] : cleanAddress;
   const workTimeText = timeMatch ? timeMatch[1] : null;
 
   return (
@@ -116,7 +118,7 @@ export default function StoreDetailPage() {
       {/* DO'KON PROFILI KARTASI */}
       <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[32px] p-6 shadow-sm mb-6 flex flex-col items-center text-center relative overflow-hidden">
         
-        {/* Orqa fon blur (Chiroyliroq qilish uchun) */}
+        {/* Orqa fon blur */}
         <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-[hsl(var(--primary))/10] to-transparent"></div>
 
         <div className="relative w-[88px] h-[88px] rounded-[24px] bg-[hsl(var(--secondary))] mb-4 overflow-hidden border border-[hsl(var(--border))] shadow-md flex items-center justify-center p-1 z-10">
@@ -133,7 +135,7 @@ export default function StoreDetailPage() {
           {merchant.category}
         </div>
 
-        {/* 🌟 2-RASMDAGI TALAB: Yagona, chiroyli "Manzil va Ish vaqti" qutisi */}
+        {/* Yagona "Manzil va Ish vaqti" qutisi */}
         <div className="w-full bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-2xl p-4 text-left shadow-inner relative z-10">
           
           <div 
@@ -172,7 +174,6 @@ Xaritadan ko'rish
 
       <div className="mb-5 mt-2 flex items-center justify-between px-1">
         <h2 className="flex items-center gap-2 font-display text-[19px] font-bold text-[hsl(var(--foreground))]">
-          {/* 🌟 YANGILANGAN: ZAP (Chaqmoq) Ikonkasi */}
           <Zap size={20} className="text-amber-500" fill="currentColor" />
           Faol chegirmalar
         </h2>
@@ -202,7 +203,6 @@ Xaritadan ko'rish
                   -{discount.discount_percent}%
                 </div>
                 
-                {/* 🌟 Rasm ichidagi LOGO olib tashlandi, faqat toza rasm qoldi */}
                 <div className="w-full aspect-[4/5] bg-[hsl(var(--secondary))] overflow-hidden relative">
                   <img src={discount.image_url} alt={discount.product_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                 </div>

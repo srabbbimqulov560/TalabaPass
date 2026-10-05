@@ -1,7 +1,8 @@
 import React, { useState, useEffect, ReactNode } from 'react';
 import { useLocation, Link } from 'wouter';
 import { supabase } from '@/lib/supabase';
-import { LayoutDashboard, Users, Store, Ticket, LogOut, Menu, X, Loader2, ShieldCheck, History, Megaphone } from 'lucide-react';
+// Ikonkalar qatoriga Images qo'shildi
+import { LayoutDashboard, Users, Store, Ticket, LogOut, Menu, X, Loader2, ShieldCheck, History, Megaphone, Images } from 'lucide-react';
 
 
 interface AdminLayoutProps {
@@ -47,14 +48,15 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
   // Agar admin bo'lmasa, hech narsa ko'rsatmaymiz (zotan u bosh sahifaga otiladi)
   if (isAdmin === false) return null;
 
-  // 🌟 MENYULAR RO'YXATI (TARIX QO'SHILGAN HOLATDA)
+  // 🌟 MENYULAR RO'YXATI (TARIX VA KARUSEL QO'SHILGAN HOLATDA)
   const menuItems = [
     { path: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/admin/merchants', icon: Store, label: "Do'konlar" },
     { path: '/admin/students', icon: Users, label: 'Talabalar' },
     { path: '/admin/discounts', icon: Ticket, label: 'Chegirmalar' },
     { path: '/admin/logs', icon: History, label: 'Tarix (Logs)' },
-    { path: '/admin/announcements', icon: Megaphone, label: "E'lonlar" }, // <-- YANGI
+    { path: '/admin/announcements', icon: Megaphone, label: "E'lonlar" }, 
+    { path: '/admin/carousel', icon: Images, label: "Karusel" }, // <-- YAGONA QO'SHILGAN QATOR
   ];
 
   // 🌟 MUAMMO HAL QILINDI: Endi akkauntdan to'liq chiqib ketmaydi, profilga qaytadi!

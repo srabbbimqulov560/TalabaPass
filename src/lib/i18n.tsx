@@ -12,7 +12,7 @@ const dictionary = {
     on: 'Yoniq', off_status: 'O\'chiq', help_support: 'Yordam va qo\'llab-quvvatlash', logout: 'Hisobdan chiqish', select_language: 'Tilni tanlang',
     hero_title_1: 'Talabalik hayotingiz,', hero_title_2: 'yanada qiziqarli.', hero_subtitle: 'Tasdiqlangan chegirmalar endi doim yoningizda.', search_placeholder: 'Qidirish...',
     category: 'Kategoriya', area: 'Hudud', all_categories: 'Barchasi', category_cafes: 'Kafelar', category_shops: 'Do\'konlar', category_learning: 'Ta\'lim', category_it: 'Texnika',
-    category_services: 'Xizmat ko‘rsatish', category_other: 'Boshqa', everywhere: 'Barcha joyda', offers_nearby: 'Yaqindagi chegirmalar', popular_now: 'Eng mashhur', just_arrived: 'Yangi qo\'shilganlar',
+    category_services: 'Xizmatlar', category_other: 'Boshqa', everywhere: 'Barcha joyda', offers_nearby: 'Yaqindagi chegirmalar', popular_now: 'Eng mashhur', just_arrived: 'Yangi qo\'shilganlar',
     close_to_you: 'Sizga yaqin', verified_students_only: 'Faqat tasdiqlangan talabalar uchun', every_redemption: 'Har bir chegirma talaba tekshiruvi orqali olinadi.',
     view_your_pass: 'Ruxsatnomani ko\'rish →', matching_offers: 'Topilgan chegirmalar', your_search: 'Sizning qidiruvingiz', popular_with_students: 'Talabalar tanlovi',
     fresh_this_week: 'Bu haftadagi yangiliklar', short_walk_away: 'Bir qadam masofada', clear: 'Tozalash', back_to_discover: 'Asosiyga qaytish', no_offers_found: 'Chegirmalar topilmadi.',
@@ -50,7 +50,7 @@ const dictionary = {
     old_password: "Eski parol", new_password: "Yangi parol", save_btn: "Saqlash", store_info_title: "Do'kon ma'lumotlari", change_password_optional: "Parolni o'zgartirish (ixtiyoriy)",
     current_pass_placeholder: "Joriy parol...", new_pass_placeholder: "Yangi parol...",
 
-    // Talaba Profili (Yangi qo'shildi)
+    // Talaba Profili
     personal_info: "Shaxsiy ma'lumotlar",
     go_admin_panel: "Admin Panelga o'tish",
     first_name_label: "Ism",
