@@ -120,7 +120,9 @@ export default function MerchantScanner() {
 
       const { error: histError } = await supabase.from('scan_history').insert({
         merchant_id: merchantStatus.id,
-        student_id: scannedStudent.id
+        student_id: scannedStudent.id,
+        discount_id: discount.id,    
+        item_name: selectedItemName  
       });
       if (histError) throw histError;
 

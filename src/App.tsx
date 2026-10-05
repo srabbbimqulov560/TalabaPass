@@ -48,6 +48,7 @@ import MerchantDiscounts from '@/merchantpass/discounts';
 import MerchantScanner from '@/merchantpass/scanner';
 import MerchantHistory from '@/merchantpass/history';
 import MerchantProfile from '@/merchantpass/profile';
+import MerchantPurchases from '@/merchantpass/purchases';
 
 const queryClient = new QueryClient();
 
@@ -203,6 +204,7 @@ function Router() {
           <MerchantAppShell>
             <Switch>
               <Route path="/merchant" component={MerchantHome} />
+              <Route path="/merchant/purchases" component={MerchantPurchases} />
               <Route path="/merchant/discounts" component={MerchantDiscounts} />
               <Route path="/merchant/scanner" component={MerchantScanner} />
               <Route path="/merchant/history" component={MerchantHistory} />

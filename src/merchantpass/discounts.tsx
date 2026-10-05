@@ -1,44 +1,17 @@
 import { useState, useRef } from 'react';
-import { PlusCircle, Tag as TagIcon, Loader2, Camera, Trash2, Clock, ShieldAlert, ArrowLeft } from 'lucide-react';
+import { PlusCircle, Tag as TagIcon, Loader2, Camera, Trash2, Clock, ShieldAlert, ArrowLeft, Eye } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLanguage } from '@/lib/i18n';
+import Cropper from 'react-easy-crop';
 
-const compressImage = (file: File, maxWidth = 1024, quality = 0.6): Promise<File> => {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) { resolve(file); return; }
-        
-        ctx.drawImage(img, 0, 0, width, height);
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", { type: 'image/jpeg', lastModified: Date.now() });
-            resolve(newFile);
-          } else resolve(file);
-        }, 'image/jpeg', quality);
-      };
-      img.onerror = () => resolve(file);
-    };
-    reader.onerror = () => resolve(file);
+const createImage = (url: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener('load', () => resolve(image));
+    image.addEventListener('error', (error) => reject(error));
+    image.src = url;
   });
-};
 
 export default function MerchantDiscounts() {
   const { t } = useLanguage();
@@ -48,6 +21,7 @@ export default function MerchantDiscounts() {
   
   const [items, setItems] = useState<{ name: string; quantity: string; isUnlimited?: boolean }[]>([]);
   const [inputValue, setInputValue] = useState('');
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]); // 🌟 TEG TAKLIFLARI UCHUN
   
   const [discountPercent, setDiscountPercent] = useState('');
   const [shortDesc, setShortDesc] = useState(''); 
@@ -59,6 +33,11 @@ export default function MerchantDiscounts() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
 
   const { data: merchantStatus } = useQuery({
     queryKey: ['merchantStatus'],
@@ -83,23 +62,88 @@ export default function MerchantDiscounts() {
     }
   });
 
+  // 🌟 BAZADAN ESKI TEGLARNI TORTIB OLISH
+  const { data: previousTags } = useQuery({
+    queryKey: ['merchantPreviousTags'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+      const { data } = await supabase.from('discounts').select('items').eq('merchant_id', user.id);
+      const tags = new Set<string>();
+      data?.forEach(d => {
+        if (Array.isArray(d.items)) {
+          d.items.forEach((i: any) => tags.add(i.name));
+        }
+      });
+      return Array.from(tags);
+    }
+  });
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setIsSubmitting(true);
-      try {
-        const compressed = await compressImage(file, 1024, 0.6);
-        setImageFile(compressed); 
-        setImagePreview(URL.createObjectURL(compressed));
-      } catch (err) {
-        setImageFile(file); 
-        setImagePreview(URL.createObjectURL(file));
-      } finally { setIsSubmitting(false); }
+      const reader = new FileReader();
+      reader.addEventListener('load', () => setSelectedImage(reader.result as string));
+      reader.readAsDataURL(file);
+      e.target.value = ''; 
     }
   };
 
+  const handleCropSave = async () => {
+    if (!selectedImage || !croppedAreaPixels) return;
+    try {
+      setIsSubmitting(true);
+      const currentSelectedImage = selectedImage; 
+      setSelectedImage(null); 
+      
+      const image = await createImage(currentSelectedImage);
+      const canvas = document.createElement('canvas'); 
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      let targetWidth = croppedAreaPixels.width; 
+      let targetHeight = croppedAreaPixels.height;
+      
+      if (targetWidth > 1024) { 
+        targetHeight = Math.round((targetHeight * 1024) / targetWidth); 
+        targetWidth = 1024; 
+      }
+      canvas.width = targetWidth; 
+      canvas.height = targetHeight;
+
+      ctx.drawImage(
+        image, 
+        croppedAreaPixels.x, croppedAreaPixels.y, croppedAreaPixels.width, croppedAreaPixels.height, 
+        0, 0, targetWidth, targetHeight
+      );
+
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], `discount-${Date.now()}.jpg`, { type: 'image/jpeg' });
+          setImageFile(file); 
+          setImagePreview(URL.createObjectURL(file));
+        }
+      }, 'image/jpeg', 0.7); 
+
+    } catch (error) { 
+      alert("Xatolik yuz berdi"); 
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // 🌟 TEG YOZILGANDA TAKLIFLARNI CHIQARISH
   const handleTagInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
+    setInputValue(val);
+
+    if (val.trim().length > 0 && previousTags) {
+      const matches = previousTags.filter(t => t.toLowerCase().includes(val.toLowerCase()) && !items.find(i => i.name === t));
+      setTagSuggestions(matches);
+    } else {
+      setTagSuggestions([]);
+    }
+
     if (val.endsWith('  ')) {
       let newTag = val.trim();
       newTag = newTag.split(' ').map(word => word ? word.charAt(0).toUpperCase() + word.slice(1) : '').join(' ');
@@ -107,7 +151,17 @@ export default function MerchantDiscounts() {
         setItems([...items, { name: newTag, quantity: '', isUnlimited: false }]);
       }
       setInputValue('');
-    } else setInputValue(val);
+      setTagSuggestions([]);
+    }
+  };
+
+  // 🌟 TAKLIF QILINGAN TEGNI BOSGANDA QO'SHISH
+  const addTagFromSuggestion = (tag: string) => {
+    if (!items.find(i => i.name === tag)) {
+      setItems([...items, { name: tag, quantity: '', isUnlimited: false }]);
+    }
+    setInputValue('');
+    setTagSuggestions([]);
   };
 
   const removeItem = (idxToRemove: number) => setItems(items.filter((_, idx) => idx !== idxToRemove));
@@ -133,7 +187,7 @@ export default function MerchantDiscounts() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Sessiya topilmadi");
 
-      const fileExt = imageFile.name.split('.').pop();
+      const fileExt = imageFile.name.split('.').pop() || 'jpg';
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage.from('discounts').upload(fileName, imageFile);
       if (uploadError) throw new Error(uploadError.message);
@@ -165,12 +219,13 @@ export default function MerchantDiscounts() {
       closeModal();
       queryClient.invalidateQueries({ queryKey: ['merchantDiscounts'] });
       queryClient.invalidateQueries({ queryKey: ['allDiscounts'] }); 
+      queryClient.invalidateQueries({ queryKey: ['merchantPreviousTags'] }); 
     } catch (error: any) { alert("XATOLIK:\n" + error.message); } 
     finally { setIsSubmitting(false); }
   };
 
   const closeModal = () => {
-    setIsModalOpen(false); setImageFile(null); setImagePreview(null); setItems([]); setInputValue(''); 
+    setIsModalOpen(false); setImageFile(null); setImagePreview(null); setItems([]); setInputValue(''); setTagSuggestions([]);
     setDiscountPercent(''); setShortDesc(''); setStartDate(''); setEndDate('');
   };
 
@@ -215,25 +270,31 @@ export default function MerchantDiscounts() {
           </div>
         ) : discounts && discounts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {discounts.map((discount: any) => (
-              <div key={discount.id} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[20px] overflow-hidden shadow-sm relative group flex flex-col">
-                <button onClick={() => handleDelete(discount.id, discount.image_url)} className="absolute top-2 left-2 z-10 bg-red-500/90 text-white p-2 rounded-full backdrop-blur-md opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity cursor-pointer"><Trash2 size={16} /></button>
-                <div className="absolute top-2 right-2 z-10 bg-red-500 text-white text-[13px] font-extrabold px-3 py-1.5 rounded-xl shadow-md">-{discount.discount_percent}%</div>
-                <div className="w-full aspect-video bg-[hsl(var(--secondary))] overflow-hidden"><img src={discount.image_url} alt={discount.product_name} className="w-full h-full object-cover" /></div>
-                <div className="p-4 flex-1 flex flex-col">
-                  <h3 className="font-bold text-[15px] text-[hsl(var(--foreground))] leading-tight line-clamp-2">{discount.short_description || discount.product_name.replace(/,/g, ' • ')}</h3>
-                  {discount.items && discount.items.length > 0 && (
-                     <div className="mt-2 flex flex-wrap gap-1.5">
-                       {discount.items.map((item: any, i: number) => (
-                         <span key={i} className="text-[10px] font-bold bg-[hsl(var(--secondary))] px-2 py-1 rounded-md text-[hsl(var(--muted-foreground))] flex items-center gap-1">
-                           {item.name}: <span className={item.quantity > 0 || item.isUnlimited ? "text-[hsl(var(--primary))]" : "text-red-500"}>{item.isUnlimited ? `∞ (${t('unlimited')})` : `${item.quantity} ta`}</span>
-                         </span>
-                       ))}
-                     </div>
-                  )}
+            {discounts.map((discount: any) => {
+              const viewsCount = Array.isArray(discount.discount_views) ? discount.discount_views[0]?.count || 0 : discount.discount_views?.count || 0;
+              return (
+                <div key={discount.id} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[20px] overflow-hidden shadow-sm relative group flex flex-col">
+                  <button onClick={() => handleDelete(discount.id, discount.image_url)} className="absolute top-2 left-2 z-10 bg-red-500/90 text-white p-2 rounded-full backdrop-blur-md opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity cursor-pointer"><Trash2 size={16} /></button>
+                  <div className="absolute top-2 right-2 z-10 bg-red-500 text-white text-[13px] font-extrabold px-3 py-1.5 rounded-xl shadow-md">-{discount.discount_percent}%</div>
+                  <div className="w-full aspect-video bg-[hsl(var(--secondary))] overflow-hidden"><img src={discount.image_url} alt={discount.product_name} className="w-full h-full object-cover" /></div>
+                  <div className="p-4 flex-1 flex flex-col">
+                    <h3 className="font-bold text-[15px] text-[hsl(var(--foreground))] leading-tight line-clamp-2">{discount.short_description || discount.product_name.replace(/,/g, ' • ')}</h3>
+                    <div className="mt-auto pt-3 flex items-end justify-between gap-2">
+                      <div className="flex flex-wrap gap-1.5 flex-1">
+                        {discount.items && discount.items.length > 0 && discount.items.map((item: any, i: number) => (
+                           <span key={i} className="text-[10px] font-bold bg-[hsl(var(--secondary))] px-2 py-1 rounded-md text-[hsl(var(--muted-foreground))] flex items-center gap-1">
+                             {item.name}: <span className={item.quantity > 0 || item.isUnlimited ? "text-[hsl(var(--primary))]" : "text-red-500"}>{item.isUnlimited ? `∞ (${t('unlimited')})` : `${item.quantity} ta`}</span>
+                           </span>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-[hsl(var(--muted-foreground))] bg-[hsl(var(--secondary))] px-2.5 py-1.5 rounded-lg border border-[hsl(var(--border))] shrink-0" title="Ushbu chegirma ko'rilgan marta">
+                        <Eye size={14} /> {viewsCount}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-8 rounded-[24px] text-center flex flex-col items-center mt-10">
@@ -244,7 +305,7 @@ export default function MerchantDiscounts() {
       </div>
 
       {isModalOpen && isActive && (
-        <div className="fixed inset-0 z-[999999] bg-[hsl(var(--background))] flex flex-col animate-in slide-in-from-bottom-4 duration-300">
+        <div className="fixed inset-0 z-[99999] bg-[hsl(var(--background))] flex flex-col animate-in slide-in-from-bottom-4 duration-300">
           <div className="flex-none bg-[hsl(var(--background))] px-4 py-3 flex items-center justify-between z-10 border-b border-[hsl(var(--border))]">
             <button type="button" onClick={closeModal} className="p-2 -ml-2 rounded-full hover:bg-[hsl(var(--secondary))] transition-colors text-[hsl(var(--foreground))]"><ArrowLeft size={22} /></button>
             <h3 className="font-display text-[16px] font-bold text-[hsl(var(--foreground))] tracking-wide">{t('new_discount_title')}</h3>
@@ -258,7 +319,11 @@ export default function MerchantDiscounts() {
                   <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
                   <div onClick={() => fileInputRef.current?.click()} className={`w-full aspect-[16/10] rounded-[24px] bg-[hsl(var(--secondary))/30] overflow-hidden flex flex-col items-center justify-center cursor-pointer transition-colors shadow-sm ${!imagePreview ? 'border-2 border-dashed border-[hsl(var(--border))] hover:border-[hsl(var(--primary))/50]' : 'border border-[hsl(var(--border))]'}`}>
                     {imagePreview ? ( <img src={imagePreview} className="w-full h-full object-cover" /> ) : (
-                      <> <Camera size={32} className="text-[hsl(var(--muted-foreground))]/50 mb-3" /> <span className="text-[11px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider text-center">{t('upload_horizontal_img')}</span> </>
+                      <> 
+                        {isSubmitting ? <Loader2 className="animate-spin text-[hsl(var(--accent))]" size={32} /> : (
+                           <><Camera size={32} className="text-[hsl(var(--muted-foreground))]/50 mb-3" /> <span className="text-[11px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider text-center">{t('upload_horizontal_img')}</span></>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -268,16 +333,26 @@ export default function MerchantDiscounts() {
                   <input type="text" required value={shortDesc} onChange={(e) => setShortDesc(e.target.value)} placeholder={t('short_desc_placeholder')} className="w-full bg-[hsl(var(--secondary))/20] border border-[hsl(var(--border))] py-3.5 px-4 rounded-2xl text-[14px] font-semibold outline-none focus:border-[hsl(var(--primary))] transition-colors" />
                 </div>
 
-                <div>
+                <div className="relative">
                   <label className="text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-1 mb-1.5 block">{t('products_label')}</label>
                   <input type="text" value={inputValue} onChange={handleTagInput} placeholder={t('products_placeholder')} className="w-full bg-[hsl(var(--secondary))/20] border border-[hsl(var(--border))] py-3.5 px-4 rounded-2xl text-[14px] font-semibold outline-none focus:border-[hsl(var(--primary))] transition-colors" />
+                  
+                  {/* 🌟 TEG TAKLIFLARI DROPDOWN */}
+                  {tagSuggestions.length > 0 && (
+                    <div className="absolute z-20 w-full bg-[hsl(var(--card))] border border-[hsl(var(--border))] mt-1.5 rounded-2xl shadow-xl max-h-40 overflow-y-auto overflow-hidden animate-in fade-in slide-in-from-top-2">
+                      {tagSuggestions.map(tag => (
+                        <div key={tag} onClick={() => addTagFromSuggestion(tag)} className="px-4 py-3 hover:bg-[hsl(var(--secondary))] cursor-pointer font-bold text-sm text-[hsl(var(--foreground))] transition-colors border-b border-[hsl(var(--border))] last:border-0">
+                          {tag}
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {items.length > 0 && (
-                    <div className="mt-3 space-y-2">
+                    <div className="mt-3 space-y-2 relative z-10">
                       {items.map((item, idx) => (
                         <div key={idx} className="flex items-start gap-3 bg-[hsl(var(--secondary))/10] p-3 pl-4 rounded-2xl border border-[hsl(var(--border))] animate-in fade-in slide-in-from-top-2">
                           <div className="flex-1 font-bold text-[14px] mt-2 truncate text-[hsl(var(--foreground))]">{item.name}</div>
-                          
                           <div className="flex flex-col items-center gap-1.5 w-[90px] shrink-0">
                             <input 
                               type={item.isUnlimited ? "text" : "number"} min="1" required={!item.isUnlimited} placeholder={t('quantity_placeholder')} 
@@ -330,6 +405,23 @@ export default function MerchantDiscounts() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedImage && (
+        <div className="fixed inset-0 z-[9999999] flex flex-col bg-black/95 backdrop-blur-md">
+          <div className="relative flex-1 w-full mt-10">
+            <Cropper image={selectedImage} crop={crop} zoom={zoom} aspect={16/9} showGrid={false} onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={(_, pixels) => setCroppedAreaPixels(pixels)} />
+          </div>
+          <div className="p-6 pb-12 bg-black flex flex-col gap-6 items-center">
+            <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(Number(e.target.value))} className="w-full max-w-xs accent-[hsl(var(--primary))]" />
+            <div className="flex w-full max-w-xs gap-4">
+              <button onClick={() => setSelectedImage(null)} className="flex-1 py-3.5 font-bold rounded-2xl text-white bg-white/20 hover:bg-white/30 transition-colors">{t('cancel')}</button>
+              <button onClick={handleCropSave} className="flex-1 py-3.5 font-bold rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-md active:scale-95 transition-transform flex items-center justify-center gap-2">
+                {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : 'Qirqish'}
+              </button>
             </div>
           </div>
         </div>
