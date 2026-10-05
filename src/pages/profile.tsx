@@ -61,7 +61,6 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [editError, setEditError] = useState('');
 
-  // 🌟 CROP STATELARI
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -139,6 +138,7 @@ export default function ProfilePage() {
     }
   };
 
+  // 🌟 TALABA AVATARINI SAQLASHDA HAM OPTIMIZATSIYA
   const handleCropSave = async () => {
     if (!selectedImage || !croppedAreaPixels || !user) return;
     
@@ -152,8 +152,16 @@ export default function ProfilePage() {
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('No 2d context');
 
-      canvas.width = croppedAreaPixels.width;
-      canvas.height = croppedAreaPixels.height;
+      let targetWidth = croppedAreaPixels.width;
+      let targetHeight = croppedAreaPixels.height;
+
+      if (targetWidth > 500) {
+        targetHeight = Math.round((targetHeight * 500) / targetWidth);
+        targetWidth = 500;
+      }
+
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
 
       ctx.drawImage(
         image,
@@ -161,17 +169,11 @@ export default function ProfilePage() {
         croppedAreaPixels.y,
         croppedAreaPixels.width,
         croppedAreaPixels.height,
-        0,
-        0,
-        croppedAreaPixels.width,
-        croppedAreaPixels.height
+        0, 0, targetWidth, targetHeight
       );
 
       const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((b) => {
-          if (b) resolve(b);
-          else reject(new Error('Canvas is empty'));
-        }, 'image/jpeg', 0.9);
+        canvas.toBlob((b) => { if (b) resolve(b); else reject(new Error('Canvas is empty')); }, 'image/jpeg', 0.6); // 60% sifat
       });
 
       const localUrl = URL.createObjectURL(blob);
@@ -452,7 +454,6 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* 🌟 YANGILANGAN: XATOSIZ RASM QIRQISH (CROP) MODALI */}
       {selectedImage && (
         <div className="fixed inset-0 z-[70] flex flex-col bg-black/95 backdrop-blur-md">
           <div className="relative flex-1 w-full mt-10">
@@ -496,7 +497,6 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* TAHRIRLASH MODALI */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overflow-y-auto">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !isSaving && setIsEditModalOpen(false)} />
@@ -592,7 +592,6 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* TILLAR MODALI */}
       {isLangModalOpen && (
         <div className="fixed inset-0 z-[45] flex flex-col justify-end" style={{ height: '100dvh' }}>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsLangModalOpen(false)} />

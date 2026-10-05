@@ -30,6 +30,48 @@ const createImage = (url: string): Promise<HTMLImageElement> =>
     image.src = url;
   });
 
+// 🌟 OPTIMIZATSIYA: Xotirani tejash uchun rasm siqish yordamchisi (Storage tejaydi)
+const compressImage = (file: File, maxWidth = 1200, quality = 0.6): Promise<File> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { resolve(file); return; }
+        
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            resolve(newFile);
+          } else {
+            resolve(file);
+          }
+        }, 'image/jpeg', quality); // 60% sifat (ko'zga sezilmaydi, joyni 90% tejaydi)
+      };
+      img.onerror = () => resolve(file);
+    };
+    reader.onerror = () => resolve(file);
+  });
+};
+
 const PrivacyPolicyText = () => (
   <div className="space-y-4">
     <p className="font-bold">Amal qilish sanasi: [01.10.2026]<br/>Oxirgi yangilanish: [01.10.2026]</p>
@@ -110,11 +152,9 @@ export default function SignupPage() {
     localStorage.setItem('studentSignupData', JSON.stringify(formData));
   }, [formData]);
 
-  // 🌟 1-QISM BUG FIX: Tizimga ilk kirganda sessiyani tekshirish
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session && step >= 4) {
-        // Agar foydalanuvchi profilingdan chiqqan bo'lsa va xotirada 4-5-6 qadam qolib ketgan bo'lsa, uni 1-qadamga qaytarib tozalaymiz.
         setStep(1);
         localStorage.removeItem('studentSignupStep');
       } else if (session && step < 5) {
@@ -170,6 +210,7 @@ export default function SignupPage() {
     }
   };
 
+  // 🌟 AVATARNI IXCHAMLASHTIRISH (Max 500x500 px va 0.6 sifat)
   const handleCropSave = async () => {
     if (!selectedImage || !croppedAreaPixels) return;
     try {
@@ -181,20 +222,26 @@ export default function SignupPage() {
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('No 2d context');
 
-      canvas.width = croppedAreaPixels.width;
-      canvas.height = croppedAreaPixels.height;
+      let targetWidth = croppedAreaPixels.width;
+      let targetHeight = croppedAreaPixels.height;
+
+      // Avatarlar kichik bo'lishi kifoya
+      if (targetWidth > 500) {
+        targetHeight = Math.round((targetHeight * 500) / targetWidth);
+        targetWidth = 500;
+      }
+
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
 
       ctx.drawImage(
         image,
-        croppedAreaPixels.x,
-        croppedAreaPixels.y,
-        croppedAreaPixels.width,
-        croppedAreaPixels.height,
-        0, 0, croppedAreaPixels.width, croppedAreaPixels.height
+        croppedAreaPixels.x, croppedAreaPixels.y, croppedAreaPixels.width, croppedAreaPixels.height,
+        0, 0, targetWidth, targetHeight
       );
 
       const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((b) => { if (b) resolve(b); else reject(new Error('Canvas is empty')); }, 'image/jpeg', 0.9);
+        canvas.toBlob((b) => { if (b) resolve(b); else reject(new Error('Canvas is empty')); }, 'image/jpeg', 0.6);
       });
 
       const file = new File([blob], 'avatar_photo.jpg', { type: 'image/jpeg' });
@@ -205,11 +252,21 @@ export default function SignupPage() {
     }
   };
 
-  const handleDocumentUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // 🌟 GUVOHNOMA RASMINI IXCHAMLASHTIRIB YUKLASH
+  const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setDocumentFile(file);
-      setDocumentPreview(URL.createObjectURL(file));
+      setIsLoading(true);
+      try {
+        const compressed = await compressImage(file, 1200, 0.6);
+        setDocumentFile(compressed);
+        setDocumentPreview(URL.createObjectURL(compressed));
+      } catch (err) {
+        setDocumentFile(file);
+        setDocumentPreview(URL.createObjectURL(file));
+      } finally {
+        setIsLoading(false);
+      }
       if (isCameraOpen) stopCamera(); 
     }
   };
@@ -245,6 +302,7 @@ export default function SignupPage() {
 
   useEffect(() => { return () => stopCamera(); }, [stopCamera]);
 
+  // 🌟 KAMERADAN OLINGAN RASMNI SIFATINI TUSHIRISH (0.6)
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current; const canvas = canvasRef.current;
@@ -258,12 +316,11 @@ export default function SignupPage() {
             const file = new File([blob], "id_card_photo.jpg", { type: "image/jpeg" });
             setDocumentFile(file); setDocumentPreview(URL.createObjectURL(blob)); stopCamera();
           }
-        }, 'image/jpeg', 0.9);
+        }, 'image/jpeg', 0.6); // 90% joy tejaydi
       }
     }
   };
 
-  // 🌟 2-QISM BUG FIX: Agar 5-qadamda aylanib yotgan bo'lsayu, aslini olganda u profildan chiqqan bo'lsa, to'xtatish!
   useEffect(() => {
     let interval: any;
     if (step === 5) {
@@ -276,14 +333,13 @@ export default function SignupPage() {
             setTimeout(() => { setStep(6); }, 2000);
           }
         } else {
-          // Foydalanuvchi "Tekshirilmoqda" sahifasiga kirgan, lekin aslini olganda u sessiyadan chiqqan
           clearInterval(interval);
           setStep(1);
           localStorage.removeItem('studentSignupStep');
         }
       };
       
-      checkApprovalStatus(); // 5 soniya kutmasdan darhol bir marta tekshirib ko'rish
+      checkApprovalStatus(); 
       interval = setInterval(checkApprovalStatus, 5000);
     }
     return () => clearInterval(interval);
@@ -383,7 +439,6 @@ export default function SignupPage() {
     } catch (err: any) { setError(err.message); setIsLoading(false); }
   };
 
-  // 🌟 QO'SHIMCHA FIX: Hamma narsani tozalab chiqib ketadigan Logout funksiyasi
   const forceRestart = async () => {
     await supabase.auth.signOut();
     localStorage.removeItem('studentSignupStep');
@@ -587,8 +642,8 @@ export default function SignupPage() {
                      <button onClick={startCamera} className="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-bold py-3 px-6 rounded-full shadow-lg active:scale-95 transition-all w-full flex items-center justify-center gap-2">
                        <Camera size={20} /> Kamerani yoqish
                      </button>
-                     <button onClick={() => documentInputRef.current?.click()} className="bg-[hsl(var(--card))] text-[hsl(var(--foreground))] border-2 border-[hsl(var(--border))] font-bold py-3 px-6 rounded-full shadow-sm active:scale-95 transition-all w-full flex items-center justify-center gap-2">
-                       <FileImage size={20} /> Galeriyadan yuklash
+                     <button disabled={isLoading} onClick={() => documentInputRef.current?.click()} className="bg-[hsl(var(--card))] text-[hsl(var(--foreground))] border-2 border-[hsl(var(--border))] font-bold py-3 px-6 rounded-full shadow-sm active:scale-95 transition-all w-full flex items-center justify-center gap-2">
+                       {isLoading ? <Loader2 className="animate-spin" size={20} /> : <><FileImage size={20} /> Galeriyadan yuklash</>}
                      </button>
                    </div>
                  </div>
@@ -664,7 +719,6 @@ export default function SignupPage() {
               </div>
             )}
             
-            {/* 🌟 BUG FIX: Xavfsizlik chiqish tugmasi qo'shildi (Agar bloklanib qolsa, shu qutqaradi) */}
             <div className="mt-8 pt-8 border-t border-[hsl(var(--border))] w-full">
                <button 
                  onClick={forceRestart}

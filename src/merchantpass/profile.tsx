@@ -25,7 +25,6 @@ export default function MerchantProfile() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Crop states
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -67,6 +66,7 @@ export default function MerchantProfile() {
     }
   };
 
+  // 🌟 DO'KON LOGOTIPINI O'ZGARTIRISHDA HAM OPTIMIZATSIYA
   const handleCropSave = async () => {
     if (!selectedImage || !croppedAreaPixels || !merchant) return;
     
@@ -80,8 +80,17 @@ export default function MerchantProfile() {
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('No 2d context');
 
-      canvas.width = croppedAreaPixels.width;
-      canvas.height = croppedAreaPixels.height;
+      let targetWidth = croppedAreaPixels.width;
+      let targetHeight = croppedAreaPixels.height;
+
+      // Logotiplar maksimal 500px da saqlanadi
+      if (targetWidth > 500) {
+        targetHeight = Math.round((targetHeight * 500) / targetWidth);
+        targetWidth = 500;
+      }
+
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
 
       ctx.drawImage(
         image,
@@ -89,17 +98,11 @@ export default function MerchantProfile() {
         croppedAreaPixels.y,
         croppedAreaPixels.width,
         croppedAreaPixels.height,
-        0,
-        0,
-        croppedAreaPixels.width,
-        croppedAreaPixels.height
+        0, 0, targetWidth, targetHeight
       );
 
       const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((b) => {
-          if (b) resolve(b);
-          else reject(new Error('Canvas is empty'));
-        }, 'image/jpeg', 0.9);
+        canvas.toBlob((b) => { if (b) resolve(b); else reject(new Error('Canvas is empty')); }, 'image/jpeg', 0.6); // 60% sifat
       });
 
       const fileExt = 'jpg';

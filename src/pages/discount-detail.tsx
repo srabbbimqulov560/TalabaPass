@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Bookmark, Clock3, MapPin, Store, Ticket, X, CalendarDays, Package, Copy, CheckCircle2, Map } from 'lucide-react';
+import { ArrowLeft, Bookmark, Clock3, MapPin, Store, Ticket, X, CalendarDays, Package, Copy, CheckCircle2, Map, Tag } from 'lucide-react';
 import { Link, useLocation, useParams } from 'wouter';
 import { useLanguage } from '@/lib/i18n';
 import { useFavorites } from '@/lib/useFavorites';
@@ -19,7 +19,6 @@ export default function DiscountDetailPage() {
   const [copied, setCopied] = useState(false);
   const [showMapOptions, setShowMapOptions] = useState(false);
 
-  // 🌟 QOTISHNI OLDINI OLISH UCHUN KESH QO'SHILDI
   const { data: offer, isLoading, isError } = useQuery({
     queryKey: ['discountDetail', id],
     queryFn: async () => {
@@ -29,24 +28,21 @@ export default function DiscountDetailPage() {
       return data;
     },
     enabled: !!id,
-    staleTime: 1000 * 60 * 5 // 5 daqiqa keshda turadi, qayta kirsangiz qotmaydi
+    staleTime: 1000 * 60 * 5 
   });
 
-  // 🌟 409 CONFLICT XATOSINI OLDINI OLISH
   useEffect(() => {
     async function trackView() {
       if (!id || !offer?.merchant_id) return;
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          // 1. Avval bu talaba shu chegirmani ko'rganini tekshiramiz
           const { count } = await supabase
             .from('discount_views')
             .select('*', { count: 'exact', head: true })
             .eq('discount_id', id)
             .eq('student_id', user.id);
             
-          // 2. Agar hali ko'rmagan bo'lsa (0 ta bo'lsa), keyin yozamiz. (Console qizarib xato bermaydi)
           if (count === 0) {
             await supabase.from('discount_views').insert({
               discount_id: id, merchant_id: offer.merchant_id, student_id: user.id
@@ -104,10 +100,18 @@ export default function DiscountDetailPage() {
   const productTags = offer.product_name.split(',').map((tag: string) => tag.trim()).filter(Boolean);
   const hasItems = offer.items && offer.items.length > 0;
 
+  // Manzil va Ish vaqti matnini ajratib olish (Agar kiritilgan bo'lsa)
+  const fullDescription = offer.merchant?.description || "";
+  const addressMatch = fullDescription.match(/📍 Manzil: (.*?)(?:\n|$)/);
+  const timeMatch = fullDescription.match(/⏰ Ish vaqti: (.*?)(?:\n|$)/);
+  
+  const addressText = addressMatch ? addressMatch[1] : fullDescription;
+  const workTimeText = timeMatch ? timeMatch[1] : null;
+
   return (
     <div className="page-enter flex flex-col h-[calc(100dvh-200px)] max-w-3xl mx-auto overflow-y-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
       
-      <div className="flex items-center justify-between mb-4 shrink-0">
+      <div className="flex items-center justify-between mb-4 shrink-0 mt-2">
         <button onClick={() => window.history.back()} className="flex items-center gap-2 text-[15px] font-bold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors p-2 -ml-2 rounded-full hover:bg-[hsl(var(--secondary))]">
           <ArrowLeft size={20} /> Orqaga
         </button>
@@ -116,31 +120,33 @@ export default function DiscountDetailPage() {
         </button>
       </div>
       
-      <div className="w-full flex-1 min-h-[200px] max-h-[35vh] rounded-[32px] overflow-hidden shadow-md mb-6 flex items-center justify-center bg-[hsl(var(--secondary))] border-2 border-[hsl(var(--card-border))] shrink-0 relative group">
+      <div className="w-full flex-1 min-h-[200px] max-h-[35vh] rounded-[32px] overflow-hidden shadow-md mb-5 flex items-center justify-center bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] shrink-0 relative group">
         <img src={offer.image_url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Discount Cover" />
         
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
 
-        <div className="absolute bottom-5 left-5 flex items-center gap-3">
-          <div className="w-12 h-12 bg-[hsl(var(--card))] rounded-full p-1 shadow-xl border-2 border-white/20 overflow-hidden backdrop-blur-md">
-            {offer.merchant?.logo_url ? (
-              <img src={offer.merchant.logo_url} className="w-full h-full rounded-full object-cover" />
-            ) : (
-              <div className="w-full h-full rounded-full bg-[hsl(var(--secondary))] flex items-center justify-center"><Store size={20} className="text-[hsl(var(--muted-foreground))]" /></div>
-            )}
+        <div className="absolute bottom-5 left-5 right-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-white/10 rounded-[14px] p-1 shadow-lg border border-white/20 overflow-hidden backdrop-blur-md">
+              {offer.merchant?.logo_url ? (
+                <img src={offer.merchant.logo_url} className="w-full h-full rounded-[10px] object-cover" />
+              ) : (
+                <div className="w-full h-full rounded-[10px] bg-[hsl(var(--secondary))] flex items-center justify-center"><Store size={20} className="text-[hsl(var(--muted-foreground))]" /></div>
+              )}
+            </div>
+            <span className="text-[18px] font-display font-bold text-white tracking-wide drop-shadow-md line-clamp-1">{offer.merchant?.name}</span>
           </div>
-          <span className="text-[18px] font-display font-bold text-white tracking-wide drop-shadow-md line-clamp-1">{offer.merchant?.name}</span>
         </div>
       </div>
       
-      <div className="shrink-0 mb-6 flex items-center">
-        <div className="relative inline-block transform -rotate-2 hover:rotate-0 transition-transform duration-300">
-           <div className="absolute inset-0 bg-gradient-to-r from-rose-500 to-red-600 blur-md opacity-60 rounded-2xl"></div>
-           <div className="relative flex items-center gap-2 bg-gradient-to-br from-rose-500 to-red-600 border border-white/20 px-6 py-2.5 rounded-[18px] shadow-xl">
-              <span className="text-[22px] font-black text-white tracking-tighter drop-shadow-sm">-{offer.discount_percent}%</span>
-              <div className="w-[1px] h-6 bg-white/30 mx-1"></div>
-              <span className="text-[15px] font-extrabold text-white uppercase tracking-widest drop-shadow-sm">Chegirma</span>
-           </div>
+      {/* 🌟 YANGILANGAN (MINIMAL) CHEGIRMA BELGISI */}
+      <div className="shrink-0 mb-6 flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-1.5 bg-red-500/10 text-red-500 border border-red-500/20 px-3.5 py-1.5 rounded-full shadow-sm">
+           <Tag size={16} />
+           <span className="text-[14px] font-bold">-{offer.discount_percent}% Chegirma</span>
+        </div>
+        <div className="text-[13px] font-semibold text-[hsl(var(--muted-foreground))]">
+          Ushbu taklif barcha ko'rsatilgan mahsulotlarga amal qiladi
         </div>
       </div>
 
@@ -149,7 +155,7 @@ export default function DiscountDetailPage() {
         <div className="flex flex-col gap-2.5">
           {hasItems ? (
             offer.items.map((item: any, idx: number) => {
-              const isAvailable = item.quantity > 0;
+              const isAvailable = item.quantity > 0 || item.isUnlimited;
               return (
                 <div key={idx} className={`flex items-center justify-between p-4 rounded-[20px] border-2 transition-all ${isAvailable ? 'bg-[hsl(var(--card))] border-[hsl(var(--border))] hover:border-[hsl(var(--accent))/50] shadow-sm' : 'bg-[hsl(var(--secondary))/40] border-transparent opacity-60'}`}>
                   <div className="flex items-center gap-3">
@@ -159,7 +165,7 @@ export default function DiscountDetailPage() {
                     <span className="font-bold text-[15px] text-[hsl(var(--foreground))]">{item.name}</span>
                   </div>
                   <div className={`text-[12px] font-extrabold px-3 py-1.5 rounded-lg ${isAvailable ? 'bg-[hsl(var(--accent))/10] text-[hsl(var(--accent))]' : 'bg-red-500/10 text-red-500'}`}>
-                    {isAvailable ? `${item.quantity} ta qoldi` : 'Tugagan'}
+                    {item.isUnlimited ? 'Cheklanmagan' : isAvailable ? `${item.quantity} ta qoldi` : 'Tugagan'}
                   </div>
                 </div>
               )
@@ -177,6 +183,8 @@ export default function DiscountDetailPage() {
       </div>
       
       <div className="grid gap-3 grid-cols-1 shrink-0 mb-4">
+        
+        {/* 🌟 MANZIL VA ISH VAQTI (YANGILANDI) */}
         <div className="rounded-[24px] bg-[hsl(var(--card))] border-2 border-[hsl(var(--card-border))] p-5 shadow-sm overflow-hidden relative">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 text-[hsl(var(--accent))]">
@@ -190,9 +198,18 @@ export default function DiscountDetailPage() {
             className="group relative bg-[hsl(var(--secondary))/50] p-4 rounded-[18px] cursor-pointer hover:bg-[hsl(var(--secondary))] active:scale-[0.98] transition-all border border-[hsl(var(--border))]"
           >
             <div className="pr-8 text-[14px] font-semibold text-[hsl(var(--foreground))] leading-relaxed line-clamp-3">
-              {offer.merchant?.description || "Manzil kiritilmagan"}
+              {addressText || "Manzil kiritilmagan"}
             </div>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--foreground))] transition-colors">
+            
+            {/* Ish vaqti agar mavjud bo'lsa */}
+            {workTimeText && (
+              <div className="mt-2.5 pt-2.5 border-t border-[hsl(var(--border))] flex items-center gap-1.5 text-[13px] font-bold text-[hsl(var(--foreground))]">
+                <Clock3 size={14} className="text-[hsl(var(--muted-foreground))]" />
+                {workTimeText}
+              </div>
+            )}
+
+            <div className="absolute right-4 top-4 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--foreground))] transition-colors">
               {copied ? <CheckCircle2 size={20} className="text-green-500" /> : <Copy size={20} />}
             </div>
           </div>
@@ -228,9 +245,10 @@ export default function DiscountDetailPage() {
         </div>
       </div>
 
-      <div className="mt-auto shrink-0 pb-4 pt-4 sticky bottom-0 bg-gradient-to-t from-[hsl(var(--background))] via-[hsl(var(--background))] to-transparent">
-        <button onClick={() => setLocation('/qr')} className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] px-5 py-4.5 font-display text-[18px] font-bold text-[hsl(var(--primary-foreground))] shadow-[0_8px_30px_hsl(var(--primary)/0.3)] transition-all hover:-translate-y-1 active:scale-[0.98]">
-          Chegirmani olish (QR Kodi) <ArrowLeft className="rotate-180" size={20} />
+      {/* 🌟 YANGILANGAN: NEON OLIB TASHLANDI VA TUGMA ODDIYROQ QILINDI */}
+      <div className="mt-auto shrink-0 pb-6 pt-2 sticky bottom-0 bg-gradient-to-t from-[hsl(var(--background))] via-[hsl(var(--background))] to-transparent">
+        <button onClick={() => setLocation('/qr')} className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] px-5 py-4 font-display text-[16px] font-bold text-[hsl(var(--primary-foreground))] shadow-float transition-all hover:-translate-y-1 active:scale-[0.98]">
+          Chegirmani olish (QR Kodi) <ArrowLeft className="rotate-180" size={18} />
         </button>
       </div>
       
@@ -277,12 +295,12 @@ export default function DiscountDetailPage() {
 function DetailSkeleton() {
   return (
     <div className="page-enter flex flex-col h-[calc(100dvh-200px)] max-w-3xl mx-auto">
-      <div className="flex justify-between items-center mb-4 shrink-0">
+      <div className="flex justify-between items-center mb-4 shrink-0 mt-2">
         <div className="skeleton h-8 w-24 rounded-full" />
         <div className="skeleton h-10 w-10 rounded-full" />
       </div>
       <div className="skeleton w-full flex-1 max-h-[35vh] min-h-[200px] rounded-[32px] mb-6 shrink-0" />
-      <div className="skeleton h-12 w-48 rounded-2xl mb-6" />
+      <div className="skeleton h-8 w-32 rounded-full mb-6" />
       <div className="space-y-3 mb-6 shrink-0">
         <div className="skeleton h-16 rounded-[20px] w-full" />
         <div className="skeleton h-16 rounded-[20px] w-full" />

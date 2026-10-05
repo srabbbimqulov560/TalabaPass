@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { Store, ArrowRight, ArrowLeft, CheckCircle2, LockKeyhole, UserRound, Loader2, Briefcase, MapPin, Clock, Camera, Eye, EyeOff, Navigation, GraduationCap } from 'lucide-react';
 import { Link } from 'wouter';
 import { supabase } from '@/lib/supabase';
-import { TalabaLoader } from '@/components/TalabaLoader';
 import Cropper from 'react-easy-crop';
 
 const CATEGORIES = [
@@ -68,7 +67,6 @@ export default function MerchantSignup() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Crop states
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -96,6 +94,7 @@ export default function MerchantSignup() {
     }
   };
 
+  // 🌟 LOGOTIPNI IXCHAMLASHTIRISH (Max 500x500 px va 0.6 sifat)
   const handleCropSave = async () => {
     if (!selectedImage || !croppedAreaPixels) return;
     
@@ -108,26 +107,27 @@ export default function MerchantSignup() {
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('No 2d context');
 
-      canvas.width = croppedAreaPixels.width;
-      canvas.height = croppedAreaPixels.height;
+      let targetWidth = croppedAreaPixels.width;
+      let targetHeight = croppedAreaPixels.height;
+
+      // Logotiplar juda kichkina kvadrat bo'ladi, 500px yetadi
+      if (targetWidth > 500) {
+        targetHeight = Math.round((targetHeight * 500) / targetWidth);
+        targetWidth = 500;
+      }
+
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
 
       ctx.drawImage(
         image,
-        croppedAreaPixels.x,
-        croppedAreaPixels.y,
-        croppedAreaPixels.width,
-        croppedAreaPixels.height,
-        0,
-        0,
-        croppedAreaPixels.width,
-        croppedAreaPixels.height
+        croppedAreaPixels.x, croppedAreaPixels.y, croppedAreaPixels.width, croppedAreaPixels.height,
+        0, 0, targetWidth, targetHeight
       );
 
       const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((b) => {
-          if (b) resolve(b);
-          else reject(new Error('Canvas is empty'));
-        }, 'image/jpeg', 0.9);
+        // Sifatni 60% ga tushirish (xotirani himoya qiladi)
+        canvas.toBlob((b) => { if (b) resolve(b); else reject(new Error('Canvas is empty')); }, 'image/jpeg', 0.6);
       });
 
       const file = new File([blob], 'merchant_logo.jpg', { type: 'image/jpeg' });

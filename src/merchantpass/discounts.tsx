@@ -3,6 +3,48 @@ import { PlusCircle, Tag as TagIcon, Loader2, Camera, Trash2, Clock, ShieldAlert
 import { supabase } from '@/lib/supabase';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
+// 🌟 OPTIMIZATSIYA: Xotirani tejash uchun rasm siqish yordamchisi (Storage tejaydi)
+const compressImage = (file: File, maxWidth = 1024, quality = 0.6): Promise<File> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { resolve(file); return; }
+        
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            resolve(newFile);
+          } else {
+            resolve(file);
+          }
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = () => resolve(file);
+    };
+    reader.onerror = () => resolve(file);
+  });
+};
+
 export default function MerchantDiscounts() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -49,10 +91,21 @@ export default function MerchantDiscounts() {
     }
   });
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 🌟 CHEGIRMA BANNERINI IXCHAMLASHTIRISH
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setImageFile(file); setImagePreview(URL.createObjectURL(file));
+      setIsSubmitting(true);
+      try {
+        const compressed = await compressImage(file, 1024, 0.6); // Katta rasm ham 1024px ga va 60% sifatga qisqaradi
+        setImageFile(compressed); 
+        setImagePreview(URL.createObjectURL(compressed));
+      } catch (err) {
+        setImageFile(file); 
+        setImagePreview(URL.createObjectURL(file));
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -120,7 +173,6 @@ export default function MerchantDiscounts() {
         isUnlimited: !!i.isUnlimited
       }));
 
-      // 🌟 Chegirmani bazaga kiritish (Id ni olib qolamiz .select().single() bilan)
       const { data: newDiscount, error: dbError } = await supabase.from('discounts').insert([{
         merchant_id: user.id, 
         product_name: finalProductName, 
@@ -136,9 +188,7 @@ export default function MerchantDiscounts() {
 
       if (dbError) throw new Error(dbError.message);
       
-      // 🌟 FOYDALANUVCHILARGA XABARNOMA YUBORISH
       if (newDiscount && merchantStatus) {
-        // Shu do'konga tegishli eski chegirmalarni ko'rganlar yoki xarid qilganlarni topamiz
         const { data: views } = await supabase.from('discount_views').select('student_id').eq('merchant_id', user.id);
         const { data: scans } = await supabase.from('scan_history').select('student_id').eq('merchant_id', user.id);
 
@@ -154,7 +204,6 @@ export default function MerchantDiscounts() {
             message: `Siz qiziqqan "${merchantStatus.name}" do'koni yangi chegirma e'lon qildi: ${shortDesc}`,
             link: `/discount/${newDiscount.id}`
           }));
-          // Hammasiga bittada tashlaymiz
           await supabase.from('notifications').insert(notifications);
         }
       }

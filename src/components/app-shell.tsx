@@ -20,9 +20,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [location]);
 
-  // 🌟 O'QILMAGAN XABARLAR SONINI REAL-TIME KUZATISH
+  // 🌟 O'QILMAGAN XABARLAR SONINI REAL-TIME VA SIGNAL ORQALI KUZATISH
   useEffect(() => {
     if (!isLoggedIn) return;
 
@@ -34,11 +34,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id)
           .eq('is_read', false);
-        setUnreadCount(count || 0);
+        setUnreadCount(count || 0); // 🌟 Agar 0 bo'lsa qizil ptichka avto o'chadi
       }
     };
 
     fetchUnreadCount();
+
+    // 🌟 SIGNALNI QABUL QILISH (Foydalanuvchi xabarni bosishi bilan ishga tushadi)
+    window.addEventListener('notifications_updated', fetchUnreadCount);
 
     const channel = supabase.channel('realtime-notifications')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
@@ -46,8 +49,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [isLoggedIn]);
+    return () => { 
+      window.removeEventListener('notifications_updated', fetchUnreadCount);
+      supabase.removeChannel(channel); 
+    };
+  }, [isLoggedIn, location]); // location ga bog'liq bo'ldi (har sahifaga o'tganda yangilanadi)
 
   return (
     <div className="app-shell min-h-[100dvh] w-full bg-[hsl(var(--background))]">
@@ -100,9 +106,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-5 relative z-20">
             {isLoggedIn ? (
               <div className="flex items-center gap-3">
-                {/* 🌟 QO'NG'IROQCHA VA UNREAD BADGE */}
                 <Link href="/notifications" className="relative flex items-center justify-center h-10 w-10 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm transition-transform hover:-translate-y-0.5 text-[hsl(var(--foreground))] hover:text-[hsl(var(--accent))]">
                   <Bell size={20} strokeWidth={2.5} />
+                  {/* 🌟 0 BO'LSA UMUAN CHIQMAYDI */}
                   {unreadCount > 0 && (
                     <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-extrabold text-white shadow-sm border-2 border-[hsl(var(--background))] animate-in zoom-in">
                       {unreadCount > 99 ? '99+' : unreadCount}
