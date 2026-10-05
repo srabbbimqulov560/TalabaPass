@@ -176,13 +176,26 @@ export default function MerchantDiscounts() {
       if (!item.isUnlimited && (!item.quantity || Number(item.quantity) <= 0)) return alert(`Iltimos, "${item.name}" uchun to'g'ri miqdor kiriting (yoki cheksizni belgilang)!`);
     }
 
-    const finalProductName = items.map(i => i.name).join(', ');
-    if (!imageFile || !finalProductName || !discountPercent || !startDate || !endDate || !shortDesc) return alert("Barcha maydonlarni to'ldiring!");
-    
-    // 🌟 MANTIQIY CHEKLOV (1 dan 100 gacha bo'lmasa xato beradi)
+    if (!imageFile || !discountPercent || !startDate || !endDate || !shortDesc) return alert("Barcha maydonlarni to'ldiring!");
+
     const parsedPercent = parseInt(discountPercent);
     if (isNaN(parsedPercent) || parsedPercent < 1 || parsedPercent > 100) {
       return alert("Chegirma foizi 1% dan 100% gacha bo'lishi kerak!");
+    }
+
+    // 🌟 VAQT VA SANA MANTIG'INI TEKSHIRISH
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (startDate < todayStr) {
+      return alert("Boshlanish sanasi o'tgan kunga belgilanishi mumkin emas!");
+    }
+
+    const startDT = new Date(`${startDate}T${startTime}`);
+    const endDT = new Date(`${endDate}T${endTime}`);
+    const diffMs = endDT.getTime() - startDT.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+    if (diffDays < 1) {
+      return alert("Tugash sanasi boshlanish sanasidan kamida 1 kun keyin (24 soat) bo'lishi kerak!");
     }
 
     setIsSubmitting(true);
@@ -198,6 +211,7 @@ export default function MerchantDiscounts() {
       const { data: publicUrlData } = supabase.storage.from('discounts').getPublicUrl(fileName);
 
       const formattedItems = items.map(i => ({ name: i.name, quantity: i.isUnlimited ? 999999 : Number(i.quantity), isUnlimited: !!i.isUnlimited }));
+      const finalProductName = items.map(i => i.name).join(', ');
 
       const { data: newDiscount, error: dbError } = await supabase.from('discounts').insert([{
         merchant_id: user.id, product_name: finalProductName, items: formattedItems, discount_percent: parsedPercent,
@@ -275,11 +289,39 @@ export default function MerchantDiscounts() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {discounts.map((discount: any) => {
               const viewsCount = Array.isArray(discount.discount_views) ? discount.discount_views[0]?.count || 0 : discount.discount_views?.count || 0;
+              
+              // 🌟 STATUS MANTIG'I
+              const now = new Date();
+              const startDT = new Date(`${discount.start_date}T${discount.start_time || '00:00'}`);
+              const endDT = new Date(`${discount.end_date}T${discount.end_time || '23:59'}`);
+              const isSoldOut = discount.items?.length > 0 && discount.items.every((i: any) => !i.isUnlimited && i.quantity <= 0);
+
+              let statusText = 'Faol';
+              let statusClass = 'bg-green-500/10 text-green-500 border-green-500/20';
+
+              if (isSoldOut) {
+                statusText = 'Sotilib tugagan';
+                statusClass = 'bg-red-500/10 text-red-500 border-red-500/20';
+              } else if (now > endDT) {
+                statusText = 'Muddati tugagan';
+                statusClass = 'bg-gray-500/10 text-gray-500 border-gray-500/20';
+              } else if (now < startDT) {
+                statusText = 'Kutilmoqda';
+                statusClass = 'bg-orange-500/10 text-orange-500 border-orange-500/20';
+              }
+
               return (
                 <div key={discount.id} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[20px] overflow-hidden shadow-sm relative group flex flex-col">
-                  <button onClick={() => handleDelete(discount.id, discount.image_url)} className="absolute top-2 left-2 z-10 bg-red-500/90 text-white p-2 rounded-full backdrop-blur-md opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity cursor-pointer"><Trash2 size={16} /></button>
+                  <div className="absolute top-2 left-2 z-10 flex flex-col gap-2 items-start">
+                    <button onClick={() => handleDelete(discount.id, discount.image_url)} className="bg-red-500/90 text-white p-2.5 rounded-full backdrop-blur-md opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity cursor-pointer shadow-md"><Trash2 size={16} /></button>
+                    <div className={`px-2.5 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-wider backdrop-blur-md border shadow-sm ${statusClass}`}>
+                      {statusText}
+                    </div>
+                  </div>
                   <div className="absolute top-2 right-2 z-10 bg-red-500 text-white text-[13px] font-extrabold px-3 py-1.5 rounded-xl shadow-md">-{discount.discount_percent}%</div>
+                  
                   <div className="w-full aspect-video bg-[hsl(var(--secondary))] overflow-hidden"><img src={discount.image_url} alt={discount.product_name} className="w-full h-full object-cover" /></div>
+                  
                   <div className="p-4 flex-1 flex flex-col">
                     <h3 className="font-bold text-[15px] text-[hsl(var(--foreground))] leading-tight line-clamp-2">{discount.short_description || discount.product_name.replace(/,/g, ' • ')}</h3>
                     <div className="mt-auto pt-3 flex items-end justify-between gap-2">
@@ -387,7 +429,6 @@ export default function MerchantDiscounts() {
                     max="100" 
                     value={discountPercent} 
                     onChange={(e) => {
-                      // 🌟 UX CHEKLOV: FAQAT 1 DAN 100 GACHA YOZISH MUMKIN
                       const val = e.target.value;
                       if (val === '') {
                         setDiscountPercent('');

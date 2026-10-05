@@ -7,7 +7,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFavorites } from '@/lib/useFavorites';
 import { useLanguage } from '@/lib/i18n';
 
-// 🌟 KIRILL-LOTIN AVTO NORMALIZATSIYASI
 const normalizeForSearch = (text: string) => {
   if (!text) return '';
   const map: Record<string, string> = {
@@ -27,7 +26,6 @@ export default function HomePage() {
   
   const { savedIds, toggleFavorite } = useFavorites();
 
-  // 🌟 KARUSEL BANNERLARINI TORTISH
   const { data: carouselBanners } = useQuery({
     queryKey: ['homeBanners'],
     queryFn: async () => {
@@ -49,11 +47,24 @@ export default function HomePage() {
     staleTime: 1000 * 60 * 5 
   });
 
-  const filteredDiscounts = useMemo(() => {
+  // 🌟 FAQAT FAOL VA MAHSULOTI QOLGAN CHEGIRMALAR
+  const validDiscounts = useMemo(() => {
     if (!allDiscounts) return [];
+    const now = new Date();
+    return allDiscounts.filter((discount: any) => {
+      const startDT = new Date(`${discount.start_date}T${discount.start_time || '00:00'}`);
+      const endDT = new Date(`${discount.end_date}T${discount.end_time || '23:59'}`);
+      const isSoldOut = discount.items?.length > 0 && discount.items.every((i: any) => !i.isUnlimited && i.quantity <= 0);
+
+      return now >= startDT && now <= endDT && !isSoldOut;
+    });
+  }, [allDiscounts]);
+
+  const filteredDiscounts = useMemo(() => {
+    if (!validDiscounts) return [];
     const normalizedSearchTerm = normalizeForSearch(search);
 
-    return allDiscounts.filter((discount: any) => {
+    return validDiscounts.filter((discount: any) => {
       const pName = normalizeForSearch(discount.product_name);
       const mName = normalizeForSearch(discount.merchant?.name);
       
@@ -61,13 +72,24 @@ export default function HomePage() {
       const matchesCategory = category === 'All' || discount.merchant?.category === category;
       return matchesSearch && matchesCategory;
     });
-  }, [allDiscounts, search, category]);
+  }, [validDiscounts, search, category]);
 
-  const newDiscounts = allDiscounts ? [...allDiscounts].slice(0, 3) : [];
-  const popularDiscounts = allDiscounts ? [...allDiscounts].sort((a, b) => (b.discount_percent || 0) - (a.discount_percent || 0)).slice(0, 3) : [];
-  const topPurchasedDiscounts = allDiscounts ? [...allDiscounts].sort((a, b) => String(a.product_name).localeCompare(String(b.product_name))).slice(0, 3) : [];
+  const newDiscounts = validDiscounts ? [...validDiscounts].slice(0, 3) : [];
+  const popularDiscounts = validDiscounts ? [...validDiscounts].sort((a, b) => (b.discount_percent || 0) - (a.discount_percent || 0)).slice(0, 3) : [];
+  const topPurchasedDiscounts = validDiscounts ? [...validDiscounts].sort((a, b) => String(a.product_name).localeCompare(String(b.product_name))).slice(0, 3) : [];
 
-  const infiniteBanners = carouselBanners && carouselBanners.length > 0 ? Array(10).fill(carouselBanners).flat() : [];
+  // 🌟 KARUSELDAN HAM MUDDATI O'TGANLARNI YASHIRISH
+  const validBanners = useMemo(() => {
+    if (!carouselBanners) return [];
+    return carouselBanners.filter((b: any) => {
+       if (b.type === 'discount') {
+          return validDiscounts.some(d => String(d.id) === String(b.reference_id));
+       }
+       return true;
+    });
+  }, [carouselBanners, validDiscounts]);
+
+  const infiniteBanners = validBanners.length > 0 ? Array(10).fill(validBanners).flat() : [];
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -169,16 +191,11 @@ export default function HomePage() {
     );
   };
 
-  // BANNER BOSILGANDAGI HARAKAT
   const handleBannerClick = (banner: any) => {
     if (banner.type === 'discount') setLocation(`/discount/${banner.reference_id}`);
     else if (banner.type === 'merchant') setLocation(`/store/${banner.reference_id}`);
-    else if (banner.type === 'category') {
-      setLocation(banner.reference_id); // To'g'ridan-to'g'ri ko'rsatilgan sahifaga o'tadi
-    }
-    else if (banner.type === 'external') {
-      window.open(banner.reference_id, '_blank');
-    }
+    else if (banner.type === 'category') setLocation(banner.reference_id); 
+    else if (banner.type === 'external') window.open(banner.reference_id, '_blank');
   };
 
   return (
@@ -203,7 +220,6 @@ export default function HomePage() {
         </div>
       </ScrollReveal>
 
-      {/* ADMIN TOMONIDAN BOSHQARILADIGAN KARUSEL */}
       {infiniteBanners.length > 0 && (
         <ScrollReveal delay={100}>
           <div ref={carouselRef} className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-5 px-5 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
@@ -215,7 +231,6 @@ export default function HomePage() {
               >
                 <img src={banner.image_url} alt={banner.title} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-5">
-                  {/* Ortiqcha teg (DO'KON, CHEGIRMA) olib tashlandi, faqat Tasnif qoldi */}
                   <h3 className="text-white font-display font-bold text-[18px] leading-tight line-clamp-2 drop-shadow-md">{banner.title}</h3>
                 </div>
               </div>
@@ -274,20 +289,32 @@ export default function HomePage() {
           </>
         ) : (
           <div className="pb-8">
-            <SectionHeader title={t('just_arrived')} icon={Zap} color="text-amber-500" linkType="new" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {newDiscounts.map(discount => renderCard(discount))}
-            </div>
+            {newDiscounts.length > 0 && (
+              <>
+                <SectionHeader title={t('just_arrived')} icon={Zap} color="text-amber-500" linkType="new" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  {newDiscounts.map(discount => renderCard(discount))}
+                </div>
+              </>
+            )}
 
-            <SectionHeader title={t('popular_now')} icon={Flame} color="text-red-500" linkType="popular" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {popularDiscounts.map(discount => renderCard(discount))}
-            </div>
+            {popularDiscounts.length > 0 && (
+              <>
+                <SectionHeader title={t('popular_now')} icon={Flame} color="text-red-500" linkType="popular" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  {popularDiscounts.map(discount => renderCard(discount))}
+                </div>
+              </>
+            )}
 
-            <SectionHeader title={t('popular_with_students')} icon={Trophy} color="text-blue-500" linkType="top" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {topPurchasedDiscounts.map(discount => renderCard(discount))}
-            </div>
+            {topPurchasedDiscounts.length > 0 && (
+              <>
+                <SectionHeader title={t('popular_with_students')} icon={Trophy} color="text-blue-500" linkType="top" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  {topPurchasedDiscounts.map(discount => renderCard(discount))}
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

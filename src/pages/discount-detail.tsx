@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Clock3, MapPin, Store, Ticket, X, CalendarDays, Package, Copy, CheckCircle2, Map, Tag, Heart } from 'lucide-react';
-import { Link, useLocation, useParams } from 'wouter';
+import { ArrowLeft, Clock3, MapPin, Store, Ticket, CalendarDays, Package, Copy, CheckCircle2, Map, Tag, Heart, Loader2, AlertCircle } from 'lucide-react';
+import { useLocation, useParams } from 'wouter';
 import { useLanguage } from '@/lib/i18n';
 import { useFavorites } from '@/lib/useFavorites';
 import { supabase } from '@/lib/supabase';
@@ -15,7 +15,6 @@ export default function DiscountDetailPage() {
   const { savedIds, toggleFavorite } = useFavorites();
   const isSaved = id ? savedIds.includes(id) : false;
   
-  const [notice, setNotice] = useState('');
   const [copied, setCopied] = useState(false);
   const [showMapOptions, setShowMapOptions] = useState(false);
 
@@ -82,6 +81,7 @@ export default function DiscountDetailPage() {
   };
 
   if (isLoading) return <DetailSkeleton />;
+  
   if (isError || !offer) return (
     <div className="page-enter py-20 text-center pb-28">
       <div className="mx-auto max-w-sm rounded-[28px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-8 shadow-soft">
@@ -93,6 +93,43 @@ export default function DiscountDetailPage() {
       </div>
     </div>
   );
+
+  // 🌟 MANTIQIY TEKSHIRUV (Muddati tugaganmi yoki sotilib ketganmi?)
+  const now = new Date();
+  const startDT = new Date(`${offer.start_date}T${offer.start_time || '00:00'}`);
+  const endDT = new Date(`${offer.end_date}T${offer.end_time || '23:59'}`);
+  const isSoldOut = offer.items?.length > 0 && offer.items.every((i: any) => !i.isUnlimited && i.quantity <= 0);
+  
+  const isExpired = now > endDT;
+  const isPending = now < startDT;
+  const isUnavailable = isSoldOut || isExpired || isPending;
+
+  // 🌟 BLOK OYNASI (MODAL)
+  if (isUnavailable) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center p-6 bg-[hsl(var(--background))] text-center animate-in fade-in duration-300">
+        <div className="w-24 h-24 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mb-6 shadow-inner border-4 border-red-500/20">
+          <AlertCircle size={48} />
+        </div>
+        <h2 className="font-display text-2xl font-bold mb-3 text-[hsl(var(--foreground))]">Chegirma faol emas</h2>
+        <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))] mb-8 max-w-xs leading-relaxed">
+          {isSoldOut 
+            ? "Ushbu chegirmaga ajratilgan barcha mahsulotlar allaqachon sotib tugatilgan." 
+            : isExpired 
+            ? "Ushbu chegirma muddati o'z nihoyasiga yetgan." 
+            : "Bu chegirma amaliyotga joriy etilishi kutilmoqda (hali boshlanmagan)."
+          } 
+          <br /><br /> Iltimos, boshqa chegirmalarni ko'zdan kechiring.
+        </p>
+        <button 
+          onClick={() => setLocation('/')} 
+          className="w-full max-w-[280px] py-4 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-2xl font-bold shadow-float active:scale-95 transition-all flex items-center justify-center gap-2"
+        >
+          <ArrowLeft size={18} /> Asosiy sahifaga qaytish
+        </button>
+      </div>
+    );
+  }
   
   const productTags = offer.product_name.split(',').map((tag: string) => tag.trim()).filter(Boolean);
   const hasItems = offer.items && offer.items.length > 0;
@@ -111,7 +148,6 @@ export default function DiscountDetailPage() {
         <button onClick={() => window.history.back()} className="flex items-center gap-2 text-[15px] font-bold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors p-2 -ml-2 rounded-full hover:bg-[hsl(var(--secondary))]">
           <ArrowLeft size={20} /> Orqaga
         </button>
-        {/* 🌟 YANGILANGAN YURAKCHA */}
         <button onClick={handleFavorite} className={`shrink-0 p-2.5 rounded-full border transition-all active:scale-90 ${isSaved ? 'border-red-500/20 bg-red-500/10 text-red-500 shadow-sm' : 'border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))]'}`}>
           <Heart size={22} fill={isSaved ? 'currentColor' : 'none'} strokeWidth={isSaved ? 0 : 2} />
         </button>

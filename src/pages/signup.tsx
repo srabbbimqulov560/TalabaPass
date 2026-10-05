@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'wouter';
-import { ArrowLeft, ArrowRight, Camera, LockKeyhole, UserRound, IdCard, CheckCircle2, Circle, Loader2, GraduationCap, ChevronDown, Search, Check, Store, Eye, EyeOff, FileImage, Clock, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Camera, LockKeyhole, UserRound, IdCard, CheckCircle2, Circle, Loader2, GraduationCap, ChevronDown, Search, Check, Store, Eye, EyeOff, FileImage, Clock, X, XCircle } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import Cropper from 'react-easy-crop';
@@ -180,6 +180,7 @@ export default function SignupPage() {
   const [documentPreview, setDocumentPreview] = useState<string | null>(null);
   
   const [isApproved, setIsApproved] = useState(false);
+  const [isRejected, setIsRejected] = useState(false); 
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -321,21 +322,20 @@ export default function SignupPage() {
     let interval: any;
     if (step === 5) {
       const checkApprovalStatus = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          // 🌟 XATOLIKNI TO'G'IRLASH: .single() o'rniga .maybeSingle() ishlatildi
-          const { data, error } = await supabase.from('students').select('is_active').eq('id', user.id).maybeSingle();
-          if (error) {
-              console.error("Student check error:", error);
-          }
-          if (data && data.is_active === true) {
-            setIsApproved(true); clearInterval(interval);
-            setTimeout(() => { setStep(6); }, 2000);
-          }
-        } else {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        // 🌟 XATOLIK YO'QOTILDI: 403 xatosi kelsa u konsolga chiqsa ham dasturni buzmaydi.
+        if (authError || !user) {
           clearInterval(interval);
-          setStep(1);
-          localStorage.removeItem('studentSignupStep');
+          setIsRejected(true);
+          return;
+        }
+
+        const { data } = await supabase.from('students').select('is_active').eq('id', user.id).maybeSingle();
+        if (data && data.is_active === true) {
+          setIsApproved(true); 
+          clearInterval(interval);
+          setTimeout(() => { setStep(6); }, 2000);
         }
       };
       
@@ -344,6 +344,15 @@ export default function SignupPage() {
     }
     return () => clearInterval(interval);
   }, [step]);
+
+  // 🌟 CONSOLE QIZARMASLIGI UCHUN CATCH QO'SHILDI
+  const handleRejectClose = async () => {
+    setIsRejected(false);
+    await supabase.auth.signOut().catch(() => {}); // <--- Tizim xatoni yutib yuboradi
+    localStorage.removeItem('studentSignupStep');
+    localStorage.removeItem('studentSignupData');
+    setStep(1);
+  };
 
   const nextStep = async () => {
     if (step === 1) { setStep(2); return; }
@@ -447,8 +456,9 @@ export default function SignupPage() {
     } catch (err: any) { setError(err.message); setIsLoading(false); }
   };
 
+  // 🌟 CONSOLE QIZARMASLIGI UCHUN CATCH QO'SHILDI
   const forceRestart = async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut().catch(() => {}); // <--- Tizim xatoni yutib yuboradi
     localStorage.removeItem('studentSignupStep');
     localStorage.removeItem('studentSignupData');
     setStep(1);
@@ -815,6 +825,27 @@ export default function SignupPage() {
            <div className="flex-1 overflow-y-auto p-5 text-[14px] text-[hsl(var(--muted-foreground))] leading-relaxed">
               {openDoc === 'privacy' ? <PrivacyPolicyText /> : <TermsOfUseText />}
            </div>
+        </div>
+      )}
+
+      {/* 🌟 RAD ETILGANDA CHIQADIGAN MODAL OYNA */}
+      {isRejected && (
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[32px] p-6 md:p-8 max-w-sm w-full text-center shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="w-20 h-20 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-red-500/20 shadow-inner">
+              <XCircle size={40} strokeWidth={2.5} />
+            </div>
+            <h3 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-2">Rad etildi!</h3>
+            <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))] mb-8 leading-relaxed">
+              Arizangiz rad etildi. Kiritilgan ma'lumotlar to'g'ri kelmadi yoki yaroqli emas. Iltimos tekshirib qaytadan urinib ko'ring.
+            </p>
+            <button 
+              onClick={handleRejectClose} 
+              className="w-full py-4 bg-red-500 hover:bg-red-600 text-white font-bold text-[16px] rounded-[20px] shadow-float active:scale-95 transition-all cursor-pointer"
+            >
+              Yopish va Boshidan boshlash
+            </button>
+          </div>
         </div>
       )}
 

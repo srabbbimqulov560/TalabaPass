@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
-import { Store, ArrowRight, ArrowLeft, CheckCircle2, LockKeyhole, UserRound, Loader2, Briefcase, MapPin, Clock, Camera, Eye, EyeOff, Navigation, GraduationCap, Circle } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Store, ArrowRight, ArrowLeft, CheckCircle2, LockKeyhole, UserRound, Loader2, Briefcase, MapPin, Clock, Camera, Eye, EyeOff, Navigation, GraduationCap, Circle, XCircle } from 'lucide-react';
 import { Link } from 'wouter';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/lib/i18n';
 import Cropper from 'react-easy-crop';
-import { sendTelegramMessage } from '@/lib/telegram'; // 🌟 TELEGRAM KUTUBXONASI QO'SHILDI
+import { sendTelegramMessage } from '@/lib/telegram';
 
 const getPasswordStrength = (pass: string) => {
   if (!pass) return { score: 0, text: '', color: 'bg-transparent', width: '0%' };
@@ -63,7 +63,9 @@ export default function MerchantSignup() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  
   const [isApproved, setIsApproved] = useState(false);
+  const [isRejected, setIsRejected] = useState(false); 
 
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -203,7 +205,6 @@ export default function MerchantSignup() {
 
       if (dbError) throw dbError;
 
-      // 🌟 YECHIM 1: YANGA DO'KON RO'YXATDAN O'TGANIDA TELEGRAMGA XABAR YUBORISH
       try {
         const msg = `🏪 <b>YANGI DO'KON RO'YXATDAN O'TDI!</b>\n\n<b>Do'kon nomi:</b> ${formData.name}\n<b>Kategoriya:</b> ${formData.category}\n<b>Username:</b> ${formData.username}\n\n<i>Iltimos, tezroq Admin paneldan tasdiqlang!</i>`;
         await sendTelegramMessage(msg);
@@ -237,25 +238,42 @@ export default function MerchantSignup() {
     finally { setLoading(false); }
   };
 
+  // 🌟 ADMIN TOMONIDAN RAD ETISHNI (O'CHIRISHNI) TEKSHIRISH
   useEffect(() => {
     let interval: any;
     if (step === 7) {
       const checkApprovalStatus = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data } = await supabase.from('merchants').select('is_active').eq('id', user.id).single();
-          if (data && data.is_active === true) {
-            setIsApproved(true);
-            clearInterval(interval);
-            localStorage.removeItem('merchantSignupStep');
-            setTimeout(() => { window.location.href = '/merchant'; }, 2000);
-          }
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        // 🌟 XATOLIK YO'QOTILDI: 403 xatosi kelsa u konsolga chiqsa ham dasturni buzmaydi.
+        if (authError || !user) {
+          clearInterval(interval);
+          setIsRejected(true);
+          return;
+        }
+
+        const { data } = await supabase.from('merchants').select('is_active').eq('id', user.id).maybeSingle();
+        if (data && data.is_active === true) {
+          setIsApproved(true);
+          clearInterval(interval);
+          localStorage.removeItem('merchantSignupStep');
+          setTimeout(() => { window.location.href = '/merchant'; }, 2000);
         }
       };
+      
+      checkApprovalStatus(); 
       interval = setInterval(checkApprovalStatus, 5000);
     }
     return () => clearInterval(interval);
   }, [step]);
+
+  // 🌟 CONSOLE QIZARMASLIGI UCHUN CATCH QO'SHILDI
+  const handleRejectClose = async () => {
+    setIsRejected(false);
+    await supabase.auth.signOut().catch(() => {}); // <--- Tizim xatoni yutib yuboradi
+    localStorage.removeItem('merchantSignupStep');
+    setStep(1);
+  };
 
   const nextStep = () => setStep((prev) => prev + 1);
   const prevStep = () => setStep((prev) => prev - 1);
@@ -562,6 +580,28 @@ export default function MerchantSignup() {
           </div>
         </div>
       )}
+
+      {/* 🌟 RAD ETILGANDA CHIQADIGAN MODAL OYNA */}
+      {isRejected && (
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[32px] p-6 md:p-8 max-w-sm w-full text-center shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="w-20 h-20 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-red-500/20 shadow-inner">
+              <XCircle size={40} strokeWidth={2.5} />
+            </div>
+            <h3 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-2">Rad etildi!</h3>
+            <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))] mb-8 leading-relaxed">
+              Arizangiz rad etildi. Kiritilgan ma'lumotlar to'g'ri kelmadi yoki yaroqli emas. Iltimos tekshirib qaytadan urinib ko'ring.
+            </p>
+            <button 
+              onClick={handleRejectClose} 
+              className="w-full py-4 bg-red-500 hover:bg-red-600 text-white font-bold text-[16px] rounded-[20px] shadow-float active:scale-95 transition-all cursor-pointer"
+            >
+              Yopish va Boshidan boshlash
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

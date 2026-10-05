@@ -29,14 +29,22 @@ export default function MerchantScanner() {
     queryKey: ['merchantActiveDiscounts', merchantStatus?.id],
     enabled: !!merchantStatus?.id,
     queryFn: async () => {
-      const today = new Date().toISOString().split('T')[0];
       const { data } = await supabase
         .from('discounts')
         .select('*')
-        .eq('merchant_id', merchantStatus!.id)
-        .gte('end_date', today);
+        .eq('merchant_id', merchantStatus!.id);
       return data || [];
     }
+  });
+
+  // 🌟 FAQAT FAOL VA MAHSULOTI BOR CHEGIRMALARNI FILTRLASH
+  const validDiscounts = activeDiscounts?.filter(discount => {
+      const now = new Date();
+      const startDT = new Date(`${discount.start_date}T${discount.start_time || '00:00'}`);
+      const endDT = new Date(`${discount.end_date}T${discount.end_time || '23:59'}`);
+      const isSoldOut = discount.items?.length > 0 && discount.items.every((i: any) => !i.isUnlimited && i.quantity <= 0);
+
+      return now >= startDT && now <= endDT && !isSoldOut;
   });
 
   const isActive = merchantStatus?.is_active === true;
@@ -100,7 +108,7 @@ export default function MerchantScanner() {
         throw new Error("Qalloblik! Bu talaba so'nggi 5 daqiqa ichida chegirma olib bo'lgan.");
       }
 
-      const discount = activeDiscounts?.find(d => d.id === selectedDiscountId);
+      const discount = validDiscounts?.find(d => d.id === selectedDiscountId);
       if (!discount || !discount.items) throw new Error("Chegirma yoki mahsulotlar ro'yxati topilmadi.");
 
       let itemFound = false;
@@ -230,9 +238,9 @@ export default function MerchantScanner() {
 
           <h3 className="font-display font-bold text-lg mb-4 text-[hsl(var(--foreground))]">{t('select_product_desc')}</h3>
           
-          {activeDiscounts && activeDiscounts.length > 0 ? (
+          {validDiscounts && validDiscounts.length > 0 ? (
             <div className="space-y-4">
-              {activeDiscounts.map((discount: any) => (
+              {validDiscounts.map((discount: any) => (
                 <div key={discount.id} className={`bg-[hsl(var(--card))] border-2 rounded-[24px] overflow-hidden transition-all ${selectedDiscountId === discount.id ? 'border-[hsl(var(--primary))] shadow-md' : 'border-[hsl(var(--border))] opacity-70 hover:opacity-100'}`}>
                   
                   <div onClick={() => setSelectedDiscountId(selectedDiscountId === discount.id ? null : discount.id)} className="p-4 flex items-center gap-4 cursor-pointer bg-[hsl(var(--secondary))/30]">
@@ -270,7 +278,9 @@ export default function MerchantScanner() {
               ))}
             </div>
           ) : (
-            <div className="p-4 bg-[hsl(var(--secondary))] rounded-2xl text-center text-sm font-semibold text-[hsl(var(--muted-foreground))]">{t('no_active_discounts')}</div>
+            <div className="p-5 bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-[24px] text-center">
+              <p className="text-sm font-semibold text-[hsl(var(--muted-foreground))]">Hozirda foydalanish mumkin bo'lgan chegirmalaringiz yo'q (muddati o'tgan yoki sotib bo'lingan).</p>
+            </div>
           )}
 
           <div className="mt-8 flex gap-3">
