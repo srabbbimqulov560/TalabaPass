@@ -1,9 +1,12 @@
-import { Heart, Home, UserRound, QrCode, Bell, LayoutGrid } from 'lucide-react';
+import { Heart, Home, UserRound, QrCode, Bell, LayoutGrid, Store, Tags, ScanLine, History, Settings } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { useState, useEffect, type ReactNode } from 'react';
 import { useLanguage } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 
+// ----------------------------------------------------------------------
+// 1. TALABA UCHUN APP SHELL
+// ----------------------------------------------------------------------
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { t } = useLanguage();
@@ -22,7 +25,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, [location]);
 
-  // 🌟 O'QILMAGAN XABARLAR SONINI REAL-TIME VA SIGNAL ORQALI KUZATISH
   useEffect(() => {
     if (!isLoggedIn) return;
 
@@ -34,13 +36,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id)
           .eq('is_read', false);
-        setUnreadCount(count || 0); // 🌟 Agar 0 bo'lsa qizil ptichka avto o'chadi
+        setUnreadCount(count || 0); 
       }
     };
 
     fetchUnreadCount();
 
-    // 🌟 SIGNALNI QABUL QILISH (Foydalanuvchi xabarni bosishi bilan ishga tushadi)
     window.addEventListener('notifications_updated', fetchUnreadCount);
 
     const channel = supabase.channel('realtime-notifications')
@@ -53,7 +54,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       window.removeEventListener('notifications_updated', fetchUnreadCount);
       supabase.removeChannel(channel); 
     };
-  }, [isLoggedIn, location]); // location ga bog'liq bo'ldi (har sahifaga o'tganda yangilanadi)
+  }, [isLoggedIn, location]); 
 
   return (
     <div className="app-shell min-h-[100dvh] w-full bg-[hsl(var(--background))]">
@@ -75,11 +76,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             {isLoggedIn ? (
               <>
                 <Link href="/" className={`flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-bold transition-all ${location === '/' ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]'}`}>
-                  <Home size={18} /> Asosiy
+                  <Home size={18} /> {t('home_nav')}
                 </Link>
                 
                 <Link href="/services" className={`flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-bold transition-all ${location === '/services' ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]'}`}>
-                  <LayoutGrid size={18} /> Xizmatlar
+                  <LayoutGrid size={18} /> {t('category_services')}
                 </Link>
 
                 <div className="flex items-center justify-center w-[64px] h-[64px] bg-[hsl(var(--background))] rounded-full mx-2 relative z-10">
@@ -89,16 +90,16 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </div>
 
                 <Link href="/saved" className={`flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-bold transition-all ${location === '/saved' ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]'}`}>
-                  <Heart size={18} /> Saqlanganlar
+                  <Heart size={18} /> {t('saved_offers')}
                 </Link>
 
                 <Link href="/profile" className={`flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-bold transition-all ${location === '/profile' ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]'}`}>
-                  <UserRound size={18} /> Profil
+                  <UserRound size={18} /> {t('profile_nav')}
                 </Link>
               </>
             ) : (
               <Link href="/" className={`flex items-center gap-2 rounded-full px-5 py-2.5 text-[13px] font-bold transition-all ${location === '/' ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]'}`}>
-                <Home size={18} /> Asosiy
+                <Home size={18} /> {t('home_nav')}
               </Link>
             )}
           </nav>
@@ -108,7 +109,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="flex items-center gap-3">
                 <Link href="/notifications" className="relative flex items-center justify-center h-10 w-10 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm transition-transform hover:-translate-y-0.5 text-[hsl(var(--foreground))] hover:text-[hsl(var(--accent))]">
                   <Bell size={20} strokeWidth={2.5} />
-                  {/* 🌟 0 BO'LSA UMUAN CHIQMAYDI */}
                   {unreadCount > 0 && (
                     <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-extrabold text-white shadow-sm border-2 border-[hsl(var(--background))] animate-in zoom-in">
                       {unreadCount > 99 ? '99+' : unreadCount}
@@ -140,11 +140,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="flex justify-around items-center w-[40%] z-20">
               <Link href="/" className="flex flex-col items-center justify-center gap-1 h-full mt-1 transition-all">
                 <Home size={22} className={`transition-all duration-300 ${location === '/' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_8px_rgba(28,170,136,0.6)]" : "text-[hsl(var(--muted-foreground))]"}`} strokeWidth={location === '/' ? 2.5 : 2} />
-                <span className={`text-[10px] font-bold transition-all duration-300 ${location === '/' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_5px_rgba(28,170,136,0.4)]" : "text-[hsl(var(--muted-foreground))]"}`}>Asosiy</span>
+                <span className={`text-[10px] font-bold transition-all duration-300 ${location === '/' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_5px_rgba(28,170,136,0.4)]" : "text-[hsl(var(--muted-foreground))]"}`}>{t('home_nav')}</span>
               </Link>
               <Link href="/services" className="flex flex-col items-center justify-center gap-1 h-full mt-1 transition-all">
                 <LayoutGrid size={22} className={`transition-all duration-300 ${location === '/services' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_8px_rgba(28,170,136,0.6)]" : "text-[hsl(var(--muted-foreground))]"}`} strokeWidth={location === '/services' ? 2.5 : 2} />
-                <span className={`text-[10px] font-bold transition-all duration-300 ${location === '/services' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_5px_rgba(28,170,136,0.4)]" : "text-[hsl(var(--muted-foreground))]"}`}>Xizmatlar</span>
+                <span className={`text-[10px] font-bold transition-all duration-300 ${location === '/services' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_5px_rgba(28,170,136,0.4)]" : "text-[hsl(var(--muted-foreground))]"}`}>{t('category_services')}</span>
               </Link>
             </div>
 
@@ -157,11 +157,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="flex justify-around items-center w-[40%] z-20">
               <Link href="/saved" className="flex flex-col items-center justify-center gap-1 h-full mt-1 transition-all">
                 <Heart size={22} className={`transition-all duration-300 ${location === '/saved' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_8px_rgba(28,170,136,0.6)]" : "text-[hsl(var(--muted-foreground))]"}`} strokeWidth={location === '/saved' ? 2.5 : 2} />
-                <span className={`text-[10px] font-bold transition-all duration-300 ${location === '/saved' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_5px_rgba(28,170,136,0.4)]" : "text-[hsl(var(--muted-foreground))]"}`}>Saqlanganlar</span>
+                <span className={`text-[10px] font-bold transition-all duration-300 ${location === '/saved' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_5px_rgba(28,170,136,0.4)]" : "text-[hsl(var(--muted-foreground))]"}`}>{t('saved_offers')}</span>
               </Link>
               <Link href="/profile" className="flex flex-col items-center justify-center gap-1 h-full mt-1 transition-all">
                 <UserRound size={22} className={`transition-all duration-300 ${location === '/profile' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_8px_rgba(28,170,136,0.6)]" : "text-[hsl(var(--muted-foreground))]"}`} strokeWidth={location === '/profile' ? 2.5 : 2} />
-                <span className={`text-[10px] font-bold transition-all duration-300 ${location === '/profile' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_5px_rgba(28,170,136,0.4)]" : "text-[hsl(var(--muted-foreground))]"}`}>Profil</span>
+                <span className={`text-[10px] font-bold transition-all duration-300 ${location === '/profile' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_5px_rgba(28,170,136,0.4)]" : "text-[hsl(var(--muted-foreground))]"}`}>{t('profile_nav')}</span>
               </Link>
             </div>
           </div>
@@ -172,6 +172,73 @@ export function AppShell({ children }: { children: ReactNode }) {
            <Link href="/signup" className="flex-1 text-center text-xs font-bold bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] py-3 rounded-xl">{t('register_btn')}</Link>
         </nav>
       )}
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------
+// 2. BIZNES (MERCHANT) UCHUN APP SHELL
+// ----------------------------------------------------------------------
+export function MerchantAppShell({ children }: { children: ReactNode }) {
+  const [location] = useLocation();
+  const { t } = useLanguage(); 
+
+  return (
+    <div className="min-h-[100dvh] w-full bg-[hsl(var(--background))]">
+      <header className="sticky top-0 z-40 border-b border-[hsl(var(--border)/.8)] bg-[hsl(var(--background)/.88)] backdrop-blur-xl">
+        <div className="relative mx-auto flex h-[72px] items-center justify-center px-5">
+          <span className="font-display text-[19px] font-bold text-[hsl(var(--primary))]">
+            {t('business_panel').replace('Panel', '')}<span className="text-[hsl(var(--accent))]">Panel</span>
+          </span>
+        </div>
+      </header>
+      
+      <main className="mx-auto max-w-6xl px-4 pb-28 pt-6">
+        {children}
+      </main>
+      
+      {/* 🌟 BIZNES PASTKI MENYUSI (TARJIMAGA ULANDI) */}
+      <nav className="fixed bottom-0 left-0 w-full bg-[hsl(var(--card))] rounded-t-[28px] shadow-[0_-10px_40px_rgba(0,0,0,0.06)] border-t border-[hsl(var(--border)/.5)] z-50 h-[76px]">
+        <div className="flex justify-between items-center h-full px-4 relative">
+          
+          <div className="flex justify-around items-center w-[40%] z-20">
+            <Link href="/merchant" className="flex flex-col items-center justify-center gap-1 h-full mt-1">
+              <Store size={22} className={location === '/merchant' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_8px_rgba(28,170,136,0.6)]" : "text-[hsl(var(--muted-foreground))]"} strokeWidth={location === '/merchant' ? 2.5 : 2} />
+              <span className={`text-[10px] font-bold ${location === '/merchant' ? "text-[hsl(var(--accent))]" : "text-[hsl(var(--muted-foreground))]"}`}>
+                {t('home_nav')}
+              </span>
+            </Link>
+            <Link href="/merchant/discounts" className="flex flex-col items-center justify-center gap-1 h-full mt-1">
+              <Tags size={22} className={location === '/merchant/discounts' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_8px_rgba(28,170,136,0.6)]" : "text-[hsl(var(--muted-foreground))]"} strokeWidth={location === '/merchant/discounts' ? 2.5 : 2} />
+              <span className={`text-[10px] font-bold ${location === '/merchant/discounts' ? "text-[hsl(var(--accent))]" : "text-[hsl(var(--muted-foreground))]"}`}>
+                {t('discounts')}
+              </span>
+            </Link>
+          </div>
+
+          <div className="absolute left-1/2 -translate-x-1/2 -top-8 w-[88px] h-[88px] bg-[hsl(var(--background))] rounded-full flex items-center justify-center z-10">
+            <Link href="/merchant/scanner" className="w-[64px] h-[64px] bg-[hsl(var(--accent))] rounded-full flex items-center justify-center shadow-[0_8px_20px_rgba(28,170,136,0.4)] transition-transform active:scale-90">
+              <ScanLine size={32} className="text-white" strokeWidth={2.5} />
+            </Link>
+          </div>
+
+          <div className="flex justify-around items-center w-[40%] z-20">
+            <Link href="/merchant/history" className="flex flex-col items-center justify-center gap-1 h-full mt-1">
+              <History size={22} className={location === '/merchant/history' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_8px_rgba(28,170,136,0.6)]" : "text-[hsl(var(--muted-foreground))]"} strokeWidth={location === '/merchant/history' ? 2.5 : 2} />
+              <span className={`text-[10px] font-bold ${location === '/merchant/history' ? "text-[hsl(var(--accent))]" : "text-[hsl(var(--muted-foreground))]"}`}>
+                {t('history')}
+              </span>
+            </Link>
+            <Link href="/merchant/profile" className="flex flex-col items-center justify-center gap-1 h-full mt-1">
+              <Settings size={22} className={location === '/merchant/profile' ? "text-[hsl(var(--accent))] drop-shadow-[0_0_8px_rgba(28,170,136,0.6)]" : "text-[hsl(var(--muted-foreground))]"} strokeWidth={location === '/merchant/profile' ? 2.5 : 2} />
+              <span className={`text-[10px] font-bold ${location === '/merchant/profile' ? "text-[hsl(var(--accent))]" : "text-[hsl(var(--muted-foreground))]"}`}>
+                {t('settings')}
+              </span>
+            </Link>
+          </div>
+
+        </div>
+      </nav>
     </div>
   );
 }

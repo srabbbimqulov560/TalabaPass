@@ -138,7 +138,6 @@ export default function ProfilePage() {
     }
   };
 
-  // 🌟 TALABA AVATARINI SAQLASHDA HAM OPTIMIZATSIYA
   const handleCropSave = async () => {
     if (!selectedImage || !croppedAreaPixels || !user) return;
     
@@ -173,7 +172,7 @@ export default function ProfilePage() {
       );
 
       const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((b) => { if (b) resolve(b); else reject(new Error('Canvas is empty')); }, 'image/jpeg', 0.6); // 60% sifat
+        canvas.toBlob((b) => { if (b) resolve(b); else reject(new Error('Canvas is empty')); }, 'image/jpeg', 0.6); 
       });
 
       const localUrl = URL.createObjectURL(blob);
@@ -268,7 +267,7 @@ export default function ProfilePage() {
   const fullName = user ? `${user.first_name} ${user.last_name}` : '';
 
   return (
-    <>
+    <div>
       <div className="page-enter flex flex-col items-center pb-10 min-h-screen">
         
         <div className="relative mt-10 w-full max-w-[380px] rounded-[30px] bg-[hsl(var(--card))] border border-[hsl(var(--card-border))] p-6 shadow-soft pt-14 flex flex-col items-center">
@@ -368,8 +367,8 @@ export default function ProfilePage() {
                       <Download size={18} />
                     </div>
                     <div>
-                      <span className="text-[15px] font-bold text-[hsl(var(--primary))] block">Ilovani o'rnatish</span>
-                      <span className="text-[11px] font-semibold text-[hsl(var(--primary))/70] block leading-tight">Tez va qulay ishlash uchun</span>
+                      <span className="text-[15px] font-bold text-[hsl(var(--primary))] block">{t('install_app')}</span>
+                      <span className="text-[11px] font-semibold text-[hsl(var(--primary))/70] block leading-tight">{t('fast_and_easy')}</span>
                     </div>
                   </div>
                   <ChevronRight size={20} className="text-[hsl(var(--primary))]" />
@@ -379,7 +378,7 @@ export default function ProfilePage() {
               <div onClick={() => setIsEditModalOpen(true)} className="flex items-center justify-between p-4 cursor-pointer hover:bg-[hsl(var(--secondary)/.5)] transition-colors border-b border-[hsl(var(--border))]">
                 <div className="flex items-center gap-3">
                   <Edit3 size={22} className="text-[hsl(var(--foreground))]" />
-                  <span className="text-[15px] font-semibold text-[hsl(var(--foreground))]">Shaxsiy ma'lumotlar</span>
+                  <span className="text-[15px] font-semibold text-[hsl(var(--foreground))]">{t('personal_info')}</span>
                 </div>
                 <ChevronRight size={20} className="text-[hsl(var(--muted-foreground))]" />
               </div>
@@ -422,20 +421,20 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-[hsl(var(--secondary)/.5)] transition-colors border-b border-[hsl(var(--border))]">
+              <a href="https://t.me/AIBOT_USERNAME_SHU_YERGA_YOZILADI" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 cursor-pointer hover:bg-[hsl(var(--secondary)/.5)] transition-colors border-b border-[hsl(var(--border))]">
                 <div className="flex items-center gap-3">
                   <CircleHelp size={22} className="text-[hsl(var(--foreground))]" />
-                  <span className="text-[15px] font-semibold text-[hsl(var(--foreground))]">{t('help_support')}</span>
+                  <span className="text-[15px] font-semibold text-[hsl(var(--foreground))]">{t('help_support')} (AI)</span>
                 </div>
                 <ChevronRight size={20} className="text-[hsl(var(--muted-foreground))]" />
-              </div>
+              </a>
 
               {isAdmin && (
                 <Link href="/admin">
                   <div className="flex items-center justify-between p-4 cursor-pointer bg-indigo-500/5 hover:bg-indigo-500/15 transition-colors border-b border-[hsl(var(--border))]">
                     <div className="flex items-center gap-3">
                       <Shield size={22} className="text-indigo-500" />
-                      <span className="text-[15px] font-semibold text-indigo-500">Admin Panelga o'tish</span>
+                      <span className="text-[15px] font-semibold text-indigo-500">{t('go_admin_panel')}</span>
                     </div>
                     <ChevronRight size={20} className="text-indigo-500/70" />
                   </div>
@@ -470,33 +469,16 @@ export default function ProfilePage() {
             />
           </div>
           <div className="p-6 pb-12 bg-black flex flex-col gap-6 items-center">
-            <input
-              type="range"
-              value={zoom}
-              min={1}
-              max={3}
-              step={0.1}
-              onChange={(e) => setZoom(Number(e.target.value))}
-              className="w-full max-w-xs accent-[hsl(var(--primary))]"
-            />
+            <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(Number(e.target.value))} className="w-full max-w-xs accent-[hsl(var(--primary))]" />
             <div className="flex w-full max-w-xs gap-4">
-              <button 
-                onClick={() => setSelectedImage(null)} 
-                className="flex-1 py-3.5 font-bold rounded-2xl text-white bg-white/20 hover:bg-white/30 transition-colors"
-              >
-                Bekor qilish
-              </button>
-              <button 
-                onClick={handleCropSave} 
-                className="flex-1 py-3.5 font-bold rounded-2xl text-[hsl(var(--primary-foreground))] bg-[hsl(var(--primary))] hover:brightness-110 transition-all flex justify-center items-center gap-2"
-              >
-                Saqlash
-              </button>
+              <button onClick={() => setSelectedImage(null)} className="flex-1 py-3.5 font-bold rounded-2xl text-white bg-white/20 hover:bg-white/30 transition-colors">{t('cancel')}</button>
+              <button onClick={handleCropSave} className="flex-1 py-3.5 font-bold rounded-2xl text-[hsl(var(--primary-foreground))] bg-[hsl(var(--primary))] hover:brightness-110 transition-all flex justify-center items-center gap-2">{t('save_btn')}</button>
             </div>
           </div>
         </div>
       )}
 
+      {/* 🌟 TALABA MA'LUMOTLARINI TAHRIRLASH MODALI */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overflow-y-auto">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !isSaving && setIsEditModalOpen(false)} />
@@ -506,11 +488,11 @@ export default function ProfilePage() {
               <X size={24} />
             </button>
             
-            <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-6">Shaxsiy ma'lumotlar</h2>
+            <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-6">{t('personal_info')}</h2>
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold uppercase text-[hsl(var(--muted-foreground))] block mb-1">Ism</label>
+                <label className="text-xs font-bold uppercase text-[hsl(var(--muted-foreground))] block mb-1">{t('first_name_label')}</label>
                 <input 
                   type="text" value={editForm.firstName} onChange={(e) => setEditForm({...editForm, firstName: e.target.value})}
                   className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-3 px-4 rounded-xl font-semibold outline-none focus:border-[hsl(var(--primary))] text-[hsl(var(--foreground))]" 
@@ -518,7 +500,7 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase text-[hsl(var(--muted-foreground))] block mb-1">Familiya</label>
+                <label className="text-xs font-bold uppercase text-[hsl(var(--muted-foreground))] block mb-1">{t('last_name_label')}</label>
                 <input 
                   type="text" value={editForm.lastName} onChange={(e) => setEditForm({...editForm, lastName: e.target.value})}
                   className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-3 px-4 rounded-xl font-semibold outline-none focus:border-[hsl(var(--primary))] text-[hsl(var(--foreground))]" 
@@ -526,13 +508,13 @@ export default function ProfilePage() {
               </div>
 
               <hr className="border-t border-[hsl(var(--border))] my-4" />
-              <p className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-2">Parolni o'zgartirish (ixtiyoriy)</p>
+              <p className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-2">{t('change_password_optional')}</p>
 
               <div>
-                <label className="text-[11px] font-bold text-[hsl(var(--muted-foreground))] block mb-1">Eski parol</label>
+                <label className="text-[11px] font-bold text-[hsl(var(--muted-foreground))] block mb-1">{t('old_password')}</label>
                 <div className="relative">
                   <input 
-                    type={showOldPass ? "text" : "password"} placeholder="Joriy parol..." value={editForm.oldPassword} onChange={(e) => setEditForm({...editForm, oldPassword: e.target.value})}
+                    type={showOldPass ? "text" : "password"} placeholder={t('current_pass_placeholder')} value={editForm.oldPassword} onChange={(e) => setEditForm({...editForm, oldPassword: e.target.value})}
                     className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-3 pl-4 pr-12 rounded-xl font-semibold outline-none focus:border-[hsl(var(--primary))] text-[hsl(var(--foreground))]" 
                   />
                   <button type="button" onClick={() => setShowOldPass(!showOldPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]">
@@ -542,10 +524,10 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-[hsl(var(--muted-foreground))] block mb-1">Yangi parol</label>
+                <label className="text-[11px] font-bold text-[hsl(var(--muted-foreground))] block mb-1">{t('new_password')}</label>
                 <div className="relative">
                   <input 
-                    type={showNewPass ? "text" : "password"} placeholder="Yangi parol..." value={editForm.newPassword} onChange={(e) => setEditForm({...editForm, newPassword: e.target.value})}
+                    type={showNewPass ? "text" : "password"} placeholder={t('new_pass_placeholder')} value={editForm.newPassword} onChange={(e) => setEditForm({...editForm, newPassword: e.target.value})}
                     className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-3 pl-4 pr-12 rounded-xl font-semibold outline-none focus:border-[hsl(var(--primary))] text-[hsl(var(--foreground))]" 
                   />
                   <button type="button" onClick={() => setShowNewPass(!showNewPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]">
@@ -556,8 +538,8 @@ export default function ProfilePage() {
                 {editForm.newPassword && (
                   <div className="mt-2 px-1">
                     <div className="flex justify-between items-center mb-1 text-[10px] font-bold uppercase text-[hsl(var(--muted-foreground))]">
-                      <span>Xavfsizlik</span>
-                      <span className={strength.text === 'Oson' ? 'text-red-500' : strength.text === "O'rtacha" ? 'text-yellow-500' : strength.text === 'Kuchli' ? 'text-green-500' : ''}>{strength.text}</span>
+                      <span>{t('security_title')}</span>
+                      <span className={strength.text === 'Oson' ? 'text-red-500' : strength.text === "O'rtacha" ? 'text-yellow-500' : 'text-green-500'}>{strength.text}</span>
                     </div>
                     <div className="h-1.5 w-full bg-[hsl(var(--secondary))] rounded-full overflow-hidden flex">
                       <div className={`h-full transition-all duration-300 ease-out ${strength.color}`} style={{ width: strength.width }}></div>
@@ -567,10 +549,10 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-[hsl(var(--muted-foreground))] block mb-1">Yangi parolni tasdiqlang</label>
+                <label className="text-[11px] font-bold text-[hsl(var(--muted-foreground))] block mb-1">{t('confirm_pass_label')}</label>
                 <div className="relative">
                   <input 
-                    type={showConfirmPass ? "text" : "password"} placeholder="Parolni qayta yozing..." value={editForm.confirmPassword} onChange={(e) => setEditForm({...editForm, confirmPassword: e.target.value})}
+                    type={showConfirmPass ? "text" : "password"} placeholder={t('confirm_pass_placeholder')} value={editForm.confirmPassword} onChange={(e) => setEditForm({...editForm, confirmPassword: e.target.value})}
                     className="w-full bg-[hsl(var(--background))] border-2 border-[hsl(var(--border))] py-3 pl-4 pr-12 rounded-xl font-semibold outline-none focus:border-[hsl(var(--primary))] text-[hsl(var(--foreground))]" 
                   />
                   <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]">
@@ -586,7 +568,7 @@ export default function ProfilePage() {
               disabled={isSaving} onClick={handleSaveProfile}
               className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all disabled:opacity-50"
             >
-              {isSaving ? <Loader2 className="animate-spin" /> : 'Saqlash'}
+              {isSaving ? <Loader2 className="animate-spin" /> : t('save_btn')}
             </button>
           </div>
         </div>
@@ -625,10 +607,12 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
-    </>
+
+    </div>
   );
 }
 
+// 3D KARTA QISMI ... (BU YERGA TEGILMADI)
 function StudentCard({ user, avatar, t, fullName, isLoading }: any) {
   const [flipped, setFlipped] = useState(false);
 
@@ -649,40 +633,66 @@ function StudentCard({ user, avatar, t, fullName, isLoading }: any) {
       >
         <div className={`relative h-full w-full transition-transform duration-700 [transform-style:preserve-3d] ${flipped ? '[transform:rotateY(180deg)]' : ''}`}>
           
-          <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#1a2b4c] to-[#121c32] p-5 text-white shadow-float [backface-visibility:hidden] border border-[hsl(var(--accent)/.3)]">
-             <div className="flex justify-between items-start border-b border-white/10 pb-3">
-                <span className="font-display font-bold uppercase tracking-wider text-[hsl(var(--accent))]">Student ID</span>
+          <div className="absolute inset-0 rounded-[20px] bg-gradient-to-br from-emerald-900 to-emerald-950 p-5 text-white shadow-2xl [backface-visibility:hidden] border-[1.5px] border-emerald-500/30 overflow-hidden">
+             
+             <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none transform -translate-x-full group-hover:translate-x-full ease-in-out"></div>
+
+             <div className="flex justify-between items-start border-b border-emerald-500/30 pb-3 relative z-10">
+                <span className="font-display font-bold text-[16px] tracking-wide text-white drop-shadow-md">
+                  TALABA GUVOHNOMASI
+                </span>
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/30">ID Card</span>
              </div>
-             <div className="mt-4 flex gap-4 items-center">
-                <div className="h-20 w-20 rounded-xl overflow-hidden bg-white/20 flex-shrink-0">
-                  {avatar ? <img src={avatar} className="h-full w-full object-cover" /> : <UserRound className="m-auto mt-4 h-10 w-10 opacity-50" />}
+             
+             <div className="mt-4 flex gap-4 items-center relative z-10">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="h-[90px] w-[70px] rounded-lg overflow-hidden bg-white/10 flex-shrink-0 border-2 border-emerald-500/40 shadow-inner">
+                    {avatar ? <img src={avatar} className="h-full w-full object-cover" /> : <UserRound className="m-auto mt-6 h-10 w-10 opacity-50" />}
+                  </div>
                 </div>
-                <div>
-                   <h3 className="font-display text-xl font-bold leading-tight">{fullName}</h3>
-                   <p className="text-[10px] text-white/60 mt-1 uppercase tracking-wider">{user?.university || 'Universitet'}</p>
-                   <p className="text-xs font-semibold text-[hsl(var(--accent))] mt-1">{user?.student_id || '0000 0000'}</p>
+                
+                <div className="flex-1 flex flex-col justify-center">
+                   <svg className="w-10 h-8 mb-2 opacity-90 drop-shadow-sm" viewBox="0 0 40 30" fill="none">
+                     <rect x="0.5" y="0.5" width="39" height="29" rx="4.5" fill="#FFD700" fillOpacity="0.3" stroke="#FFD700" strokeWidth="1"/>
+                     <path d="M10 0.5V29.5M30 0.5V29.5M0.5 10H39.5M0.5 20H39.5" stroke="#FFD700" strokeWidth="1" strokeOpacity="0.5"/>
+                     <rect x="12" y="8" width="16" height="14" rx="2" fill="#FFD700" fillOpacity="0.6"/>
+                   </svg>
+                   
+                   <h3 className="font-display text-[17px] font-extrabold leading-tight tracking-wide drop-shadow-md">{fullName}</h3>
+                   <p className="text-[10px] text-emerald-200 mt-1 uppercase tracking-widest font-semibold line-clamp-1">{user?.university || 'Universitet'}</p>
+                   
+                   <div className="mt-2.5 flex items-center gap-2">
+                     <p className="text-sm font-mono font-bold tracking-widest text-emerald-400 drop-shadow-md">{user?.student_id || '0000 0000'}</p>
+                   </div>
                 </div>
              </div>
           </div>
 
-          <div className="absolute inset-0 rounded-2xl bg-[hsl(var(--card))] p-5 text-[hsl(var(--foreground))] shadow-float [backface-visibility:hidden] [transform:rotateY(180deg)] border border-[hsl(var(--border))]">
-             <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] pb-2">
-               <ShieldCheck className="text-[hsl(var(--accent))]" size={18} />
-               <span className="text-xs font-bold uppercase">{t('verified')}</span>
-             </div>
-             <div className="mt-4 text-center flex flex-col items-center">
-                <ScanBarcode size={48} strokeWidth={1} className="text-[hsl(var(--foreground))]" />
-                <p className="mt-2 text-[10px] text-[hsl(var(--muted-foreground))]">{t('scan_barcode')}</p>
-             </div>
-             <div className="absolute bottom-4 left-4 flex gap-6 text-[10px] text-[hsl(var(--foreground))]">
-                <div>
-                  <span className="text-[hsl(var(--muted-foreground))] block">{t('issued')}</span>
-                  <strong>01/09/2026</strong>
-                </div>
-                <div>
-                  <span className="text-[hsl(var(--muted-foreground))] block">{t('valid_until')}</span>
-                  <strong>30/06/2030</strong>
-                </div>
+          <div className="absolute inset-0 rounded-[20px] bg-[hsl(var(--card))] text-[hsl(var(--foreground))] shadow-2xl [backface-visibility:hidden] [transform:rotateY(180deg)] border-[1.5px] border-[hsl(var(--border))] overflow-hidden flex flex-col">
+             
+             <div className="w-full h-10 bg-[#1a1a1a] mt-4 shadow-inner opacity-90"></div>
+
+             <div className="flex-1 p-5 flex flex-col">
+               <div className="flex items-center gap-2 mb-3">
+                 <ShieldCheck className="text-[hsl(var(--accent))]" size={16} />
+                 <span className="text-[11px] font-extrabold uppercase text-[hsl(var(--accent))] tracking-wider">{t('verified')}</span>
+               </div>
+               
+               <div className="mt-auto text-center flex flex-col items-center justify-center bg-[hsl(var(--background))] py-2 rounded-xl border border-[hsl(var(--border))]">
+                  <ScanBarcode size={32} strokeWidth={1.5} className="text-[hsl(var(--foreground))] opacity-80" />
+                  <p className="mt-1 text-[9px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-widest">{t('scan_barcode')}</p>
+               </div>
+               
+               <div className="mt-4 flex justify-between px-1 text-[9px] text-[hsl(var(--foreground))] font-bold uppercase tracking-wider">
+                  <div>
+                    <span className="text-[hsl(var(--muted-foreground))] block mb-0.5">{t('issued')}</span>
+                    01/09/2026
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[hsl(var(--muted-foreground))] block mb-0.5">{t('valid_until')}</span>
+                    30/06/2030
+                  </div>
+               </div>
              </div>
           </div>
         </div>

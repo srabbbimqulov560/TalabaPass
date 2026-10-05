@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Store, LockKeyhole, ArrowRight, UserRound, Loader2 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { supabase } from '@/lib/supabase';
+import { useLanguage } from '@/lib/i18n';
 
 export default function MerchantLogin() {
+  const { t } = useLanguage();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,11 +34,10 @@ export default function MerchantLogin() {
         throw new Error("Xatolik yuz berdi: " + authError.message);
       }
       
-      // 🌟 YANGILIK: Tizimga kiritishdan oldin tasdiqlanganini tekshirish
       const { data: merchantData } = await supabase.from('merchants').select('is_active').eq('id', data.session.user.id).single();
       
       if (merchantData && !merchantData.is_active) {
-        await supabase.auth.signOut(); // Ruxsati yo'q, chiqarib yuboramiz!
+        await supabase.auth.signOut();
         throw new Error("Hisobingiz hali tasdiqlanmagan. Iltimos, Administrator tasdiqlashini kuting.");
       }
 
@@ -60,8 +61,8 @@ export default function MerchantLogin() {
           <Store size={32} />
         </div>
         
-        <h1 className="font-display text-3xl font-extrabold text-[hsl(var(--foreground))] mb-2 leading-tight">Hamkorlar <br/>uchun kirish</h1>
-        <p className="text-[hsl(var(--muted-foreground))] text-sm mb-8 font-medium">Do'koningiz boshqaruv paneliga kiring.</p>
+        <h1 className="font-display text-3xl font-extrabold text-[hsl(var(--foreground))] mb-2 leading-tight">{t('merchant_login_title')}</h1>
+        <p className="text-[hsl(var(--muted-foreground))] text-sm mb-8 font-medium">{t('merchant_login_desc')}</p>
 
         {error && (
            <div className="mb-6 p-3 bg-red-500/10 border border-red-500/30 text-red-500 text-[13px] font-semibold rounded-xl text-center leading-snug">
@@ -74,7 +75,7 @@ export default function MerchantLogin() {
             <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
             <input 
               type="text" 
-              placeholder="Login" 
+              placeholder={t('username_placeholder')}
               required
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -86,7 +87,7 @@ export default function MerchantLogin() {
             <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
             <input 
               type="password" 
-              placeholder="Parol" 
+              placeholder={t('password_placeholder')}
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -95,7 +96,7 @@ export default function MerchantLogin() {
           </div>
           <div className="text-right mt-2 mb-4 pr-1">
             <Link href="/forgot-password" className="text-[12px] font-bold text-[hsl(var(--accent))] hover:underline cursor-pointer">
-              Parolni unutdingizmi?
+              {t('forgot_password')}
             </Link>
           </div>
 
@@ -104,13 +105,13 @@ export default function MerchantLogin() {
             disabled={loading}
             className="w-full py-4 mt-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-bold rounded-2xl shadow-float active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
           >
-            {loading ? <Loader2 className="animate-spin" size={20}/> : <>Tizimga kirish <ArrowRight size={18} /></>}
+            {loading ? <Loader2 className="animate-spin" size={20}/> : <>{t('login_submit')} <ArrowRight size={18} /></>}
           </button>
         </form>
 
         <div className="mt-8 text-center border-t border-[hsl(var(--border))] pt-6">
-          <span className="text-[13px] font-medium text-[hsl(var(--muted-foreground))]">Akkauntingiz yo'qmi? </span>
-          <Link href="/merchant/signup" className="text-[13px] font-bold text-[hsl(var(--foreground))] hover:text-[hsl(var(--accent))] underline underline-offset-2">Ro'yxatdan o'tish</Link>
+          <span className="text-[13px] font-medium text-[hsl(var(--muted-foreground))]">{t('no_account_merchant')} </span>
+          <Link href="/merchant/signup" className="text-[13px] font-bold text-[hsl(var(--foreground))] hover:text-[hsl(var(--accent))] underline underline-offset-2">{t('register_here')}</Link>
         </div>
 
       </div>

@@ -5,15 +5,19 @@ import { ScrollReveal } from '@/components/scroll-reveal';
 import { supabase } from '@/lib/supabase';
 import { useQuery, useQueryClient } from '@tanstack/react-query'; 
 import { useFavorites } from '@/lib/useFavorites';
+import { useLanguage } from '@/lib/i18n';
 
-const BANNERS = [
-  { id: 1, image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80", title: "Maxsus Takliflar" },
-  { id: 2, image: "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=800&q=80", title: "Kiyim Kechaklar" },
-  { id: 3, image: "https://images.unsplash.com/photo-1542204165-65bf26472b9b?auto=format&fit=crop&w=800&q=80", title: "O'quv Markazlari" },
-  { id: 4, image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80", title: "Texnologiyalar" }
-];
+// 🌟 KIRILL-LOTIN AVTO NORMALIZATSIYASI
+const normalizeForSearch = (text: string) => {
+  if (!text) return '';
+  const map: Record<string, string> = {
+    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 'ж': 'j', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'x', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sh', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya', 'қ': 'q', 'ў': 'o', 'ғ': 'g', 'ҳ': 'h'
+  };
+  return text.toLowerCase().split('').map(char => map[char] || char).join('');
+};
 
 export default function HomePage() {
+  const { t } = useLanguage();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient(); 
   
@@ -33,29 +37,39 @@ export default function HomePage() {
       if (error) throw error;
       return data;
     },
-    staleTime: 1000 * 60 * 5 // 🌟 Asosiy qotish shu yerda edi, endi 5 daqiqa keshda saqlanadi
+    staleTime: 1000 * 60 * 5 
   });
 
   const filteredDiscounts = useMemo(() => {
     if (!allDiscounts) return [];
+    const normalizedSearchTerm = normalizeForSearch(search);
+
     return allDiscounts.filter((discount: any) => {
-      const matchesSearch = discount.product_name.toLowerCase().includes(search.toLowerCase()) || discount.merchant?.name?.toLowerCase().includes(search.toLowerCase());
+      const pName = normalizeForSearch(discount.product_name);
+      const mName = normalizeForSearch(discount.merchant?.name);
+      
+      const matchesSearch = pName.includes(normalizedSearchTerm) || mName.includes(normalizedSearchTerm);
       const matchesCategory = category === 'All' || discount.merchant?.category === category;
       return matchesSearch && matchesCategory;
     });
   }, [allDiscounts, search, category]);
 
   const newDiscounts = allDiscounts ? [...allDiscounts].slice(0, 3) : [];
-  
-  const popularDiscounts = allDiscounts 
-    ? [...allDiscounts].sort((a, b) => (b.discount_percent || 0) - (a.discount_percent || 0)).slice(0, 3) 
-    : [];
-    
-  const topPurchasedDiscounts = allDiscounts 
-    ? [...allDiscounts].sort((a, b) => String(a.product_name).localeCompare(String(b.product_name))).slice(0, 3) 
-    : [];
+  const popularDiscounts = allDiscounts ? [...allDiscounts].sort((a, b) => (b.discount_percent || 0) - (a.discount_percent || 0)).slice(0, 3) : [];
+  const topPurchasedDiscounts = allDiscounts ? [...allDiscounts].sort((a, b) => String(a.product_name).localeCompare(String(b.product_name))).slice(0, 3) : [];
 
-  const infiniteBanners = Array(50).fill(BANNERS).flat();
+  // 🌟 REAL KARUSEL: Bazadagi eng so'nggi 5 ta chegirmani banner qilib olamiz
+  const carouselItems = useMemo(() => {
+    if (!allDiscounts || allDiscounts.length === 0) return [];
+    return allDiscounts.slice(0, 5).map((d: any) => ({
+      id: d.id,
+      image: d.image_url,
+      title: d.short_description || d.product_name,
+      merchantName: d.merchant?.name
+    }));
+  }, [allDiscounts]);
+
+  const infiniteBanners = carouselItems.length > 0 ? Array(10).fill(carouselItems).flat() : [];
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -73,12 +87,12 @@ export default function HomePage() {
   }, []);
 
   const categories = useMemo(() => [
-    { id: 'All', label: 'Barchasi', icon: LayoutGrid, color: 'bg-blue-500', shadow: 'shadow-blue-500/30' },
-    { id: 'Kafe / Restoran', label: 'Kafelar', icon: Coffee, color: 'bg-red-500', shadow: 'shadow-red-500/30' },
-    { id: 'Kiyim-kechak', label: "Do'konlar", icon: ShoppingBag, color: 'bg-orange-500', shadow: 'shadow-orange-500/30' },
-    { id: "O'quv markazi", label: "Ta'lim", icon: BookOpen, color: 'bg-green-500', shadow: 'shadow-green-500/30' },
-    { id: 'Texnika do‘koni', label: 'Texnika', icon: Monitor, color: 'bg-purple-500', shadow: 'shadow-purple-500/30' },
-  ], []);
+    { id: 'All', label: t('all_categories'), icon: LayoutGrid, color: 'bg-blue-500', shadow: 'shadow-blue-500/30' },
+    { id: 'Kafe / Restoran', label: t('category_cafes'), icon: Coffee, color: 'bg-red-500', shadow: 'shadow-red-500/30' },
+    { id: 'Kiyim-kechak', label: t('category_shops'), icon: ShoppingBag, color: 'bg-orange-500', shadow: 'shadow-orange-500/30' },
+    { id: "O'quv markazi", label: t('category_learning'), icon: BookOpen, color: 'bg-green-500', shadow: 'shadow-green-500/30' },
+    { id: 'Texnika do‘koni', label: t('category_it'), icon: Monitor, color: 'bg-purple-500', shadow: 'shadow-purple-500/30' },
+  ], [t]);
 
   const hasFilters = Boolean(search || category !== 'All');
 
@@ -89,7 +103,7 @@ export default function HomePage() {
         {title}
       </h2>
       <Link href={`/list/${linkType}`} className="text-[13px] font-bold text-[hsl(var(--accent))] hover:underline flex items-center gap-1">
-        Barchasi <ChevronRight size={14}/>
+        {t('see_all')} <ChevronRight size={14}/>
       </Link>
     </div>
   );
@@ -168,7 +182,7 @@ export default function HomePage() {
             onChange={(e) => setSearch(e.target.value)} 
             type="text" 
             enterKeyHint="search"
-            placeholder="Qidirish (masalan: Burger, Najot Ta'lim...)" 
+            placeholder={t('search_placeholder')} 
             className="min-w-0 flex-1 bg-transparent px-3 py-3.5 text-sm font-medium text-[hsl(var(--foreground))] outline-none placeholder:text-[hsl(var(--muted-foreground))]" 
           />
           {search && (
@@ -179,18 +193,26 @@ export default function HomePage() {
         </div>
       </ScrollReveal>
 
-      <ScrollReveal delay={100}>
-        <div ref={carouselRef} className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-5 px-5 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
-          {infiniteBanners.map((banner, idx) => (
-            <div key={`${banner.id}-${idx}`} className="min-w-[85%] md:min-w-[400px] snap-center relative rounded-3xl overflow-hidden shadow-md aspect-[21/9]">
-              <img src={banner.image} alt={banner.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-5">
-                <h3 className="text-white font-display font-bold text-xl">{banner.title}</h3>
+      {/* REAL BANNERLAR */}
+      {infiniteBanners.length > 0 && (
+        <ScrollReveal delay={100}>
+          <div ref={carouselRef} className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-5 px-5 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
+            {infiniteBanners.map((banner, idx) => (
+              <div 
+                key={`${banner.id}-${idx}`} 
+                onClick={() => setLocation(`/discount/${banner.id}`)}
+                className="min-w-[85%] md:min-w-[400px] snap-center relative rounded-3xl overflow-hidden shadow-md aspect-[21/9] cursor-pointer group"
+              >
+                <img src={banner.image} alt={banner.title} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-5">
+                  <span className="text-[11px] font-bold text-[hsl(var(--accent))] uppercase tracking-wider mb-1 drop-shadow-md">{banner.merchantName}</span>
+                  <h3 className="text-white font-display font-bold text-[18px] leading-tight line-clamp-2 drop-shadow-md">{banner.title}</h3>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </ScrollReveal>
+            ))}
+          </div>
+        </ScrollReveal>
+      )}
 
       <ScrollReveal delay={200}>
         <div className="flex overflow-x-auto gap-5 md:gap-10 pb-6 pt-6 mt-2 -mx-5 px-5 md:-mx-4 md:px-4 md:justify-center [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
@@ -223,10 +245,10 @@ export default function HomePage() {
             <div className="mt-4 mb-4 flex items-center justify-between">
               <h2 className="flex items-center gap-2 font-display text-[19px] font-bold text-[hsl(var(--foreground))]">
                 <Search size={20} className="text-[hsl(var(--accent))]" />
-                Topilgan chegirmalar
+                {t('matching_offers')}
               </h2>
               <button type="button" onClick={() => { setSearch(''); setCategory('All'); }} className="flex items-center gap-1 rounded-full bg-[hsl(var(--secondary))] px-3 py-1.5 text-xs font-bold text-[hsl(var(--foreground))]">
-                Tozalash <X size={12} />
+                {t('clear')} <X size={12} />
               </button>
             </div>
             
@@ -236,23 +258,23 @@ export default function HomePage() {
               </div>
             ) : (
               <div className="text-center py-12 bg-[hsl(var(--card))] rounded-[24px] border border-dashed border-[hsl(var(--border))]">
-                <p className="font-bold text-[hsl(var(--muted-foreground))]">Hech narsa topilmadi</p>
+                <p className="font-bold text-[hsl(var(--muted-foreground))]">{t('no_offers_found')}</p>
               </div>
             )}
           </>
         ) : (
           <div className="pb-8">
-            <SectionHeader title="Yangi chegirmalar" icon={Zap} color="text-amber-500" linkType="new" />
+            <SectionHeader title={t('just_arrived')} icon={Zap} color="text-amber-500" linkType="new" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {newDiscounts.map(discount => renderCard(discount))}
             </div>
 
-            <SectionHeader title="Eng mashhur" icon={Flame} color="text-red-500" linkType="popular" />
+            <SectionHeader title={t('popular_now')} icon={Flame} color="text-red-500" linkType="popular" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {popularDiscounts.map(discount => renderCard(discount))}
             </div>
 
-            <SectionHeader title="Eng ko'p xarid qilingan" icon={Trophy} color="text-blue-500" linkType="top" />
+            <SectionHeader title={t('popular_with_students')} icon={Trophy} color="text-blue-500" linkType="top" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {topPurchasedDiscounts.map(discount => renderCard(discount))}
             </div>

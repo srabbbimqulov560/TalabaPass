@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Bookmark, Clock3, MapPin, Store, Ticket, X, CalendarDays, Package, Copy, CheckCircle2, Map, Tag } from 'lucide-react';
+import { ArrowLeft, Clock3, MapPin, Store, Ticket, X, CalendarDays, Package, Copy, CheckCircle2, Map, Tag, Heart } from 'lucide-react';
 import { Link, useLocation, useParams } from 'wouter';
 import { useLanguage } from '@/lib/i18n';
 import { useFavorites } from '@/lib/useFavorites';
@@ -50,7 +50,6 @@ export default function DiscountDetailPage() {
           }
         }
       } catch (err) {
-        // Jimgina xatoni o'tkazib yuboramiz
       }
     }
     trackView();
@@ -58,9 +57,7 @@ export default function DiscountDetailPage() {
   
   const handleFavorite = async () => { 
     if (!id) return;
-    const added = await toggleFavorite(id);
-    setNotice(added ? t('added_to_saved') : t('removed_from_saved')); 
-    setTimeout(() => setNotice(''), 2200); 
+    await toggleFavorite(id);
   };
 
   const handleCopyAddress = () => {
@@ -100,7 +97,6 @@ export default function DiscountDetailPage() {
   const productTags = offer.product_name.split(',').map((tag: string) => tag.trim()).filter(Boolean);
   const hasItems = offer.items && offer.items.length > 0;
 
-  // Manzil va Ish vaqti matnini ajratib olish (Agar kiritilgan bo'lsa)
   const fullDescription = offer.merchant?.description || "";
   const addressMatch = fullDescription.match(/📍 Manzil: (.*?)(?:\n|$)/);
   const timeMatch = fullDescription.match(/⏰ Ish vaqti: (.*?)(?:\n|$)/);
@@ -115,8 +111,9 @@ export default function DiscountDetailPage() {
         <button onClick={() => window.history.back()} className="flex items-center gap-2 text-[15px] font-bold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors p-2 -ml-2 rounded-full hover:bg-[hsl(var(--secondary))]">
           <ArrowLeft size={20} /> Orqaga
         </button>
-        <button onClick={handleFavorite} className={`shrink-0 p-3 rounded-full border shadow-sm transition-all active:scale-90 ${isSaved ? 'border-[hsl(var(--accent))] bg-[hsl(var(--accent)/.1)] text-[hsl(var(--accent))]' : 'border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))]'}`}>
-          <Bookmark size={20} fill={isSaved ? 'currentColor' : 'none'} />
+        {/* 🌟 YANGILANGAN YURAKCHA */}
+        <button onClick={handleFavorite} className={`shrink-0 p-2.5 rounded-full border transition-all active:scale-90 ${isSaved ? 'border-red-500/20 bg-red-500/10 text-red-500 shadow-sm' : 'border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))]'}`}>
+          <Heart size={22} fill={isSaved ? 'currentColor' : 'none'} strokeWidth={isSaved ? 0 : 2} />
         </button>
       </div>
       
@@ -139,11 +136,10 @@ export default function DiscountDetailPage() {
         </div>
       </div>
       
-      {/* 🌟 YANGILANGAN (MINIMAL) CHEGIRMA BELGISI */}
       <div className="shrink-0 mb-6 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1.5 bg-red-500/10 text-red-500 border border-red-500/20 px-3.5 py-1.5 rounded-full shadow-sm">
            <Tag size={16} />
-           <span className="text-[14px] font-bold">-{offer.discount_percent}% Chegirma</span>
+           <span className="text-[14px] font-bold">-{offer.discount_percent}% {t('off')}</span>
         </div>
         <div className="text-[13px] font-semibold text-[hsl(var(--muted-foreground))]">
           Ushbu taklif barcha ko'rsatilgan mahsulotlarga amal qiladi
@@ -184,12 +180,11 @@ export default function DiscountDetailPage() {
       
       <div className="grid gap-3 grid-cols-1 shrink-0 mb-4">
         
-        {/* 🌟 MANZIL VA ISH VAQTI (YANGILANDI) */}
         <div className="rounded-[24px] bg-[hsl(var(--card))] border-2 border-[hsl(var(--card-border))] p-5 shadow-sm overflow-hidden relative">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 text-[hsl(var(--accent))]">
               <MapPin size={20} />
-              <span className="text-[12px] font-bold uppercase tracking-widest text-[hsl(var(--foreground))]">Manzil va Ma'lumot</span>
+              <span className="text-[12px] font-bold uppercase tracking-widest text-[hsl(var(--foreground))]">{t('find_us')}</span>
             </div>
           </div>
           
@@ -201,7 +196,6 @@ export default function DiscountDetailPage() {
               {addressText || "Manzil kiritilmagan"}
             </div>
             
-            {/* Ish vaqti agar mavjud bo'lsa */}
             {workTimeText && (
               <div className="mt-2.5 pt-2.5 border-t border-[hsl(var(--border))] flex items-center gap-1.5 text-[13px] font-bold text-[hsl(var(--foreground))]">
                 <Clock3 size={14} className="text-[hsl(var(--muted-foreground))]" />
@@ -245,18 +239,11 @@ export default function DiscountDetailPage() {
         </div>
       </div>
 
-      {/* 🌟 YANGILANGAN: NEON OLIB TASHLANDI VA TUGMA ODDIYROQ QILINDI */}
       <div className="mt-auto shrink-0 pb-6 pt-2 sticky bottom-0 bg-gradient-to-t from-[hsl(var(--background))] via-[hsl(var(--background))] to-transparent">
         <button onClick={() => setLocation('/qr')} className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] px-5 py-4 font-display text-[16px] font-bold text-[hsl(var(--primary-foreground))] shadow-float transition-all hover:-translate-y-1 active:scale-[0.98]">
-          Chegirmani olish (QR Kodi) <ArrowLeft className="rotate-180" size={18} />
+          {t('redeem_offer')} <ArrowLeft className="rotate-180" size={18} />
         </button>
       </div>
-      
-      {notice && (
-        <div className="fixed top-10 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-full bg-[hsl(var(--foreground))] px-6 py-3 text-[13px] font-bold text-[hsl(var(--background))] shadow-2xl animate-in slide-in-from-top-4 fade-in duration-300">
-          <CheckCircle2 size={16} className="text-green-400"/> {notice}
-        </div>
-      )}
 
       {showMapOptions && (
         <div className="fixed inset-0 z-[100] flex flex-col justify-end animate-in fade-in duration-200">

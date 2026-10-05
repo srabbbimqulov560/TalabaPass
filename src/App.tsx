@@ -39,7 +39,7 @@ import DiscountDetailPage from '@/pages/discount-detail';
 import DiscountListPage from '@/pages/discount-list';
 
 // --- BIZNES (DO'KONLAR) UCHUN SAHIFALAR ---
-import { MerchantAppShell } from '@/merchantpass/app-shell';
+import {  MerchantAppShell } from '@/components/app-shell';
 import MerchantSignup from '@/merchantpass/signup';
 import MerchantLogin from '@/merchantpass/login';
 import MerchantHome from '@/merchantpass/home';

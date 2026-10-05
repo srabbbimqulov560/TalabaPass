@@ -1,17 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { Store, ArrowRight, ArrowLeft, CheckCircle2, LockKeyhole, UserRound, Loader2, Briefcase, MapPin, Clock, Camera, Eye, EyeOff, Navigation, GraduationCap } from 'lucide-react';
+import { Store, ArrowRight, ArrowLeft, CheckCircle2, LockKeyhole, UserRound, Loader2, Briefcase, MapPin, Clock, Camera, Eye, EyeOff, Navigation, GraduationCap, Circle } from 'lucide-react';
 import { Link } from 'wouter';
 import { supabase } from '@/lib/supabase';
+import { useLanguage } from '@/lib/i18n';
 import Cropper from 'react-easy-crop';
-
-const CATEGORIES = [
-  { id: 'education', name: "O'quv markazi", icon: '📚' },
-  { id: 'food', name: 'Kafe / Restoran', icon: '🍔' },
-  { id: 'clothing', name: 'Kiyim-kechak', icon: '👕' },
-  { id: 'services', name: 'Xizmat ko‘rsatish', icon: '✂️' },
-  { id: 'tech', name: 'Texnika do‘koni', icon: '💻' },
-  { id: 'other', name: 'Boshqa', icon: '🏪' },
-];
 
 const getPasswordStrength = (pass: string) => {
   if (!pass) return { score: 0, text: '', color: 'bg-transparent', width: '0%' };
@@ -37,6 +29,17 @@ const createImage = (url: string): Promise<HTMLImageElement> =>
   });
 
 export default function MerchantSignup() {
+  const { t, lang, setLang } = useLanguage();
+
+  const CATEGORIES = [
+    { id: 'education', dbName: "O'quv markazi", transKey: 'category_learning', icon: '📚' },
+    { id: 'food', dbName: 'Kafe / Restoran', transKey: 'category_cafes', icon: '🍔' },
+    { id: 'clothing', dbName: 'Kiyim-kechak', transKey: 'category_shops', icon: '👕' },
+    { id: 'services', dbName: 'Xizmat ko‘rsatish', transKey: 'category_services', icon: '✂️' },
+    { id: 'tech', dbName: 'Texnika do‘koni', transKey: 'category_it', icon: '💻' },
+    { id: 'other', dbName: 'Boshqa', transKey: 'category_other', icon: '🏪' },
+  ];
+
   const [step, setStep] = useState(() => {
     const saved = localStorage.getItem('merchantSignupStep');
     return saved ? parseInt(saved) : 1;
@@ -48,9 +51,7 @@ export default function MerchantSignup() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session && step < 6) {
-        setStep(6);
-      }
+      if (session && step < 6) setStep(6);
     });
   }, []);
 
@@ -73,7 +74,7 @@ export default function MerchantSignup() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
 
   const [formData, setFormData] = useState({
-    category: '', name: '', location: '', openTime: '09:00', closeTime: '22:00', username: '', password: '', confirmPassword: '',
+    category: '', name: '', location: '', openTime: '09:00', closeTime: '22:00', username: '', password: '', confirmPassword: '', lat: '', lon: ''
   });
 
   const strength = getPasswordStrength(formData.password);
@@ -94,14 +95,11 @@ export default function MerchantSignup() {
     }
   };
 
-  // 🌟 LOGOTIPNI IXCHAMLASHTIRISH (Max 500x500 px va 0.6 sifat)
   const handleCropSave = async () => {
     if (!selectedImage || !croppedAreaPixels) return;
-    
     try {
       const currentSelectedImage = selectedImage; 
       setSelectedImage(null); 
-      
       const image = await createImage(currentSelectedImage);
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -110,7 +108,6 @@ export default function MerchantSignup() {
       let targetWidth = croppedAreaPixels.width;
       let targetHeight = croppedAreaPixels.height;
 
-      // Logotiplar juda kichkina kvadrat bo'ladi, 500px yetadi
       if (targetWidth > 500) {
         targetHeight = Math.round((targetHeight * 500) / targetWidth);
         targetWidth = 500;
@@ -126,7 +123,6 @@ export default function MerchantSignup() {
       );
 
       const blob = await new Promise<Blob>((resolve, reject) => {
-        // Sifatni 60% ga tushirish (xotirani himoya qiladi)
         canvas.toBlob((b) => { if (b) resolve(b); else reject(new Error('Canvas is empty')); }, 'image/jpeg', 0.6);
       });
 
@@ -135,13 +131,12 @@ export default function MerchantSignup() {
       setLogoPreview(URL.createObjectURL(blob));
 
     } catch (error) {
-      console.error("Rasm qirqishda xatolik:", error);
-      setError("Rasmni qayta ishlashda xatolik yuz berdi.");
+      setError("Xatolik yuz berdi.");
     }
   };
 
   const handleMapPick = () => {
-    if (!navigator.geolocation) { setError("Qurilmangizda joylashuvni aniqlash imkoniyati yo'q."); return; }
+    if (!navigator.geolocation) { setError("GPS xatoligi."); return; }
     setIsLocating(true); setError('');
 
     navigator.geolocation.getCurrentPosition(
@@ -151,20 +146,23 @@ export default function MerchantSignup() {
           const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=uz`);
           const data = await response.json();
           
-          if (data && data.display_name) { setFormData(prev => ({ ...prev, location: data.display_name })); } 
-          else { setFormData(prev => ({ ...prev, location: `${latitude}, ${longitude}` })); }
-        } catch (err) { setError("Internet orqali manzilni aniqlashda xatolik yuz berdi."); } 
+          setFormData(prev => ({ 
+            ...prev, 
+            location: data?.display_name || `${latitude}, ${longitude}`,
+            lat: latitude.toString(),
+            lon: longitude.toString()
+          }));
+        } catch (err) { setError("Xatolik yuz berdi."); } 
         finally { setIsLocating(false); }
       },
-      (err) => { setError("Joylashuvni aniqlashga ruxsat bermadingiz yoki GPS o'chiq."); setIsLocating(false); },
+      (err) => { setError("Joylashuv aniqlanmadi."); setIsLocating(false); },
       { enableHighAccuracy: true, timeout: 10000 }
     );
   };
 
   const checkNameAvailability = async () => {
     const cleanName = formData.name.trim().replace(/\s+/g, ' ');
-    if (cleanName.length < 3) { setError("Do'kon nomi kamida 3 ta harfdan iborat bo'lishi kerak."); return; }
-    
+    if (cleanName.length < 3) { setError("Kamida 3 ta harf"); return; }
     setFormData(prev => ({ ...prev, name: cleanName }));
     setLoading(true);
 
@@ -173,34 +171,38 @@ export default function MerchantSignup() {
       if (fetchError) throw fetchError;
 
       if (data && data.length > 0) {
-        setNameAvailable(false); setError("Bu nom band. Boshqa nom tanlang.");
+        setNameAvailable(false); setError("Bu nom band.");
       } else {
         setNameAvailable(true); setError(''); setTimeout(() => setStep(4), 500); 
       }
-    } catch (err) { setError("Server bilan ulanishda xatolik yuz berdi."); } 
+    } catch (err) { setError("Server xatoligi."); } 
     finally { setLoading(false); }
   };
 
   const handleSubmit = async () => {
-    if (strength.score < 5) { setError("Parol yetarlicha kuchli emas. Barcha talablarni bajaring!"); return; }
-    if (formData.password !== formData.confirmPassword) { setError("Parollar bir-biriga mos kelmadi."); return; }
+    if (strength.score < 5) { setError("Parol kuchsiz!"); return; }
+    if (formData.password !== formData.confirmPassword) { setError("Parollar mos emas."); return; }
     setLoading(true); setError('');
     
     try {
       const fakeEmail = `${formData.username.toLowerCase()}@merchant.talabapass.uz`;
       const { data: authData, error: authError } = await supabase.auth.signUp({ email: fakeEmail, password: formData.password });
 
-      if (authError) throw new Error("Bunday login band bo'lishi mumkin yoki xatolik: " + authError.message);
-      if (!authData.user) throw new Error("Foydalanuvchini yaratib bo'lmadi.");
+      if (authError) throw new Error(authError.message);
+      if (!authData.user) throw new Error("Xatolik");
 
-      const mergedDescription = `📍 Manzil: ${formData.location}\n⏰ Ish vaqti: ${formData.openTime} - ${formData.closeTime}`;
+      let mergedDescription = `📍 Manzil: ${formData.location}\n⏰ Ish vaqti: ${formData.openTime} - ${formData.closeTime}`;
+      if (formData.lat && formData.lon) {
+        mergedDescription += `\nKordinata: ${formData.lat}, ${formData.lon}`;
+      }
+
       const { error: dbError } = await supabase.from('merchants').insert([{
           id: authData.user.id, category: formData.category, name: formData.name, description: mergedDescription, logo_url: null, discount_percent: 0, is_active: false
       }]);
 
       if (dbError) throw dbError;
       setStep(6); 
-    } catch (err: any) { setError(err.message || "Xatolik yuz berdi. Iltimos qayta urinib ko'ring."); } 
+    } catch (err: any) { setError(err.message); } 
     finally { setLoading(false); }
   };
 
@@ -208,20 +210,20 @@ export default function MerchantSignup() {
     setLoading(true); setError('');
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Sessiya topilmadi, iltimos tizimga kiring.");
+      if (!user) throw new Error("Sessiya yo'q.");
 
       if (logoFile) {
         const fileExt = logoFile.name.split('.').pop() || 'jpg';
         const fileName = `merchant-${user.id}-${Date.now()}.${fileExt}`;
         const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, logoFile, { upsert: true });
-        if (uploadError) throw new Error("Rasmni saqlashda xatolik yuz berdi.");
+        if (uploadError) throw new Error("Yuklashda xato.");
 
         const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
         const { error: updateError } = await supabase.from('merchants').update({ logo_url: publicUrlData.publicUrl }).eq('id', user.id);
         if (updateError) throw updateError;
       }
       setStep(7); 
-    } catch (err: any) { setError(err.message || "Rasm yuklashda xatolik yuz berdi."); } 
+    } catch (err: any) { setError(err.message); } 
     finally { setLoading(false); }
   };
 
@@ -236,9 +238,7 @@ export default function MerchantSignup() {
             setIsApproved(true);
             clearInterval(interval);
             localStorage.removeItem('merchantSignupStep');
-            setTimeout(() => {
-              window.location.href = '/merchant'; 
-            }, 2000);
+            setTimeout(() => { window.location.href = '/merchant'; }, 2000);
           }
         }
       };
@@ -271,7 +271,7 @@ export default function MerchantSignup() {
               <ArrowLeft size={22} />
             </button>
           )}
-          {step > 1 && <div className="text-xs font-bold text-[hsl(var(--muted-foreground))] tracking-widest uppercase">{step - 1} / 5 QADAM</div>}
+          {step > 1 && <div className="text-xs font-bold text-[hsl(var(--muted-foreground))] tracking-widest uppercase">{t('step')} {step - 1} / 5</div>}
         </div>
       )}
 
@@ -283,29 +283,42 @@ export default function MerchantSignup() {
               <Briefcase size={32} />
             </div>
             
-            <div className="mb-8">
+            <div className="mb-6">
               <h1 className="font-display text-4xl font-bold leading-[1.1] text-[hsl(var(--foreground))]">
-                Biznesingizni <br/><span className="text-[hsl(var(--accent))]">rivojlantiring</span>
+                {t('merchant_signup_1')} <br/><span className="text-[hsl(var(--accent))]">{t('merchant_signup_2')}</span>
               </h1>
               <p className="mt-4 text-[15px] leading-relaxed text-[hsl(var(--muted-foreground))]">
-                TalabaPass tizimiga qo'shiling. O'z xizmat va mahsulotlaringizni minglab talabalarga taklif qilib, yangi mijozlarni jalb qiling.
+                {t('merchant_signup_desc')}
               </p>
             </div>
+
+            {/* 🌟 2-RASMDAGI XATOLIK: 1 ni l ga o'zgartirdik */}
+            <div className="space-y-3 mt-2 mb-8">
+               {['uz', 'ru', 'en'].map((l) => (
+                 <div key={l} onClick={() => setLang(l as 'uz'|'ru'|'en')} className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer border-2 transition-colors ${lang === l ? 'border-[hsl(var(--accent))] bg-[hsl(var(--accent)/.08)]' : 'border-transparent bg-[hsl(var(--card))] shadow-sm'}`}>
+                   <div className="flex items-center gap-3">
+                     <span className="text-3xl">{l === 'uz' ? '🇺🇿' : l === 'ru' ? '🇷🇺' : '🇬🇧'}</span>
+                     <span className="text-base font-bold text-[hsl(var(--foreground))]">{l === 'uz' ? "O'zbek" : l === 'ru' ? "Русский" : "English"}</span>
+                   </div>
+                   {lang === l ? <CheckCircle2 size={24} className="text-[hsl(var(--accent))]" /> : <Circle size={24} className="text-[hsl(var(--muted-foreground))]" />}
+                 </div>
+               ))}
+             </div>
             
             <div className="mt-auto flex flex-col gap-3">
               <div className="text-center mb-2">
-                <span className="text-[13px] font-medium text-[hsl(var(--muted-foreground))]">Allaqachon hisobingiz bormi? </span>
-                <Link href="/merchant/login" className="text-[13px] font-bold text-[hsl(var(--foreground))] hover:text-[hsl(var(--accent))] underline underline-offset-2">Kirish</Link>
+                <span className="text-[13px] font-medium text-[hsl(var(--muted-foreground))]">{t('already_have_account')} </span>
+                <Link href="/merchant/login" className="text-[13px] font-bold text-[hsl(var(--foreground))] hover:text-[hsl(var(--accent))] underline underline-offset-2">{t('login_btn')}</Link>
               </div>
               
               <Link href="/signup">
                 <div className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-[hsl(var(--secondary))] py-4 text-base font-bold text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent)/.1)] hover:text-[hsl(var(--accent))] transition-all shadow-sm">
-                  <GraduationCap size={18} /> Talaba sifatida ro'yxatdan o'tish
+                  <GraduationCap size={18} /> {t('reg_student')}
                 </div>
               </Link>
 
               <button onClick={nextStep} className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all">
-                Davom etish <ArrowRight size={18} />
+                {t('continue_btn')} <ArrowRight size={18} />
               </button>
             </div>
           </div>
@@ -314,23 +327,23 @@ export default function MerchantSignup() {
         {step === 2 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col">
             <div className="mt-4 mb-8">
-              <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">Faoliyat turi</h2>
-              <p className="text-sm text-[hsl(var(--muted-foreground))] mt-2">Xizmatlaringiz qaysi toifaga kiradi?</p>
+              <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">{t('business_type_title')}</h2>
+              <p className="text-sm text-[hsl(var(--muted-foreground))] mt-2">{t('business_type_desc')}</p>
             </div>
             
             <div className="grid grid-cols-2 gap-3 mb-6">
               {CATEGORIES.map((cat) => (
                 <button
                   key={cat.id}
-                  onClick={() => { setFormData({ ...formData, category: cat.name }); nextStep(); }}
+                  onClick={() => { setFormData({ ...formData, category: cat.dbName }); nextStep(); }}
                   className={`flex flex-col items-center justify-center p-5 rounded-2xl border-2 transition-all ${
-                    formData.category === cat.name 
+                    formData.category === cat.dbName 
                       ? 'border-[hsl(var(--accent))] bg-[hsl(var(--accent)/.1)] text-[hsl(var(--foreground))]' 
                       : 'border-[hsl(var(--border))] bg-[hsl(var(--card))] hover:border-[hsl(var(--accent)/.5)]'
                   }`}
                 >
                   <span className="text-4xl mb-3">{cat.icon}</span>
-                  <span className="text-[13px] font-bold text-center text-[hsl(var(--foreground))]">{cat.name}</span>
+                  <span className="text-[13px] font-bold text-center text-[hsl(var(--foreground))]">{(t as any)(cat.transKey)}</span>
                 </button>
               ))}
             </div>
@@ -340,18 +353,14 @@ export default function MerchantSignup() {
         {step === 3 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col">
             <div className="mt-4 mb-8">
-              <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">Do'kon nomi</h2>
-              <p className="text-sm text-[hsl(var(--muted-foreground))] mt-2">Mijozlar sizni shu nom bilan topishadi.</p>
+              <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">{t('store_name_title')}</h2>
+              <p className="text-sm text-[hsl(var(--muted-foreground))] mt-2">{t('store_name_desc')}</p>
             </div>
             
             <div className="relative mb-2">
               <Store className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
               <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder=""
+                type="text" name="name" value={formData.name} onChange={handleChange} placeholder=""
                 className={`w-full bg-[hsl(var(--card))] border-2 rounded-2xl py-4 pl-12 pr-12 text-sm font-semibold outline-none transition-all text-[hsl(var(--foreground))] ${
                   nameAvailable === true ? 'border-green-500 focus:border-green-500' : 
                   nameAvailable === false ? 'border-red-500 focus:border-red-500' : 
@@ -362,12 +371,8 @@ export default function MerchantSignup() {
             </div>
             {error && <p className="text-red-500 text-[13px] font-semibold ml-2">{error}</p>}
 
-            <button 
-              onClick={checkNameAvailability} 
-              disabled={loading || !formData.name}
-              className="mt-auto flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all disabled:opacity-70"
-            >
-              {loading ? <Loader2 className="animate-spin" size={20} /> : <>Davom etish <ArrowRight size={18} /></>}
+            <button onClick={checkNameAvailability} disabled={loading || !formData.name} className="mt-auto flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all disabled:opacity-70">
+              {loading ? <Loader2 className="animate-spin" size={20} /> : <>{t('continue_btn')} <ArrowRight size={18} /></>}
             </button>
           </div>
         )}
@@ -375,29 +380,25 @@ export default function MerchantSignup() {
         {step === 4 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col">
             <div className="mt-4 mb-8">
-              <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">Manzil va Vaqt</h2>
-              <p className="text-sm text-[hsl(var(--muted-foreground))] mt-2">Mijozlar sizni oson topishlari uchun.</p>
+              <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">{t('address_time_title')}</h2>
+              <p className="text-sm text-[hsl(var(--muted-foreground))] mt-2">{t('address_time_desc')}</p>
             </div>
             
             <div className="space-y-6">
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Manzil</label>
-                <button 
-                  onClick={handleMapPick} 
-                  disabled={isLocating}
-                  className="mb-3 w-full flex items-center justify-center gap-2 bg-[hsl(var(--accent)/.15)] text-[hsl(var(--accent))] font-bold py-3 rounded-2xl border border-[hsl(var(--accent)/.3)] active:scale-95 transition-all"
-                >
+                <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">{t('address_label')}</label>
+                <button onClick={handleMapPick} disabled={isLocating} className="mb-3 w-full flex items-center justify-center gap-2 bg-[hsl(var(--accent)/.15)] text-[hsl(var(--accent))] font-bold py-3 rounded-2xl border border-[hsl(var(--accent)/.3)] active:scale-95 transition-all">
                   {isLocating ? <Loader2 className="animate-spin" size={18}/> : <Navigation size={18}/>}
-                  {isLocating ? "Xaritadan qidirilmoqda..." : "📍 Hozirgi joylashuvimni aniqlash"}
+                  {isLocating ? t('locating') : t('locate_gps')}
                 </button>
                 <div className="relative">
                   <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
-                  <input type="text" name="location" value={formData.location} onChange={handleChange} placeholder="Toshkent sh., Navoiy ko'chasi 1-uy" className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] rounded-2xl py-4 pl-12 pr-4 text-sm font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))] transition-all" />
+                  <input type="text" name="location" value={formData.location} onChange={handleChange} placeholder="" className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] rounded-2xl py-4 pl-12 pr-4 text-sm font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))] transition-all" />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Ish vaqti</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">{t('work_time_label')}</label>
                 <div className="flex items-center gap-3">
                   <div className="relative flex-1">
                     <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={18} />
@@ -414,12 +415,8 @@ export default function MerchantSignup() {
 
             {error && <p className="text-red-500 text-[13px] font-bold mt-2">{error}</p>}
 
-            <button 
-              onClick={nextStep}
-              disabled={!formData.location}
-              className="mt-auto flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all disabled:opacity-70"
-            >
-              Keyingisi <ArrowRight size={18} />
+            <button onClick={nextStep} disabled={!formData.location} className="mt-auto flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all disabled:opacity-70">
+              {t('next_btn')} <ArrowRight size={18} />
             </button>
           </div>
         )}
@@ -427,24 +424,24 @@ export default function MerchantSignup() {
         {step === 5 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col">
             <div className="mt-4 mb-8">
-              <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">Xavfsizlik</h2>
-              <p className="text-sm text-[hsl(var(--muted-foreground))] mt-2">Shaxsiy kabinetingiz uchun login va parol.</p>
+              <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">{t('security_title')}</h2>
+              <p className="text-sm text-[hsl(var(--muted-foreground))] mt-2">{t('security_desc')}</p>
             </div>
             
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Login</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">{t('username_label')}</label>
                 <div className="relative">
                   <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
-                  <input type="text" name="username" value={formData.username} onChange={handleChange} placeholder="Biznes uchun login" className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] rounded-2xl py-4 pl-12 pr-4 text-sm font-bold outline-none focus:border-[hsl(var(--accent))] text-[hsl(var(--foreground))] transition-all" />
+                  <input type="text" name="username" value={formData.username} onChange={handleChange} placeholder={t('username_placeholder')} className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] rounded-2xl py-4 pl-12 pr-4 text-sm font-bold outline-none focus:border-[hsl(var(--accent))] text-[hsl(var(--foreground))] transition-all" />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">Parol</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] ml-2 mb-1.5 block">{t('password_label')}</label>
                 <div className="relative">
                   <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
-                  <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange} placeholder="Parol kiriting" className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] rounded-2xl py-4 pl-12 pr-12 text-sm font-bold outline-none focus:border-[hsl(var(--accent))] text-[hsl(var(--foreground))] transition-all" />
+                  <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange} placeholder={t('password_placeholder')} className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] rounded-2xl py-4 pl-12 pr-12 text-sm font-bold outline-none focus:border-[hsl(var(--accent))] text-[hsl(var(--foreground))] transition-all" />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
@@ -452,7 +449,7 @@ export default function MerchantSignup() {
                 
                 <div className="mt-2.5 px-2">
                   <div className="flex justify-between items-center mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                    <span>Parol xavfsizligi</span>
+                    <span>{t('pass_strength')}</span>
                     <span className={strength.text === 'Oson' ? 'text-red-500' : strength.text === "O'rtacha" ? 'text-yellow-500' : strength.text === 'Kuchli' ? 'text-green-500' : ''}>{strength.text}</span>
                   </div>
                   <div className="h-1.5 w-full bg-[hsl(var(--secondary))] rounded-full overflow-hidden flex">
@@ -463,7 +460,7 @@ export default function MerchantSignup() {
 
               <div className="relative">
                 <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={20} />
-                <input type={showConfirmPassword ? "text" : "password"} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="Parolni takrorlang" className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] rounded-2xl py-4 pl-12 pr-12 text-sm font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))] transition-all" />
+                <input type={showConfirmPassword ? "text" : "password"} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder={t('confirm_pass_placeholder')} className="w-full bg-[hsl(var(--card))] border-2 border-[hsl(var(--border))] rounded-2xl py-4 pl-12 pr-12 text-sm font-semibold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--accent))] transition-all" />
                 <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
                   {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -472,12 +469,8 @@ export default function MerchantSignup() {
             
             {error && <p className="text-red-500 text-[13px] font-semibold mt-3 ml-2">{error}</p>}
 
-            <button 
-              onClick={handleSubmit}
-              disabled={loading || !formData.username || !formData.password}
-              className="mt-auto flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all disabled:opacity-70"
-            >
-              {loading ? <Loader2 className="animate-spin" size={20} /> : 'Ro\'yxatdan o\'tish'}
+            <button onClick={handleSubmit} disabled={loading || !formData.username || !formData.password} className="mt-auto flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all disabled:opacity-70">
+              {loading ? <Loader2 className="animate-spin" size={20} /> : t('register_btn')}
             </button>
           </div>
         )}
@@ -485,8 +478,8 @@ export default function MerchantSignup() {
         {step === 6 && (
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 flex-1 flex flex-col items-center justify-center">
             <div className="text-center mb-10 mt-auto">
-              <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))] mb-2">Do'kon Logotipi</h2>
-              <p className="text-sm text-[hsl(var(--muted-foreground))]">Do'koningiz ilovada chiroyli ko'rinishi uchun <br/> logotip yuklang (ixtiyoriy).</p>
+              <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))] mb-2">{t('logo_title')}</h2>
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">{t('logo_desc')}</p>
             </div>
             
             <div className="relative group mb-auto">
@@ -501,15 +494,15 @@ export default function MerchantSignup() {
             <div className="w-full flex flex-col gap-3 mt-auto">
               {logoPreview ? (
                 <button disabled={loading} onClick={handleFinish} className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all disabled:opacity-70">
-                  {loading ? <Loader2 className="animate-spin" /> : 'Rasmni saqlash va Yakunlash'}
+                  {loading ? <Loader2 className="animate-spin" /> : t('save_and_finish')}
                 </button>
               ) : (
                 <>
                   <button onClick={() => fileInputRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] py-4 text-base font-bold text-[hsl(var(--primary-foreground))] shadow-float active:scale-95 transition-all">
-                    <Camera size={20} /> Rasm yuklash
+                    <Camera size={20} /> {t('upload_image')}
                   </button>
                   <button disabled={loading} onClick={() => setStep(7)} className="py-3 text-sm font-bold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors disabled:opacity-50">
-                    {loading ? 'Kuting...' : "Hozircha o'tkazib yuborish"}
+                    {loading ? '...' : t('skip_for_now')}
                   </button>
                 </>
               )}
@@ -524,8 +517,8 @@ export default function MerchantSignup() {
                 <div className="w-24 h-24 bg-green-500/10 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-green-500/20 shadow-[0_0_40px_rgba(34,197,94,0.3)]">
                   <CheckCircle2 size={48} strokeWidth={2.5} />
                 </div>
-                <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))] mb-3">Tasdiqlandi!</h2>
-                <p className="text-sm font-medium text-[hsl(var(--muted-foreground))]">Do'koningiz muvaffaqiyatli faollashtirildi.</p>
+                <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))] mb-3">{t('approved_title')}</h2>
+                <p className="text-sm font-medium text-[hsl(var(--muted-foreground))]">{t('approved_desc_merchant')}</p>
               </div>
             ) : (
               <>
@@ -536,11 +529,9 @@ export default function MerchantSignup() {
                     <div className="absolute top-0 left-0 w-full h-full rounded-full border-t-2 border-blue-500 animate-spin"></div>
                   </div>
                 </div>
-                <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-3">Tekshirilmoqda</h2>
+                <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-3">{t('checking_title')}</h2>
                 <p className="text-[13px] text-[hsl(var(--muted-foreground))] leading-relaxed max-w-[280px] mx-auto px-2">
-                  Arizangiz administratorga yuborildi. Odatda tekshiruv jarayoni <b>10-30 daqiqa</b> vaqt oladi.
-                  <br/><br/>
-                  Iltimos, ushbu oynadan chiqmang. Tasdiqlangach avtomatik do'kon paneliga o'tkazilasiz.
+                  {t('checking_desc_merchant')}
                 </p>
               </>
             )}
@@ -551,46 +542,17 @@ export default function MerchantSignup() {
       {selectedImage && (
         <div className="fixed inset-0 z-[70] flex flex-col bg-black/95 backdrop-blur-md">
           <div className="relative flex-1 w-full mt-10">
-            <Cropper
-              image={selectedImage}
-              crop={crop}
-              zoom={zoom}
-              aspect={1}
-              cropShape="round"
-              showGrid={false}
-              onCropChange={setCrop}
-              onZoomChange={setZoom}
-              onCropComplete={(croppedArea, pixels) => setCroppedAreaPixels(pixels)}
-            />
+            <Cropper image={selectedImage} crop={crop} zoom={zoom} aspect={1} cropShape="round" showGrid={false} onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={(_, pixels) => setCroppedAreaPixels(pixels)} />
           </div>
           <div className="p-6 pb-12 bg-black flex flex-col gap-6 items-center">
-            <input
-              type="range"
-              value={zoom}
-              min={1}
-              max={3}
-              step={0.1}
-              onChange={(e) => setZoom(Number(e.target.value))}
-              className="w-full max-w-xs accent-[hsl(var(--primary))]"
-            />
+            <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(Number(e.target.value))} className="w-full max-w-xs accent-[hsl(var(--primary))]" />
             <div className="flex w-full max-w-xs gap-4">
-              <button 
-                onClick={() => setSelectedImage(null)} 
-                className="flex-1 py-3.5 font-bold rounded-2xl text-white bg-white/20 hover:bg-white/30 transition-colors"
-              >
-                Bekor qilish
-              </button>
-              <button 
-                onClick={handleCropSave} 
-                className="flex-1 py-3.5 font-bold rounded-2xl text-[hsl(var(--primary-foreground))] bg-[hsl(var(--primary))] hover:brightness-110 transition-all flex justify-center items-center gap-2"
-              >
-                Saqlash
-              </button>
+              <button onClick={() => setSelectedImage(null)} className="flex-1 py-3.5 font-bold rounded-2xl text-white bg-white/20 hover:bg-white/30 transition-colors">Bekor qilish</button>
+              <button onClick={handleCropSave} className="flex-1 py-3.5 font-bold rounded-2xl text-[hsl(var(--primary-foreground))] bg-[hsl(var(--primary))] hover:brightness-110 transition-all flex justify-center items-center gap-2">Saqlash</button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }

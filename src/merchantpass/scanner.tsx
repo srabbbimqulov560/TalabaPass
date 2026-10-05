@@ -3,8 +3,10 @@ import { QrCode, CheckCircle2, XCircle, Loader2, User, RefreshCcw, ShieldAlert, 
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { supabase } from '@/lib/supabase';
 import { useQuery } from '@tanstack/react-query';
+import { useLanguage } from '@/lib/i18n';
 
 export default function MerchantScanner() {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string; student?: any } | null>(null);
   
@@ -113,18 +115,15 @@ export default function MerchantScanner() {
 
       if (!itemFound) throw new Error("Tanlangan mahsulot tizimdan topilmadi.");
 
-      // 1. Chegirmani yangilash (-1 ni bazaga yozish)
       const { error: updateError } = await supabase.from('discounts').update({ items: updatedItems }).eq('id', discount.id);
       if (updateError) throw updateError;
 
-      // 2. Scan tarixiga yozish
       const { error: histError } = await supabase.from('scan_history').insert({
         merchant_id: merchantStatus.id,
         student_id: scannedStudent.id
       });
       if (histError) throw histError;
 
-      // 🌟 3. TALABAGA XARID UCHUN MINNATDORCHILIK BİLDİRİSHNOMASİ YUBORISH
       await supabase.from('notifications').insert({
         user_id: scannedStudent.id,
         title: "Xaridingiz muvaffaqiyatli! 🎉",
@@ -168,7 +167,7 @@ export default function MerchantScanner() {
         <div className="w-full max-w-sm mx-auto bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-8 rounded-[40px] text-center shadow-xl">
           <div className="w-24 h-24 bg-orange-500/10 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-orange-500/20"><ShieldAlert size={48} /></div>
           <h3 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-3">Tasdiqlanmagan</h3>
-          <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))] leading-relaxed px-2">Hisobingiz administrator tomonidan tasdiqlanmaguncha skanerdan foydalana olmaysiz. Iltimos, kuting.</p>
+          <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))] leading-relaxed px-2">{t('checking_desc_merchant')}</p>
         </div>
       </div>
     );
@@ -180,10 +179,10 @@ export default function MerchantScanner() {
 
       <div className="text-center mb-8">
         <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))]">
-          {scannedStudent ? "Tasdiqlash" : "Talabani Qidirish"}
+          {scannedStudent ? t('confirm_purchase') : t('search_student')}
         </h2>
         <p className="text-sm font-medium text-[hsl(var(--muted-foreground))] mt-1">
-          {scannedStudent ? "Qaysi mahsulot olinayotganini tanlang" : "ID kartadagi QR kodni ekranga tuting"}
+          {scannedStudent ? t('select_product_desc') : t('scan_qr_desc')}
         </p>
       </div>
 
@@ -206,7 +205,7 @@ export default function MerchantScanner() {
           {loading && (
             <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white backdrop-blur-md z-50 animate-in fade-in duration-200">
               <Loader2 className="animate-spin text-[hsl(var(--accent))] mb-4" size={48}/>
-              <p className="font-bold text-lg tracking-wide">Tekshirilmoqda...</p>
+              <p className="font-bold text-lg tracking-wide">{t('checking')}</p>
             </div>
           )}
         </div>
@@ -227,7 +226,7 @@ export default function MerchantScanner() {
             </div>
           </div>
 
-          <h3 className="font-display font-bold text-lg mb-4 text-[hsl(var(--foreground))]">Xarid qilinayotgan chegirma:</h3>
+          <h3 className="font-display font-bold text-lg mb-4 text-[hsl(var(--foreground))]">{t('select_product_desc')}</h3>
           
           {activeDiscounts && activeDiscounts.length > 0 ? (
             <div className="space-y-4">
@@ -238,7 +237,7 @@ export default function MerchantScanner() {
                     <img src={discount.image_url} className="w-16 h-12 rounded-xl object-cover" />
                     <div className="flex-1">
                       <p className="font-bold text-sm leading-tight text-[hsl(var(--foreground))] line-clamp-1">{discount.product_name}</p>
-                      <p className="text-xs font-bold text-red-500 mt-1">-{discount.discount_percent}% Chegirma</p>
+                      <p className="text-xs font-bold text-red-500 mt-1">-{discount.discount_percent}% {t('off')}</p>
                     </div>
                   </div>
 
@@ -257,7 +256,7 @@ export default function MerchantScanner() {
                           >
                             <span className="font-bold text-sm flex items-center gap-2 text-[hsl(var(--foreground))]"><Package size={16}/> {item.name}</span>
                             <span className={`text-[11px] font-bold px-2 py-1 rounded-md ${!isAvailable ? 'bg-red-500/10 text-red-500' : isSelected ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))]'}`}>
-                              {item.isUnlimited ? 'Cheksiz' : isAvailable ? `${item.quantity} ta qoldi` : 'Tugagan'}
+                              {item.isUnlimited ? t('unlimited') : isAvailable ? `${item.quantity} ta` : 'Tugagan'}
                             </span>
                           </button>
                         )
@@ -269,19 +268,17 @@ export default function MerchantScanner() {
               ))}
             </div>
           ) : (
-            <div className="p-4 bg-[hsl(var(--secondary))] rounded-2xl text-center text-sm font-semibold text-[hsl(var(--muted-foreground))]">
-              Sizda faol chegirmalar yo'q
-            </div>
+            <div className="p-4 bg-[hsl(var(--secondary))] rounded-2xl text-center text-sm font-semibold text-[hsl(var(--muted-foreground))]">{t('no_active_discounts')}</div>
           )}
 
           <div className="mt-8 flex gap-3">
-            <button onClick={resetScanner} className="flex-1 py-4 bg-[hsl(var(--secondary))] text-[hsl(var(--foreground))] font-bold rounded-2xl active:scale-95 transition-all">Bekor qilish</button>
+            <button onClick={resetScanner} className="flex-1 py-4 bg-[hsl(var(--secondary))] text-[hsl(var(--foreground))] font-bold rounded-2xl active:scale-95 transition-all">{t('cancel')}</button>
             <button 
               disabled={isConfirming || !selectedDiscountId || !selectedItemName} 
               onClick={handleConfirm} 
               className="flex-[2] py-4 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-bold rounded-2xl shadow-float active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {isConfirming ? <Loader2 className="animate-spin" size={20}/> : <>Tasdiqlash <ArrowRight size={18}/></>}
+              {isConfirming ? <Loader2 className="animate-spin" size={20}/> : <>{t('confirm_purchase')} <ArrowRight size={18}/></>}
             </button>
           </div>
         </div>
@@ -293,7 +290,6 @@ export default function MerchantScanner() {
             <>
               <div className="w-24 h-24 bg-green-500/10 text-green-500 rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-green-500/20"><CheckCircle2 size={48} /></div>
               <h3 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-2">{result.message}</h3>
-              <p className="text-[13px] font-semibold text-[hsl(var(--muted-foreground))]">Tarixga yozildi va mahsulot soni yangilandi</p>
             </>
           ) : (
             <>
