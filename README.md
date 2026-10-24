@@ -1,32 +1,20 @@
-# React + TypeScript + Vite
+# Student Pass 🎓
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A modern SaaS application designed to connect students across Uzbekistan with exclusive discounts and promotional offers from various businesses.
 
-Currently, two official plugins are available:
+## ✨ Key Features
+* **Student Access:** Secure registration and seamless navigation through active student-only deals.
+* **Business Integration:** Platform for local businesses to list and manage their promotional campaigns.
+* **Modern UI/UX:** Clean, intuitive, and fully responsive interface optimized for mobile and desktop users.
+* **Real-time Data:** Fast and secure data fetching and user authentication.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🛠️ Technologies Used
+* **Frontend:** React, TypeScript, Tailwind CSS
+* **Backend & Database:** Supabase
 
-## React Compiler
+## ⚙️ Getting Started
+To run this project locally:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/srabbbimqulov560/Student-Pass.git
